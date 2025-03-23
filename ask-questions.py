@@ -1,19 +1,15 @@
 import faiss
 import numpy as np
 import json
-from openai import OpenAI
-import streamlit as st
-openai_key=st.secrets["OPENAI_API_KEY"]
-client = OpenAI(api_key=openai_key)
-
+import openai
 import pandas as pd
 import streamlit as st
+openai.api_key=st.secrets["OPENAI_API_KEY"]
 
 
 # ==========================
 # Configuration
 # ==========================
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 CSV_FILE_PATH = 'products-clean.csv'  # Your product catalog CSV file
 EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Your embeddings file
 
@@ -51,32 +47,36 @@ def build_faiss_index(embeddings):
 # ==========================
 conversation_memory = []
 
-def retrieve_and_generate(query, index, entries):
+
+def retrieve_and_generate(query, index, entries, top_k=5):
     # Generate query embedding
-    response = client.embeddings.create(model="text-embedding-ada-002",
-    input=query)
-    query_embedding = np.array(response.data[0].embedding)
+    response = openai.Embedding.create(
+        model="text-embedding-ada-002",
+        input=query
+    )
+    query_embedding = np.array(response['data'][0]['embedding'])
 
     # Perform similarity search
-    indices, distances = index.search(np.array([query_embedding]), 5)
+    indices, distances = index.search(np.array([query_embedding]), top_k)
 
     # Retrieve relevant entries
-    retrieved_texts = [entries[int(i)] for i in indices[0].tolist()]  # Convert indices to int before using them
-
+    retrieved_texts = [entries[int(i)] for i in indices[0].tolist()]
     context = "\n".join(retrieved_texts)
 
     # Add query to memory
     conversation_memory.append({"role": "user", "content": query})
 
     # Generate response from GPT-4
-    response = client.chat.completions.create(model="gpt-4",
-    messages=[
-        {"role": "system", "content": "You are an expert assistant helping with a product catalog."}
-    ] + conversation_memory + [
-        {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
-    ])
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an expert assistant helping with a product catalog."}
+        ] + conversation_memory + [
+            {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
+        ]
+    )
 
-    answer = response.choices[0].message.content
+    answer = response['choices'][0]['message']['content']
     conversation_memory.append({"role": "assistant", "content": answer})
 
     return answer
@@ -87,7 +87,8 @@ def retrieve_and_generate(query, index, entries):
 # ==========================
 
 def main():
-    st.title('Enhanced Product Catalog Q&A System')
+    st.set_page_config(page_title="Enhanced Product Q&A", layout="wide")
+    st.title('📌 Enhanced Product Catalog Q&A System')
 
     # Load Data
     df = load_product_catalog(CSV_FILE_PATH)
@@ -100,21 +101,30 @@ def main():
     embeddings = load_embeddings(EMBEDDINGS_FILE_PATH)
     index = build_faiss_index(embeddings)
 
-    # Query box
-    query = st.text_input("Ask a question about your catalog:")
+    # User Interaction
+    with st.sidebar:
+        st.subheader("Settings")
+        top_k = st.slider("Number of Results to Retrieve", 1, 10, 5)
 
-    if query:
-        answer = retrieve_and_generate(query, index, entries)
-        st.write(f"### Answer: {answer}")
+        if st.button('Clear Memory'):
+            conversation_memory.clear()
 
-        # Display conversation history
-        if st.button('Show Conversation History'):
-            st.write("### Conversation History")
-            for message in conversation_memory:
-                if message['role'] == 'user':
-                    st.write(f"**You:** {message['content']}")
-                else:
-                    st.write(f"**Assistant:** {message['content']}")
+    tab1, tab2 = st.tabs(["Q&A", "Conversation History"])
+
+    with tab1:
+        query = st.text_input("Ask a question about your catalog:")
+
+        if query:
+            answer = retrieve_and_generate(query, index, entries, top_k)
+            st.write(f"### 💬 Answer: {answer}")
+
+    with tab2:
+        st.write("### Conversation History")
+        for message in conversation_memory:
+            if message['role'] == 'user':
+                st.write(f"**You:** {message['content']}")
+            else:
+                st.write(f"**Assistant:** {message['content']}")
 
 
 if __name__ == "__main__":

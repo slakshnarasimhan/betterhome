@@ -26,15 +26,20 @@ def load_product_catalog(uploaded_file):
 
 
 # ==========================
-# Step 2: Prepare Entries (Including Brand Names)
+# Step 2: Prepare Entries (Enhanced)
 # ==========================
-
 def prepare_entries(df):
     entries = []
     for _, row in df.iterrows():
         entry = (
-            f"Title: {row['title']}. Price: {row['price']}. Description: {row['description']}. Features: {row['features']}. "
-            f"Brand: {row['brand']}. Type: {row['type']}. Tags: {row['tags']}. Warranty: {row['warranty']}"
+            f"Title: {row.get('title', 'Not Available')}. "
+            f"Price: {row.get('price', 'Not Available')} INR. "
+            f"Description: {row.get('description', 'Not Available')}. "
+            f"Features: {row.get('features', 'Not Available')}. "
+            f"Brand: {row.get('brand', 'Not Available')}. "
+            f"Type: {row.get('type', 'Not Available')}. "
+            f"Tags: {row.get('tags', 'Not Available')}. "
+            f"Warranty: {row.get('warranty', 'Not Available')}. "
         )
         entries.append(entry)
     return entries
