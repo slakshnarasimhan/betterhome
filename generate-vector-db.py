@@ -2,9 +2,9 @@ import faiss
 import numpy as np
 import json
 from openai import OpenAI
-openai_api_key = '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'  # Replace with your OpenAI API Key
+openai_key=st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=openai_key)
 
-client = OpenAI(api_key=openai_api_key)
 import pandas as pd
 
 

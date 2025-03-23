@@ -13,7 +13,6 @@ import streamlit as st
 # Configuration (Hardcoded Values)
 # ==========================
 
-OPENAI_API_KEY = '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'  # Replace with your actual OpenAI API Key
 CSV_FILE_PATH = 'products-clean.csv'  # Path to your product catalog CSV file
 EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Path to your embeddings file
 
@@ -22,11 +21,15 @@ EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Path to your embeddings file
 # ==========================
 # Step 1: Load Embeddings & Product Entries
 # ==========================
-
 def load_embeddings(file_path):
-    with open(file_path, 'r') as f:
-        embeddings = json.load(f)
-    return np.array(embeddings)
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            embeddings = json.loads(content)
+        return np.array(embeddings)
+    except json.JSONDecodeError as e:
+        st.error(f"Failed to load embeddings. Error: {e}")
+        return None
 
 
 def load_product_catalog(file_path):
