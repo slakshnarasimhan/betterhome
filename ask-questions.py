@@ -2,7 +2,8 @@ import faiss
 import numpy as np
 import json
 from openai import OpenAI
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+openai_key=st.secrets["OPENAI_API_KEY"])
+client = OpenAI(api_key=openai_key)
 import pandas as pd
 import streamlit as st
 
