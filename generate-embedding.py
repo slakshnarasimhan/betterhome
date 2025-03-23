@@ -2,109 +2,83 @@ import faiss
 import numpy as np
 import json
 from openai import OpenAI
-import streamlit as st
-openai_key=st.secrets["OPENAI_API_KEY"]
-client = OpenAI(api_key=openai_key)
-
-
 import pandas as pd
 import streamlit as st
 
 
 # ==========================
-# Step 1: Load Embeddings & Product Entries
+# Configuration
 # ==========================
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]  # Replace with your OpenAI API Key if not using Streamlit Secrets
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-def load_embeddings(uploaded_file):
-    # Read uploaded file
-    content = uploaded_file.read()
-    embeddings = json.loads(content.decode('utf-8'))
-    return np.array(embeddings)
 
+# ==========================
+# Step 1: Load Product Catalog
+# ==========================
 
 def load_product_catalog(uploaded_file):
     # Read CSV file from the uploaded file object
     df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+    df['price'] = df['price'].astype(str) + ' INR'  # Convert price to string and add INR
     return df
 
 
 # ==========================
-# Step 2: Build FAISS Index
+# Step 2: Prepare Entries (Including Brand Names)
 # ==========================
 
-def build_faiss_index(embeddings):
-    dimension = len(embeddings[0])
-    index = faiss.IndexFlatL2(dimension)
-    index.add(embeddings)
-    return index
-
-
-# ==========================
-# Step 3: Query the Index
-# ==========================
-
-def query_index(index, query_embedding, top_k=5):
-    distances, indices = index.search(np.array([query_embedding]), top_k)
-    return indices[0], distances[0]
+def prepare_entries(df):
+    entries = []
+    for _, row in df.iterrows():
+        entry = (
+            f"Title: {row['title']}. Price: {row['price']}. Description: {row['description']}. Features: {row['features']}. "
+            f"Brand: {row['brand']}. Type: {row['type']}. Tags: {row['tags']}. Warranty: {row['warranty']}"
+        )
+        entries.append(entry)
+    return entries
 
 
 # ==========================
-# Step 4: Generate Query Embedding (Using OpenAI)
+# Step 3: Generate Embeddings
 # ==========================
-
-def get_openai_embedding(text, openai_api_key):
-    response = client.embeddings.create(model="text-embedding-ada-002",
-    input=text)
-    return np.array(response.data[0].embedding)
-
-
 # ==========================
-# Step 5: Retrieve & Generate Response
+# Step 3: Generate Embeddings
 # ==========================
-
-def retrieve_and_generate(query, index, entries, openai_api_key):
-    query_embedding = get_openai_embedding(query, openai_api_key)
-    indices, distances = query_index(index, query_embedding)
-
-    # Retrieve relevant entries
-    retrieved_texts = [entries[i] for i in indices]
-    context = "\n".join(retrieved_texts)
-
-    # Generate answer using OpenAI
-    response = client.chat.completions.create(model="gpt-4",
-    messages=[
-        {"role": "system", "content": "You are an expert assistant helping with a product catalog."},
-        {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
-    ])
-    answer = response.choices[0].message.content
-    return answer
+def generate_openai_embeddings(entries):
+    embeddings = []
+    for entry in entries:
+        response = client.embeddings.create(model="text-embedding-ada-002", input=entry)
+        embeddings.append(response.data[0].embedding)  # Corrected access method
+    return embeddings
 
 
 # ==========================
-# Streamlit Interface
+# Step 4: Save Embeddings
+# ==========================
+
+def save_embeddings(embeddings, file_name):
+    with open(file_name, 'w') as f:
+        json.dump(embeddings, f)
+
+
+# ==========================
+# Main Function
 # ==========================
 
 def main():
-    st.title('Product Catalog Q&A System')
-    openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+    st.title('Generate Product Embeddings')
+    uploaded_file = st.file_uploader("Upload your product catalog CSV file", type="csv")
 
-    if openai_api_key:
-        uploaded_file = st.file_uploader("Upload your product catalog CSV file", type="csv")
-        embeddings_file = st.file_uploader("Upload your embeddings.json file", type="json")
+    if uploaded_file:
+        df = load_product_catalog(uploaded_file)
+        entries = prepare_entries(df)
+        embeddings = generate_openai_embeddings(entries)
 
-        if uploaded_file and embeddings_file:
-            df = load_product_catalog(uploaded_file)
-            entries = df['title'].tolist()  # Using 'title' column as product entries
-
-            embeddings = load_embeddings(embeddings_file)
-            index = build_faiss_index(embeddings)
-
-            query = st.text_input("Ask a question about your catalog:")
-
-            if query:
-                answer = retrieve_and_generate(query, index, entries, openai_api_key)
-                st.write(f"### Answer: {answer}")
+        # Save the embeddings to a file
+        save_embeddings(embeddings, 'embeddings.json')
+        st.success("Embeddings generated and saved successfully as 'embeddings.json'.")
 
 
 if __name__ == "__main__":
