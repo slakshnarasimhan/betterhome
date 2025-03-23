@@ -2,8 +2,7 @@ import faiss
 import numpy as np
 import json
 from openai import OpenAI
-OPENAI_API_KEY="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"
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 import pandas as pd
 import streamlit as st
 
