@@ -1,45 +1,41 @@
-import faiss
+import openai
+import pandas as pd
 import numpy as np
 import json
-from openai import OpenAI
-import pandas as pd
+from tqdm import tqdm
 import streamlit as st
-
 
 # ==========================
 # Configuration
 # ==========================
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]  # Replace with your OpenAI API Key if not using Streamlit Secrets
-client = OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key=st.secrets["OPENAI_API_KEY"]
 
 
 # ==========================
 # Step 1: Load Product Catalog
 # ==========================
 
-def load_product_catalog(uploaded_file):
-    # Read CSV file from the uploaded file object
-    df = pd.read_csv(uploaded_file)
+def load_product_catalog(file_path):
+    df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
     df['price'] = df['price'].astype(str) + ' INR'  # Convert price to string and add INR
     return df
 
 
 # ==========================
-# Step 2: Prepare Entries (Enhanced)
+# Step 2: Prepare Entries (Focused Approach)
 # ==========================
+
 def prepare_entries(df):
     entries = []
     for _, row in df.iterrows():
         entry = (
-            f"Title: {row.get('title', 'Not Available')}. "
-            f"Price: {row.get('price', 'Not Available')} INR. "
-            f"Description: {row.get('description', 'Not Available')}. "
-            f"Features: {row.get('features', 'Not Available')}. "
+            f"Product: {row.get('title', 'Not Available')}. "
             f"Brand: {row.get('brand', 'Not Available')}. "
-            f"Type: {row.get('type', 'Not Available')}. "
-            f"Tags: {row.get('tags', 'Not Available')}. "
+            f"Price: {row.get('price', 'Not Available')} INR. "
             f"Warranty: {row.get('warranty', 'Not Available')}. "
+            f"Features: {row.get('features', 'Not Available')}. "
+            f"Description: {row.get('description', 'Not Available')}."
         )
         entries.append(entry)
     return entries
@@ -49,13 +45,17 @@ def prepare_entries(df):
 # Step 3: Generate Embeddings
 # ==========================
 # ==========================
-# Step 3: Generate Embeddings
+# Step 3: Generate Embeddings (Fixed for New API)
 # ==========================
+
 def generate_openai_embeddings(entries):
     embeddings = []
-    for entry in entries:
-        response = client.embeddings.create(model="text-embedding-ada-002", input=entry)
-        embeddings.append(response.data[0].embedding)  # Corrected access method
+    for entry in tqdm(entries, desc="Generating Embeddings"):
+        response = openai.Embedding.create(
+            model="text-embedding-ada-002",
+            input=[entry]  # The input must be a list of strings
+        )
+        embeddings.append(response.data[0].embedding)  # Access embeddings correctly
     return embeddings
 
 
@@ -73,17 +73,17 @@ def save_embeddings(embeddings, file_name):
 # ==========================
 
 def main():
-    st.title('Generate Product Embeddings')
-    uploaded_file = st.file_uploader("Upload your product catalog CSV file", type="csv")
+    # Load the cleaned CSV file
+    file_path = 'products-clean-cleaned.csv'  # Make sure this file is present
+    df = load_product_catalog(file_path)
+    entries = prepare_entries(df)
 
-    if uploaded_file:
-        df = load_product_catalog(uploaded_file)
-        entries = prepare_entries(df)
-        embeddings = generate_openai_embeddings(entries)
+    # Generate embeddings
+    embeddings = generate_openai_embeddings(entries)
 
-        # Save the embeddings to a file
-        save_embeddings(embeddings, 'embeddings.json')
-        st.success("Embeddings generated and saved successfully as 'embeddings.json'.")
+    # Save embeddings to a file
+    save_embeddings(embeddings, 'embeddings.json')
+    print("Embeddings generated and saved successfully.")
 
 
 if __name__ == "__main__":

@@ -1,10 +1,11 @@
 import faiss
 import numpy as np
 import json
-import openai
+from openai import OpenAI
+
 import pandas as pd
 import streamlit as st
-openai.api_key=st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 # ==========================
@@ -50,11 +51,9 @@ conversation_memory = []
 
 def retrieve_and_generate(query, index, entries, top_k=5):
     # Generate query embedding
-    response = openai.Embedding.create(
-        model="text-embedding-ada-002",
-        input=query
-    )
-    query_embedding = np.array(response['data'][0]['embedding'])
+    response = client.embeddings.create(model="text-embedding-ada-002",
+    input=query)
+    query_embedding = np.array(response.data[0].embedding)
 
     # Perform similarity search
     indices, distances = index.search(np.array([query_embedding]), top_k)
@@ -67,16 +66,14 @@ def retrieve_and_generate(query, index, entries, top_k=5):
     conversation_memory.append({"role": "user", "content": query})
 
     # Generate response from GPT-4
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are an expert assistant helping with a product catalog."}
-        ] + conversation_memory + [
-            {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
-        ]
-    )
+    response = client.chat.completions.create(model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are an expert assistant helping with a product catalog."}
+    ] + conversation_memory + [
+        {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
+    ])
 
-    answer = response['choices'][0]['message']['content']
+    answer = response.choices[0].message.content
     conversation_memory.append({"role": "assistant", "content": answer})
 
     return answer
