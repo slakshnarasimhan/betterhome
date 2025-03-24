@@ -1,4 +1,5 @@
-import openai
+from openai import OpenAI
+
 import pandas as pd
 import numpy as np
 import json
@@ -8,8 +9,8 @@ import streamlit as st
 # ==========================
 # Configuration
 # ==========================
-openai.api_key=st.secrets["OPENAI_API_KEY"]
 
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ==========================
 # Step 1: Load Product Catalog
@@ -51,10 +52,8 @@ def prepare_entries(df):
 def generate_openai_embeddings(entries):
     embeddings = []
     for entry in tqdm(entries, desc="Generating Embeddings"):
-        response = openai.Embedding.create(
-            model="text-embedding-ada-002",
-            input=[entry]  # The input must be a list of strings
-        )
+        response = client.embeddings.create(model="text-embedding-ada-002", input=[entry]
+	)
         embeddings.append(response.data[0].embedding)  # Access embeddings correctly
     return embeddings
 

@@ -2,17 +2,18 @@ import faiss
 import numpy as np
 import json
 from openai import OpenAI
-
 import pandas as pd
 import streamlit as st
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 # ==========================
-# Configuration
+# Configuration (Hardcoded Values)
 # ==========================
-CSV_FILE_PATH = 'products-clean.csv'  # Your product catalog CSV file
-EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Your embeddings file
+OPENAI_API_KEY=st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=OPENAI_API_KEY)
+CSV_FILE_PATH = 'products-clean.csv'  # Path to your product catalog CSV file
+EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Path to your embeddings file
+
 
 
 # ==========================
@@ -28,7 +29,6 @@ def load_embeddings(file_path):
 def load_product_catalog(file_path):
     df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
-    df['price'] = df['price'].astype(str) + ' INR'  # Convert price to string and add INR
     return df
 
 
@@ -44,38 +44,43 @@ def build_faiss_index(embeddings):
 
 
 # ==========================
-# Step 3: Retrieve & Generate Response with Memory
+# Step 3: Query the Index
 # ==========================
-conversation_memory = []
+
+def query_index(index, query_embedding, top_k=5):
+    distances, indices = index.search(np.array([query_embedding]), top_k)
+    return indices[0], distances[0]
 
 
-def retrieve_and_generate(query, index, entries, top_k=5):
-    # Generate query embedding
+# ==========================
+# Step 4: Generate Query Embedding (Using OpenAI)
+# ==========================
+
+def get_openai_embedding(text):
     response = client.embeddings.create(model="text-embedding-ada-002",
-    input=query)
-    query_embedding = np.array(response.data[0].embedding)
+    input=text)
+    return np.array(response.data[0].embedding)
 
-    # Perform similarity search
-    indices, distances = index.search(np.array([query_embedding]), top_k)
+
+# ==========================
+# Step 5: Retrieve & Generate Response
+# ==========================
+
+def retrieve_and_generate(query, index, entries):
+    query_embedding = get_openai_embedding(query)
+    indices, distances = query_index(index, query_embedding)
 
     # Retrieve relevant entries
-    retrieved_texts = [entries[int(i)] for i in indices[0].tolist()]
+    retrieved_texts = [entries[i] for i in indices]
     context = "\n".join(retrieved_texts)
 
-    # Add query to memory
-    conversation_memory.append({"role": "user", "content": query})
-
-    # Generate response from GPT-4
+    # Generate answer using OpenAI
     response = client.chat.completions.create(model="gpt-4",
     messages=[
-        {"role": "system", "content": "You are an expert assistant helping with a product catalog."}
-    ] + conversation_memory + [
+        {"role": "system", "content": "You are an expert assistant helping with a product catalog."},
         {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
     ])
-
     answer = response.choices[0].message.content
-    conversation_memory.append({"role": "assistant", "content": answer})
-
     return answer
 
 
@@ -84,46 +89,29 @@ def retrieve_and_generate(query, index, entries, top_k=5):
 # ==========================
 
 def main():
-    st.set_page_config(page_title="Enhanced Product Q&A", layout="wide")
-    st.title('📌 Enhanced Product Catalog Q&A System')
+    st.title('Product Catalog Q&A System')
 
-    # Load Data
+    # Load data
     df = load_product_catalog(CSV_FILE_PATH)
+    embeddings = load_embeddings(EMBEDDINGS_FILE_PATH)
+
+    # Prepare richer entries with more details
     entries = [
         f"Title: {row['title']}. Price: {row['price']}. Description: {row['description']}. Features: {row['features']}. "
         f"Brand: {row['brand']}. Type: {row['type']}. Tags: {row['tags']}. Warranty: {row['warranty']}"
-        for _, row in df.iterrows()
+        for index, row in df.iterrows()
     ]
 
-    embeddings = load_embeddings(EMBEDDINGS_FILE_PATH)
+    # Build FAISS index
     index = build_faiss_index(embeddings)
 
-    # User Interaction
-    with st.sidebar:
-        st.subheader("Settings")
-        top_k = st.slider("Number of Results to Retrieve", 1, 10, 5)
+    # Query box
+    query = st.text_input("Ask a question about your catalog:")
 
-        if st.button('Clear Memory'):
-            conversation_memory.clear()
-
-    tab1, tab2 = st.tabs(["Q&A", "Conversation History"])
-
-    with tab1:
-        query = st.text_input("Ask a question about your catalog:")
-
-        if query:
-            answer = retrieve_and_generate(query, index, entries, top_k)
-            st.write(f"### 💬 Answer: {answer}")
-
-    with tab2:
-        st.write("### Conversation History")
-        for message in conversation_memory:
-            if message['role'] == 'user':
-                st.write(f"**You:** {message['content']}")
-            else:
-                st.write(f"**Assistant:** {message['content']}")
+    if query:
+        answer = retrieve_and_generate(query, index, entries)
+        st.write(f"### Answer: {answer}")
 
 
 if __name__ == "__main__":
     main()
-
