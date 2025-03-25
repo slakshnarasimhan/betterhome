@@ -24,7 +24,6 @@ def load_product_catalog(file_path):
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
     return df
 
-
 # ==========================
 # Step 2: Build & Persist FAISS Index
 # ==========================
@@ -44,7 +43,6 @@ def load_or_build_index(embeddings):
         print("Building new FAISS index and saving to disk.")
         return build_faiss_index(embeddings)
 
-
 # ==========================
 # Step 3: Query the Index
 # ==========================
@@ -53,7 +51,6 @@ def query_index(index, query_embedding, top_k=5):
     distances, indices = index.search(np.array([query_embedding]), top_k)
     return indices[0], distances[0]
 
-
 # ==========================
 # Step 4: Generate Query Embedding (Using OpenAI)
 # ==========================
@@ -61,7 +58,6 @@ def query_index(index, query_embedding, top_k=5):
 def get_openai_embedding(text, openai_key):
     response = client.embeddings.create(model="text-embedding-ada-002", input=text)
     return np.array(response.data[0].embedding)
-
 
 # ==========================
 # Step 5: Retrieve & Generate Response
@@ -79,7 +75,7 @@ def retrieve_and_generate(query, index, entries, openai_key):
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are an expert assistant helping with a product catalog."},
+            {"role": "system", "content": "You are an expert assistant helping with Better Home's product catalog."},
             {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
         ]
     )
@@ -90,10 +86,13 @@ def retrieve_and_generate(query, index, entries, openai_key):
 if __name__ == "__main__":
     # Load Embeddings & Product Catalog
     embeddings = load_embeddings('embeddings.json')
-    df = load_product_catalog('products-clean.csv')
+    df = load_product_catalog('cleaned-products.csv')
 
     # Create a list of entries
-    entries = df['title'].tolist()  # Using 'title' column as product entries
+    entries = [
+        f"Title: {row['title']}. Better Home Price: {row['price']} INR. Retail Price: {row['compare_at_price']} INR. URL: https://betterhomeapp.com/products/{row['handle']}."
+        for index, row in df.iterrows()
+    ]
 
     # Load or Build FAISS Index
     index = load_or_build_index(embeddings)
@@ -103,3 +102,4 @@ if __name__ == "__main__":
     answer = retrieve_and_generate(user_query, index, entries, openai_key)
 
     print(f"Answer: {answer}")
+

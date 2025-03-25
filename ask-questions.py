@@ -1,6 +1,7 @@
 import faiss
 import numpy as np
 import json
+import os
 from openai import OpenAI
 import pandas as pd
 import streamlit as st
@@ -9,11 +10,11 @@ import streamlit as st
 # ==========================
 # Configuration (Hardcoded Values)
 # ==========================
-OPENAI_API_KEY=st.secrets["OPENAI_API_KEY"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=OPENAI_API_KEY)
-CSV_FILE_PATH = 'products-clean.csv'  # Path to your product catalog CSV file
+CSV_FILE_PATH = 'cleaned-products.csv'  # Updated to use the new cleaned products file
 EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Path to your embeddings file
-
+INDEX_FILE_PATH = 'faiss_index.index'  # Persisted index file
 
 
 # ==========================
@@ -33,14 +34,20 @@ def load_product_catalog(file_path):
 
 
 # ==========================
-# Step 2: Build FAISS Index
+# Step 2: Load or Build FAISS Index
 # ==========================
 
-def build_faiss_index(embeddings):
-    dimension = len(embeddings[0])
-    index = faiss.IndexFlatL2(dimension)
-    index.add(embeddings)
-    return index
+def load_or_build_index(embeddings):
+    if os.path.exists(INDEX_FILE_PATH):
+        print("Loading existing FAISS index from disk.")
+        return faiss.read_index(INDEX_FILE_PATH)
+    else:
+        print("Building new FAISS index and saving to disk.")
+        dimension = len(embeddings[0])
+        index = faiss.IndexFlatL2(dimension)
+        index.add(embeddings)
+        faiss.write_index(index, INDEX_FILE_PATH)
+        return index
 
 
 # ==========================
@@ -57,8 +64,7 @@ def query_index(index, query_embedding, top_k=5):
 # ==========================
 
 def get_openai_embedding(text):
-    response = client.embeddings.create(model="text-embedding-ada-002",
-    input=text)
+    response = client.embeddings.create(model="text-embedding-ada-002", input=text)
     return np.array(response.data[0].embedding)
 
 
@@ -75,11 +81,13 @@ def retrieve_and_generate(query, index, entries):
     context = "\n".join(retrieved_texts)
 
     # Generate answer using OpenAI
-    response = client.chat.completions.create(model="gpt-4",
-    messages=[
-        {"role": "system", "content": "You are an expert assistant helping with a product catalog."},
-        {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
-    ])
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an expert assistant helping with Better Home's product catalog."},
+            {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
+        ]
+    )
     answer = response.choices[0].message.content
     return answer
 
@@ -89,7 +97,7 @@ def retrieve_and_generate(query, index, entries):
 # ==========================
 
 def main():
-    st.title('Product Catalog Q&A System')
+    st.title('Better Home Product Q&A System')
 
     # Load data
     df = load_product_catalog(CSV_FILE_PATH)
@@ -97,13 +105,12 @@ def main():
 
     # Prepare richer entries with more details
     entries = [
-        f"Title: {row['title']}. Price: {row['price']}. Description: {row['description']}. Features: {row['features']}. "
-        f"Brand: {row['brand']}. Type: {row['type']}. Tags: {row['tags']}. Warranty: {row['warranty']}"
+        f"Title: {row['title']}. Better Home Price: {row['price']} INR. Retail Price: {row['compare_at_price']} INR. URL: https://betterhomeapp.com/products/{row['handle']}"
         for index, row in df.iterrows()
     ]
 
-    # Build FAISS index
-    index = build_faiss_index(embeddings)
+    # Load or Build FAISS index
+    index = load_or_build_index(embeddings)
 
     # Query box
     query = st.text_input("Ask a question about your catalog:")
@@ -115,3 +122,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
