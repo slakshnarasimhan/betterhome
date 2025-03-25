@@ -1,0 +1,4 @@
+{
+    "geyser": ["water heater", "water geyser"],
+    "water heater": ["geyser", "water geyser"]
+}
