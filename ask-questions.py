@@ -16,6 +16,10 @@ CSV_FILE_PATH = 'cleaned-products.csv'  # Updated to use the new cleaned product
 EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Path to your embeddings file
 INDEX_FILE_PATH = 'faiss_index.index'  # Persisted index file
 
+# Session State for Memory
+if 'conversation_history' not in st.session_state:
+    st.session_state['conversation_history'] = []
+
 
 # ==========================
 # Step 1: Load Embeddings & Product Entries
@@ -80,6 +84,11 @@ def retrieve_and_generate(query, index, entries):
     retrieved_texts = [entries[i] for i in indices]
     context = "\n".join(retrieved_texts)
 
+    # Adding memory context
+    if st.session_state['conversation_history']:
+        memory_context = "\n".join(st.session_state['conversation_history'])
+        context = f"Previous Conversation:\n{memory_context}\n\n{context}"
+
     # Generate answer using OpenAI
     response = client.chat.completions.create(
         model="gpt-4",
@@ -89,6 +98,10 @@ def retrieve_and_generate(query, index, entries):
         ]
     )
     answer = response.choices[0].message.content
+
+    # Save to memory
+    st.session_state['conversation_history'].append(f"User: {query}\nAssistant: {answer}")
+
     return answer
 
 
@@ -104,10 +117,20 @@ def main():
     embeddings = load_embeddings(EMBEDDINGS_FILE_PATH)
 
     # Prepare richer entries with more details
-    entries = [
-        f"Title: {row['title']}. Better Home Price: {row['price']} INR. Retail Price: {row['compare_at_price']} INR. URL: https://betterhomeapp.com/products/{row['handle']}"
-        for index, row in df.iterrows()
-    ]
+    entries = []
+    for index, row in df.iterrows():
+        bh_price = row['price']
+        retail_price = row['compare_at_price']
+
+        if pd.notna(bh_price) and pd.notna(retail_price) and retail_price > 0:
+            discount_percentage = ((retail_price - bh_price) / retail_price) * 100
+            discount_text = f"Better Home Price is {discount_percentage:.2f}% less than Retail Price."
+        else:
+            discount_text = "No discount available."
+
+        entries.append(
+            f"Title: {row['title']}. Better Home Price: {bh_price} INR. Retail Price: {retail_price} INR. {discount_text} URL: https://betterhomeapp.com/products/{row['handle']}"
+        )
 
     # Load or Build FAISS index
     index = load_or_build_index(embeddings)
@@ -118,6 +141,12 @@ def main():
     if query:
         answer = retrieve_and_generate(query, index, entries)
         st.write(f"### Answer: {answer}")
+
+    # Toggle button for conversation history
+    if st.button('Show Conversation History'):
+        st.write("### Conversation History:")
+        for item in st.session_state['conversation_history'][-5:]:  # Show last 5 interactions
+            st.write(item)
 
 
 if __name__ == "__main__":
