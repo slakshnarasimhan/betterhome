@@ -8,13 +8,13 @@ import streamlit as st
 
 
 # ==========================
-# Configuration (Hardcoded Values)
+# Configuration
 # ==========================
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=OPENAI_API_KEY)
-CSV_FILE_PATH = 'cleaned-products.csv'  # Updated to use the new cleaned products file
-EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Path to your embeddings file
-INDEX_FILE_PATH = 'faiss_index.index'  # Persisted index file
+CSV_FILE_PATH = 'cleaned_products.csv'
+EMBEDDINGS_FILE_PATH = 'embeddings.json'
+INDEX_FILE_PATH = 'faiss_index.index'
 
 # Session State for Memory
 if 'conversation_history' not in st.session_state:
@@ -27,13 +27,17 @@ if 'conversation_history' not in st.session_state:
 
 def load_embeddings(file_path):
     with open(file_path, 'r') as f:
-        embeddings = json.load(f)
-    return np.array(embeddings)
+        data = json.load(f)
+    return {
+        'product_embeddings': np.array(data['product_embeddings']),
+        'product_type_embeddings': np.array(data['product_type_embeddings']),
+        'brand_embeddings': np.array(data['brand_embeddings']),
+        'metadata': data['metadata']
+    }
 
 
 def load_product_catalog(file_path):
     df = pd.read_csv(file_path)
-    df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
     return df
 
 
@@ -41,17 +45,37 @@ def load_product_catalog(file_path):
 # Step 2: Load or Build FAISS Index
 # ==========================
 
-def load_or_build_index(embeddings):
+def load_or_build_index(embeddings_dict):
     if os.path.exists(INDEX_FILE_PATH):
         print("Loading existing FAISS index from disk.")
-        return faiss.read_index(INDEX_FILE_PATH)
+        return {
+            'product_index': faiss.read_index(f"{INDEX_FILE_PATH}_product"),
+            'product_type_index': faiss.read_index(f"{INDEX_FILE_PATH}_type"),
+            'brand_index': faiss.read_index(f"{INDEX_FILE_PATH}_brand")
+        }
     else:
-        print("Building new FAISS index and saving to disk.")
-        dimension = len(embeddings[0])
-        index = faiss.IndexFlatL2(dimension)
-        index.add(embeddings)
-        faiss.write_index(index, INDEX_FILE_PATH)
-        return index
+        print("Building new FAISS indices and saving to disk.")
+        indices = {}
+        
+        # Create and save product index
+        dimension = len(embeddings_dict['product_embeddings'][0])
+        indices['product_index'] = faiss.IndexFlatL2(dimension)
+        indices['product_index'].add(embeddings_dict['product_embeddings'])
+        faiss.write_index(indices['product_index'], f"{INDEX_FILE_PATH}_product")
+        
+        # Create and save product type index
+        dimension = len(embeddings_dict['product_type_embeddings'][0])
+        indices['product_type_index'] = faiss.IndexFlatL2(dimension)
+        indices['product_type_index'].add(embeddings_dict['product_type_embeddings'])
+        faiss.write_index(indices['product_type_index'], f"{INDEX_FILE_PATH}_type")
+        
+        # Create and save brand index
+        dimension = len(embeddings_dict['brand_embeddings'][0])
+        indices['brand_index'] = faiss.IndexFlatL2(dimension)
+        indices['brand_index'].add(embeddings_dict['brand_embeddings'])
+        faiss.write_index(indices['brand_index'], f"{INDEX_FILE_PATH}_brand")
+        
+        return indices
 
 
 # ==========================
@@ -64,7 +88,7 @@ def query_index(index, query_embedding, top_k=5):
 
 
 # ==========================
-# Step 4: Generate Query Embedding (Using OpenAI)
+# Step 4: Generate Query Embedding
 # ==========================
 
 def get_openai_embedding(text):
@@ -73,35 +97,97 @@ def get_openai_embedding(text):
 
 
 # ==========================
-# Step 5: Retrieve & Generate Response
+# Step 5: Determine Query Type
 # ==========================
 
-def retrieve_and_generate(query, index, entries):
+def determine_query_type(query):
+    query_lower = query.lower()
+    
+    # Price-related keywords
+    price_keywords = ['price', 'cost', 'expensive', 'cheap', 'cheaper', 'discount', 'savings']
+    
+    # Product type keywords
+    type_keywords = ['type', 'category', 'kind', 'variety']
+    
+    # Brand keywords
+    brand_keywords = ['brand', 'make', 'manufacturer', 'company']
+    
+    if any(keyword in query_lower for keyword in price_keywords):
+        return 'price'
+    elif any(keyword in query_lower for keyword in type_keywords):
+        return 'product_type'
+    elif any(keyword in query_lower for keyword in brand_keywords):
+        return 'brand'
+    else:
+        return 'general'
+
+
+# ==========================
+# Step 6: Retrieve & Generate Response
+# ==========================
+
+def retrieve_and_generate(query, indices, df, query_type='general'):
     query_embedding = get_openai_embedding(query)
-    indices, distances = query_index(index, query_embedding)
-
-    # Retrieve relevant entries
-    retrieved_texts = [entries[i] for i in indices]
-    context = "\n".join(retrieved_texts)
-
-    # Adding memory context
+    
+    # Select appropriate index based on query type
+    if query_type == 'price':
+        index = indices['product_index']
+        top_k = 5
+    elif query_type == 'product_type':
+        index = indices['product_type_index']
+        top_k = 3
+    elif query_type == 'brand':
+        index = indices['brand_index']
+        top_k = 3
+    else:
+        index = indices['product_index']
+        top_k = 5
+    
+    indices, distances = query_index(index, query_embedding, top_k)
+    
+    # Prepare context based on query type
+    context_parts = []
+    for idx in indices:
+        row = df.iloc[idx]
+        if query_type == 'price':
+            context_parts.append(
+                f"Product: {row['title']}. "
+                f"Better Home Price: {row['Better Home Price']} INR. "
+                f"Retail Price: {row['Retail Price']} INR. "
+                f"Discount: {((row['Retail Price'] - row['Better Home Price']) / row['Retail Price'] * 100):.2f}% off."
+            )
+        else:
+            context_parts.append(
+                f"Product: {row['title']}. "
+                f"Type: {row['Product Type']}. "
+                f"Brand: {row['Brand']}. "
+                f"Better Home Price: {row['Better Home Price']} INR."
+            )
+    
+    context = "\n".join(context_parts)
+    
+    # Add conversation history
     if st.session_state['conversation_history']:
         memory_context = "\n".join(st.session_state['conversation_history'])
         context = f"Previous Conversation:\n{memory_context}\n\n{context}"
-
+    
     # Generate answer using OpenAI
+    system_prompt = """You are an expert assistant helping with Better Home's product catalog. 
+    When discussing prices, always mention both the Better Home Price and how much cheaper it is compared to the Retail Price.
+    Be specific about the savings in INR and percentage terms."""
+    
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are an expert assistant helping with Better Home's product catalog."},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
         ]
     )
     answer = response.choices[0].message.content
-
+    
     # Save to memory
     st.session_state['conversation_history'].append(f"User: {query}\nAssistant: {answer}")
-
+    
     return answer
 
 
@@ -111,41 +197,35 @@ def retrieve_and_generate(query, index, entries):
 
 def main():
     st.title('Better Home Product Q&A System')
-
+    
     # Load data
     df = load_product_catalog(CSV_FILE_PATH)
-    embeddings = load_embeddings(EMBEDDINGS_FILE_PATH)
-
-    # Prepare richer entries with more details
-    entries = []
-    for index, row in df.iterrows():
-        bh_price = row['price']
-        retail_price = row['compare_at_price']
-
-        if pd.notna(bh_price) and pd.notna(retail_price) and retail_price > 0:
-            discount_percentage = ((retail_price - bh_price) / retail_price) * 100
-            discount_text = f"Better Home Price is {discount_percentage:.2f}% less than Retail Price."
-        else:
-            discount_text = "No discount available."
-
-        entries.append(
-            f"Title: {row['title']}. Better Home Price: {bh_price} INR. Retail Price: {retail_price} INR. {discount_text} URL: https://betterhomeapp.com/products/{row['handle']}"
-        )
-
-    # Load or Build FAISS index
-    index = load_or_build_index(embeddings)
-
+    embeddings_dict = load_embeddings(EMBEDDINGS_FILE_PATH)
+    
+    # Display metadata
+    st.sidebar.write("### Catalog Statistics")
+    st.sidebar.write(f"Total Products: {embeddings_dict['metadata']['total_products']}")
+    st.sidebar.write(f"Unique Product Types: {embeddings_dict['metadata']['unique_product_types']}")
+    st.sidebar.write(f"Unique Brands: {embeddings_dict['metadata']['unique_brands']}")
+    
+    # Load or Build FAISS indices
+    indices = load_or_build_index(embeddings_dict)
+    
     # Query box
-    query = st.text_input("Ask a question about your catalog:")
-
+    query = st.text_input("Ask a question about Better Home products:")
+    
     if query:
-        answer = retrieve_and_generate(query, index, entries)
+        # Determine query type
+        query_type = determine_query_type(query)
+        
+        # Generate answer
+        answer = retrieve_and_generate(query, indices, df, query_type)
         st.write(f"### Answer: {answer}")
-
+    
     # Toggle button for conversation history
     if st.button('Show Conversation History'):
         st.write("### Conversation History:")
-        for item in st.session_state['conversation_history'][-5:]:  # Show last 5 interactions
+        for item in st.session_state['conversation_history'][-5:]:
             st.write(item)
 
 
