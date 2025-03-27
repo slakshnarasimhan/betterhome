@@ -30,33 +30,36 @@ def clean_data(file_path, output_file):
     df = df.applymap(clean_text)
 
     # Generate URLs using handle
-    df['url'] = 'https://betterhomeapp.com/products/' + df['handle']
+    if 'handle' in df.columns:
+        df['url'] = 'https://betterhomeapp.com/products/' + df['handle']
 
-    # Rename columns
+    # Rename columns (Corrected 'Brand' and 'Type' handling)
     df.rename(columns={
         'variant_sku': 'SKU',
         'variant_grams': 'Weight',
         'variant_price': 'Better Home Price',
         'variant_compare_at_price': 'Retail Price',
         'seo_description': 'Description',
-        'product.metafields.custom.brand': 'Brand',
-        'product.metafields.custom.colour': 'Color',
-        'product.metafields.custom.features': 'Features',
+        'brand_(product.metafields.custom.brand)': 'Brand',  # Correctly rename Brand
+        'features_(product.metafields.custom.features)': 'Features',  # Correctly rename Brand
+        'product_type': 'Type',  # Correctly rename Product Type
         'product.metafields.custom.material': 'Material',
         'product.metafields.custom.returns': 'Returns Policy',
         'product.metafields.custom.source': 'Manufacturer URL',
         'product.metafields.custom.warranty': 'Warranty'
     }, inplace=True)
 
-    # Handle duplicate SKUs
-    df.drop_duplicates(subset=['SKU'], keep='first', inplace=True)
+    # Handle duplicate SKUs if SKU column exists
+    if 'SKU' in df.columns:
+        df.drop_duplicates(subset=['SKU'], keep='first', inplace=True)
 
     # Fill missing attributes for rows with the same handle
-    for handle, group in df.groupby('handle'):
-        for column in df.columns:
-            if group[column].isnull().any():
-                filled_value = group[column].dropna().iloc[0] if not group[column].dropna().empty else np.nan
-                df.loc[df['handle'] == handle, column] = df.loc[df['handle'] == handle, column].fillna(filled_value)
+    if 'handle' in df.columns:
+        for handle, group in df.groupby('handle'):
+            for column in df.columns:
+                if group[column].isnull().any():
+                    filled_value = group[column].dropna().iloc[0] if not group[column].dropna().empty else np.nan
+                    df.loc[df['handle'] == handle, column] = df.loc[df['handle'] == handle, column].fillna(filled_value)
 
     # Process Option Names for extracting attributes
     attributes = {'Color': [], 'Finish': [], 'Material': [], 'Style': []}
@@ -72,11 +75,12 @@ def clean_data(file_path, output_file):
                 attributes[option_name.capitalize()].append(option_value)
                 df.loc[index, option_name.capitalize()] = option_value
 
-    # Keep only necessary columns (Filter out non-existent columns)
+    # Keep only necessary columns
     columns_to_keep = [
-        'handle', 'title', 'product_category', 'type', 'tags', 'SKU', 'Weight', 'Better Home Price',
-        'Retail Price', 'Description', 'Brand', 'Color', 'Features', 'Material', 'Returns Policy',
-        'Manufacturer URL', 'Warranty', 'url', 'Color', 'Finish', 'Material', 'Style'
+        'handle', 'title', 'type', 'tags', 'SKU', 'Weight', 'Better Home Price',
+        'Retail Price', 'Description', 'Brand', 'Color', 'Features', 'Material', 
+        'Returns Policy', 'Manufacturer URL', 'Warranty', 'url', 'Color', 'Finish', 
+        'Material', 'Style'
     ]
 
     existing_columns = [col for col in columns_to_keep if col in df.columns]
