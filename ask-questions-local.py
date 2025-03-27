@@ -2,7 +2,6 @@ import faiss
 import numpy as np
 import json
 import os
-from openai import OpenAI
 import pandas as pd
 import streamlit as st
 import requests  # For making HTTP requests to the remote model
@@ -11,9 +10,7 @@ import requests  # For making HTTP requests to the remote model
 # ==========================
 # Configuration (Hardcoded Values)
 # ==========================
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-client = OpenAI(api_key=OPENAI_API_KEY)
-CSV_FILE_PATH = 'cleaned-products.csv'  # Updated to use the new cleaned products file
+CSV_FILE_PATH = 'cleaned_products.csv'  # Updated to use the new cleaned products file
 EMBEDDINGS_FILE_PATH = 'embeddings.json'  # Path to your embeddings file
 INDEX_FILE_PATH = 'faiss_index.index'  # Persisted index file
 
@@ -68,12 +65,12 @@ def query_index(index, query_embedding, top_k=5):
 
 
 # ==========================
-# Step 4: Generate Query Embedding (Using OpenAI)
+# Step 4: Generate Query Embedding (Using Local Model)
 # ==========================
 
-def get_openai_embedding(text):
-    response = client.embeddings.create(model="text-embedding-ada-002", input=text)
-    return np.array(response.data[0].embedding)
+def get_local_embedding(text):
+    # Mock embedding generation for now
+    return np.random.rand(512)
 
 
 # ==========================
@@ -81,7 +78,7 @@ def get_openai_embedding(text):
 # ==========================
 
 def retrieve_and_generate(query, index, entries):
-    query_embedding = get_openai_embedding(query)
+    query_embedding = get_local_embedding(query)
     indices, distances = query_index(index, query_embedding)
 
     # Retrieve relevant entries
@@ -94,10 +91,10 @@ def retrieve_and_generate(query, index, entries):
         context = f"Previous Conversation:\n{memory_context}\n\n{context}"
 
     # Instruct model to keep URLs and formatting intact
-    prompt = f"You are an assistant helping to provide product information. Ensure all product details, URLs, and price comparisons are preserved.\n{context}\nQuestion: {query}\nAnswer with product details and URLs."
+    prompt = f"You are an assistant helping to provide product information. Ensure all product details, URLs, and price comparisons are preserved.\n{context}\nQuestion: {query}\nAnswer with product details, URLs, and variants if applicable."
 
     payload = {
-        "model": "llama3.2",  # Specify the model name here
+        "model": "llama3.2",
         "prompt": prompt,
         "temperature": 0.7,
         "max_tokens": 512
@@ -130,7 +127,7 @@ def retrieve_and_generate(query, index, entries):
 # ==========================
 
 def main():
-    st.title('Better Home Product Q&A System')
+    st.title('Better Home Product Q&A System (Local Model)')
 
     # Load data
     df = load_product_catalog(CSV_FILE_PATH)
@@ -139,19 +136,22 @@ def main():
     # Prepare richer entries with more details
     entries = []
     for index, row in df.iterrows():
-        bh_price = row['price']
-        retail_price = row['compare_at_price']
+        bh_price = row.get('better_home_price', row.get('variant_price', None))
+        retail_price = row.get('retail_price', row.get('variant_compare_at_price', None))
         handle = row['handle']
         product_url = f"https://betterhomeapp.com/products/{handle}"
 
         if pd.notna(bh_price) and pd.notna(retail_price) and retail_price > 0:
             discount_percentage = ((retail_price - bh_price) / retail_price) * 100
-            discount_text = f"Better Home Price: {bh_price} INR (Retail Price: {retail_price} INR). Better Home is {discount_percentage:.2f}% cheaper.\nProduct URL: {product_url}"
+            discount_text = f"Better Home Price: {bh_price} INR (Retail Price: {retail_price} INR). Better Home is {discount_percentage:.2f}% cheaper."
         else:
-            discount_text = f"Better Home Price: {bh_price} INR. No discount available.\nProduct URL: {product_url}"
+            discount_text = f"Better Home Price: {bh_price} INR. No discount available."
+
+        variants = ', '.join([str(row.get(x, '')) for x in ['color', 'finish', 'material', 'style'] if pd.notna(row.get(x, ''))])
+        variant_text = f"Available Variants: {variants}" if variants else ""
 
         entries.append(
-            f"Title: {row['title']}. {discount_text}"
+            f"Title: {row['title']}. {discount_text} URL: {product_url} {variant_text}"
         )
 
     # Load or Build FAISS index
