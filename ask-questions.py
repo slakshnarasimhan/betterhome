@@ -5,13 +5,18 @@ import os
 from openai import OpenAI
 import pandas as pd
 import streamlit as st
+from openai import OpenAI
+from ollama import Client as Ollama
+import requests
 
 
 # ==========================
 # Configuration
 # ==========================
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-client = OpenAI(api_key=OPENAI_API_KEY)
+#client = OpenAI(api_key=OPENAI_API_KEY)
+client = Ollama()
+
 CSV_FILE_PATH = 'cleaned_products.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
@@ -38,22 +43,22 @@ def find_product_type(query, product_terms):
     query_lower = query.lower()
     best_match = None
     best_score = 0
-    
+
     for product_type, info in product_terms.items():
         # Check standard name
         if product_type.lower() in query_lower:
             return product_type
-        
+
         # Check alternatives
         for alternative in info['alternatives']:
             if alternative.lower() in query_lower:
                 return product_type
-        
+
         # Check categories
         for category in info['categories']:
             if category.lower() in query_lower:
                 return product_type
-    
+
     return None
 
 
@@ -92,25 +97,25 @@ def load_or_build_index(embeddings_dict):
     else:
         print("Building new FAISS indices and saving to disk.")
         indices = {}
-        
+
         # Create and save product index
         dimension = len(embeddings_dict['product_embeddings'][0])
         indices['product_index'] = faiss.IndexFlatL2(dimension)
         indices['product_index'].add(embeddings_dict['product_embeddings'])
         faiss.write_index(indices['product_index'], f"{INDEX_FILE_PATH}_product")
-        
+
         # Create and save product type index
         dimension = len(embeddings_dict['product_type_embeddings'][0])
         indices['product_type_index'] = faiss.IndexFlatL2(dimension)
         indices['product_type_index'].add(embeddings_dict['product_type_embeddings'])
         faiss.write_index(indices['product_type_index'], f"{INDEX_FILE_PATH}_type")
-        
+
         # Create and save brand index
         dimension = len(embeddings_dict['brand_embeddings'][0])
         indices['brand_index'] = faiss.IndexFlatL2(dimension)
         indices['brand_index'].add(embeddings_dict['brand_embeddings'])
         faiss.write_index(indices['brand_index'], f"{INDEX_FILE_PATH}_brand")
-        
+
         return indices
 
 
@@ -128,8 +133,22 @@ def query_index(index, query_embedding, top_k=5):
 # ==========================
 
 def get_openai_embedding(text):
-    response = client.embeddings.create(model="text-embedding-ada-002", input=text)
-    return np.array(response.data[0].embedding)
+    # Use the local Ollama client to generate embeddings
+    try:
+        response = client.create(model="llama3.2", messages=[{"role": "user", "content": text}])
+
+        #response = client.embed(model="llama3.2", input=text)
+        if hasattr(response, 'embeddings') and response.embeddings:
+            embedding = np.array(response.embeddings[0])
+            # Normalize the embedding (L2 normalization)
+            embedding = embedding / np.linalg.norm(embedding)
+            return embedding
+        else:
+            print("Warning: No embedding received from model. Using fallback embedding.")
+            return np.random.rand(512)  # Fallback to random embedding
+    except Exception as e:
+        print(f"Error generating embedding: {e}")
+        return np.random.rand(512)  # Fallback to random embedding
 
 
 # ==========================
@@ -141,21 +160,21 @@ def determine_query_type(query, product_terms):
     Determine the type of query and find relevant product type if applicable.
     """
     query_lower = query.lower()
-    
+
     # Price-related keywords
     price_keywords = ['price', 'cost', 'expensive', 'cheap', 'cheaper', 'discount', 'savings']
-    
+
     # Product type keywords
     type_keywords = ['type', 'category', 'kind', 'variety']
-    
+
     # Brand keywords
     brand_keywords = ['brand', 'make', 'manufacturer', 'company']
-    
+
     # First check if we can identify a specific product type
     product_type = find_product_type(query, product_terms)
     if product_type:
         return 'product_type', product_type
-    
+
     # If no specific product type found, check other query types
     if any(keyword in query_lower for keyword in price_keywords):
         return 'price', None
@@ -173,7 +192,7 @@ def determine_query_type(query, product_terms):
 
 def retrieve_and_generate(query, indices, df, query_type, product_type=None):
     query_embedding = get_openai_embedding(query)
-    
+
     # Select appropriate index based on query type
     if query_type == 'price':
         index = indices['product_index']
@@ -187,9 +206,9 @@ def retrieve_and_generate(query, indices, df, query_type, product_type=None):
     else:
         index = indices['product_index']
         top_k = 5
-    
+
     indices, distances = query_index(index, query_embedding, top_k)
-    
+
     # Prepare context based on query type
     context_parts = []
     for idx in indices:
@@ -208,33 +227,33 @@ def retrieve_and_generate(query, indices, df, query_type, product_type=None):
                 f"Brand: {row['Brand']}. "
                 f"Better Home Price: {row['Better Home Price']} INR."
             )
-    
+
     context = "\n".join(context_parts)
-    
+
     # Add conversation history
     if st.session_state['conversation_history']:
         memory_context = "\n".join(st.session_state['conversation_history'])
         context = f"Previous Conversation:\n{memory_context}\n\n{context}"
-    
+
     # Prepare the prompt for the model
     system_prompt = """You are an expert assistant helping with Better Home's product catalog. 
     When discussing prices, always mention both the Better Home Price and how much cheaper it is compared to the Retail Price.
     Be specific about the savings in INR and percentage terms."""
-    
+
     prompt = f"{system_prompt}\n\nContext:\n{context}\n\nQuestion: {query}\n\nAnswer:"
-    
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Based on the following context, answer the question:\n{context}\nQuestion: {query}"}
-        ]
-    )
+    response = client.create(model="llama3.2", messages=[
+    {"role": "system", "content": system_prompt},
+    {"role": "user", "content": f"Context:\n{context}\nQuestion: {query}\nAnswer:"}
+    ])
+
+    #response = client.create(model="llama3.2", prompt=f"{system_prompt}\\n\\nContext:\\n{context}\\n\\nQuestion: {query}\\n\\nAnswer:")
+
+
     answer = response.choices[0].message.content
-    
+
     # Save to memory
     st.session_state['conversation_history'].append(f"User: {query}\nAssistant: {answer}")
-    
+
     return answer
 
 
@@ -244,32 +263,32 @@ def retrieve_and_generate(query, indices, df, query_type, product_type=None):
 
 def main():
     st.title('Better Home Product Q&A System')
-    
+
     # Load data
     df = load_product_catalog(CSV_FILE_PATH)
     embeddings_dict = load_embeddings(EMBEDDINGS_FILE_PATH)
     product_terms = load_product_terms(PRODUCT_TERMS_FILE)
-    
+
     # Display metadata
     st.sidebar.write("### Catalog Statistics")
     st.sidebar.write(f"Total Products: {embeddings_dict['metadata']['total_products']}")
     st.sidebar.write(f"Unique Product Types: {embeddings_dict['metadata']['unique_product_types']}")
     st.sidebar.write(f"Unique Brands: {embeddings_dict['metadata']['unique_brands']}")
-    
+
     # Load or Build FAISS indices
     indices = load_or_build_index(embeddings_dict)
-    
+
     # Query box
     query = st.text_input("Ask a question about Better Home products:")
-    
+
     if query:
         # Determine query type and product type
         query_type, product_type = determine_query_type(query, product_terms)
-        
+
         # Generate answer
         answer = retrieve_and_generate(query, indices, df, query_type, product_type)
         st.write(f"### Answer: {answer}")
-    
+
     # Toggle button for conversation history
     if st.button('Show Conversation History'):
         st.write("### Conversation History:")

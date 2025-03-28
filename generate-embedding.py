@@ -1,21 +1,26 @@
-from openai import OpenAI
+from ollama import Client as Ollama
 import pandas as pd
 import numpy as np
 import json
 from tqdm import tqdm
 import streamlit as st
+from concurrent.futures import ThreadPoolExecutor
+import faiss
 
 # ==========================
 # Configuration
 # ==========================
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+MODEL_NAME = "llama3.2"  # Use your installed Ollama model
+CSV_FILE_PATH = 'cleaned_products.csv'
+EMBEDDINGS_FILE_PATH = 'embeddings.json'
+INDEX_FILE_PATH = 'faiss_index.index'
 
 # ==========================
 # Step 1: Load Product Catalog
 # ==========================
 def load_product_catalog(file_path):
     df = pd.read_csv(file_path)
-    # No need to modify column names as they're already cleaned
+    print(f"Successfully loaded product catalog with {len(df)} entries.")
     df['Better Home Price'] = pd.to_numeric(df['Better Home Price'], errors='coerce')
     df['Retail Price'] = pd.to_numeric(df['Retail Price'], errors='coerce')
     return df
@@ -50,34 +55,43 @@ def prepare_entries(df):
         )
         entries.append(entry)
 
-        # Separate entry for Product Type with context
-        product_type_entry = (
-            f"Product Type: {row.get('Product Type', 'Not Available')}. "
-            f"Title: {row.get('title', 'Not Available')}. "
-            f"Brand: {row.get('Brand', 'Not Available')}. "
-            f"Category: {row.get('Category', 'Not Available')}."
-        )
-        product_type_entries.append(product_type_entry)
-
-        # Separate entry for Brand with context
-        brand_entry = (
-            f"Brand: {row.get('Brand', 'Not Available')}. "
-            f"Product Type: {row.get('Product Type', 'Not Available')}. "
-            f"Title: {row.get('title', 'Not Available')}. "
-            f"Category: {row.get('Category', 'Not Available')}."
-        )
-        brand_entries.append(brand_entry)
-
-    return entries, product_type_entries, brand_entries
+    return entries
 
 # ==========================
-# Step 3: Generate Embeddings
+# Step 3: Generate Embeddings with Ollama
 # ==========================
-def generate_openai_embeddings(entries):
+def generate_local_embeddings(entries, batch_size=10):
     embeddings = []
-    for entry in tqdm(entries, desc="Generating Embeddings"):
-        response = client.embeddings.create(model="text-embedding-ada-002", input=[entry])
-        embeddings.append(response.data[0].embedding)
+    client = Ollama()
+    
+    if not entries:
+        print("Error: No entries available for generating embeddings.")
+        return embeddings
+    
+    def generate_batch_embeddings(batch):
+        try:
+            response = client.embed(model=MODEL_NAME, input=batch)
+            if hasattr(response, 'embeddings') and response.embeddings:
+                return response.embeddings
+            else:
+                print(f"Failed to extract embeddings for batch.")
+                return []
+        except Exception as e:
+            print(f"Error generating embeddings for batch: {str(e)}")
+            return []
+    
+    with ThreadPoolExecutor() as executor:
+        batches = [entries[i:i + batch_size] for i in range(0, len(entries), batch_size)]
+        results = list(tqdm(executor.map(generate_batch_embeddings, batches), total=len(batches), desc="Generating Embeddings"))
+        for batch_embeddings in results:
+            embeddings.extend(batch_embeddings)
+
+    if embeddings:
+        print(f"Successfully generated embeddings for {len(embeddings)} entries.")
+        print(f"Embedding dimension: {len(embeddings[0])}.")
+    else:
+        print("Error: No embeddings were generated.")
+
     return embeddings
 
 # ==========================
@@ -86,31 +100,65 @@ def generate_openai_embeddings(entries):
 def save_embeddings(embeddings_dict, file_name):
     with open(file_name, 'w') as f:
         json.dump(embeddings_dict, f)
+    print(f"Embeddings saved successfully to {file_name}.")
+
+# ==========================
+# Step 5: Build & Save FAISS Index
+# ==========================
+def build_faiss_index(embeddings, index_file_path):
+    if not embeddings:
+        print("Error: No embeddings to build the index.")
+        return None
+
+    try:
+        dimension = len(embeddings[0])
+        index = faiss.IndexFlatL2(dimension)
+        index.add(np.array(embeddings))
+        faiss.write_index(index, index_file_path)
+        print(f"FAISS index built and saved successfully at {index_file_path}.")
+        return index
+    except Exception as e:
+        print(f"Error building FAISS index: {str(e)}")
+        return None
 
 # ==========================
 # Main Function
 # ==========================
 def main():
-    # Load the cleaned CSV file
-    file_path = 'cleaned_products.csv'
-    df = load_product_catalog(file_path)
-    
-    # Prepare different types of entries
-    entries, product_type_entries, brand_entries = prepare_entries(df)
+    df = load_product_catalog(CSV_FILE_PATH)
+    if df.empty:
+        print("Product catalog could not be loaded. Exiting.")
+        return
 
-    # Generate embeddings for each type
-    print("Generating main product embeddings...")
-    product_embeddings = generate_openai_embeddings(entries)
-    
-    print("Generating product type embeddings...")
-    product_type_embeddings = generate_openai_embeddings(product_type_entries)
-    
-    print("Generating brand embeddings...")
-    brand_embeddings = generate_openai_embeddings(brand_entries)
+    entries = prepare_entries(df)
+    if not entries:
+        print("No valid entries were found. Exiting.")
+        return
 
-    # Create a dictionary to store all embeddings
+    embeddings = generate_local_embeddings(entries)
+    if not embeddings:
+        print("No embeddings were generated. Exiting.")
+        return
+
+    # Separate embeddings for product type, brand, and main product entry
+    product_type_entries = [f"Product Type: {row.get('Product Type', 'Not Available')}" for _, row in df.iterrows()]
+    brand_entries = [f"Brand: {row.get('Brand', 'Not Available')}" for _, row in df.iterrows()]
+
+    print(f"Generating embeddings for {len(product_type_entries)} product types.")
+    product_type_embeddings = generate_local_embeddings(product_type_entries)
+    print(f"Generated {len(product_type_embeddings)} product type embeddings.")
+    if product_type_embeddings:
+        print(f"Product type embedding dimension: {len(product_type_embeddings[0])}.")
+
+    print(f"Generating embeddings for {len(brand_entries)} brands.")
+    brand_embeddings = generate_local_embeddings(brand_entries)
+    print(f"Generated {len(brand_embeddings)} brand embeddings.")
+    if brand_embeddings:
+        print(f"Brand embedding dimension: {len(brand_embeddings[0])}.")
+
+    # Save embeddings
     embeddings_dict = {
-        'product_embeddings': product_embeddings,
+        'product_embeddings': embeddings,
         'product_type_embeddings': product_type_embeddings,
         'brand_embeddings': brand_embeddings,
         'metadata': {
@@ -119,13 +167,13 @@ def main():
             'unique_brands': df['Brand'].nunique()
         }
     }
+    print("Saving embeddings to file.")
+    save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
 
-    # Save embeddings to a file
-    save_embeddings(embeddings_dict, 'embeddings.json')
-    print("Embeddings generated and saved successfully.")
-    print(f"Total products processed: {len(df)}")
-    print(f"Unique product types: {df['Product Type'].nunique()}")
-    print(f"Unique brands: {df['Brand'].nunique()}")
+    # Build and save separate FAISS indexes with specific file names
+    build_faiss_index(embeddings, 'faiss_index.index_product')
+    build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
+    build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
 
 if __name__ == "__main__":
     main()
