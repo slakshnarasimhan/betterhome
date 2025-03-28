@@ -15,6 +15,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 CSV_FILE_PATH = 'cleaned_products.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
+PRODUCT_TERMS_FILE = 'product_terms.json'  # New file for product terms
 
 # Session State for Memory
 if 'conversation_history' not in st.session_state:
@@ -22,7 +23,42 @@ if 'conversation_history' not in st.session_state:
 
 
 # ==========================
-# Step 1: Load Embeddings & Product Entries
+# Step 1: Load Product Terms Dictionary
+# ==========================
+
+def load_product_terms(file_path):
+    with open(file_path, 'r') as f:
+        return json.load(f)
+
+
+def find_product_type(query, product_terms):
+    """
+    Find the most relevant product type for a given query using the product terms dictionary.
+    """
+    query_lower = query.lower()
+    best_match = None
+    best_score = 0
+    
+    for product_type, info in product_terms.items():
+        # Check standard name
+        if product_type.lower() in query_lower:
+            return product_type
+        
+        # Check alternatives
+        for alternative in info['alternatives']:
+            if alternative.lower() in query_lower:
+                return product_type
+        
+        # Check categories
+        for category in info['categories']:
+            if category.lower() in query_lower:
+                return product_type
+    
+    return None
+
+
+# ==========================
+# Step 2: Load Embeddings & Product Entries
 # ==========================
 
 def load_embeddings(file_path):
@@ -42,7 +78,7 @@ def load_product_catalog(file_path):
 
 
 # ==========================
-# Step 2: Load or Build FAISS Index
+# Step 3: Load or Build FAISS Index
 # ==========================
 
 def load_or_build_index(embeddings_dict):
@@ -79,7 +115,7 @@ def load_or_build_index(embeddings_dict):
 
 
 # ==========================
-# Step 3: Query the Index
+# Step 4: Query the Index
 # ==========================
 
 def query_index(index, query_embedding, top_k=5):
@@ -88,7 +124,7 @@ def query_index(index, query_embedding, top_k=5):
 
 
 # ==========================
-# Step 4: Generate Query Embedding
+# Step 5: Generate Query Embedding
 # ==========================
 
 def get_openai_embedding(text):
@@ -97,10 +133,13 @@ def get_openai_embedding(text):
 
 
 # ==========================
-# Step 5: Determine Query Type
+# Step 6: Determine Query Type
 # ==========================
 
-def determine_query_type(query):
+def determine_query_type(query, product_terms):
+    """
+    Determine the type of query and find relevant product type if applicable.
+    """
     query_lower = query.lower()
     
     # Price-related keywords
@@ -112,21 +151,27 @@ def determine_query_type(query):
     # Brand keywords
     brand_keywords = ['brand', 'make', 'manufacturer', 'company']
     
+    # First check if we can identify a specific product type
+    product_type = find_product_type(query, product_terms)
+    if product_type:
+        return 'product_type', product_type
+    
+    # If no specific product type found, check other query types
     if any(keyword in query_lower for keyword in price_keywords):
-        return 'price'
+        return 'price', None
     elif any(keyword in query_lower for keyword in type_keywords):
-        return 'product_type'
+        return 'product_type', None
     elif any(keyword in query_lower for keyword in brand_keywords):
-        return 'brand'
+        return 'brand', None
     else:
-        return 'general'
+        return 'general', None
 
 
 # ==========================
-# Step 6: Retrieve & Generate Response
+# Step 7: Retrieve & Generate Response
 # ==========================
 
-def retrieve_and_generate(query, indices, df, query_type='general'):
+def retrieve_and_generate(query, indices, df, query_type, product_type=None):
     query_embedding = get_openai_embedding(query)
     
     # Select appropriate index based on query type
@@ -171,10 +216,12 @@ def retrieve_and_generate(query, indices, df, query_type='general'):
         memory_context = "\n".join(st.session_state['conversation_history'])
         context = f"Previous Conversation:\n{memory_context}\n\n{context}"
     
-    # Generate answer using OpenAI
+    # Prepare the prompt for the model
     system_prompt = """You are an expert assistant helping with Better Home's product catalog. 
     When discussing prices, always mention both the Better Home Price and how much cheaper it is compared to the Retail Price.
     Be specific about the savings in INR and percentage terms."""
+    
+    prompt = f"{system_prompt}\n\nContext:\n{context}\n\nQuestion: {query}\n\nAnswer:"
     
     response = client.chat.completions.create(
         model="gpt-4",
@@ -201,6 +248,7 @@ def main():
     # Load data
     df = load_product_catalog(CSV_FILE_PATH)
     embeddings_dict = load_embeddings(EMBEDDINGS_FILE_PATH)
+    product_terms = load_product_terms(PRODUCT_TERMS_FILE)
     
     # Display metadata
     st.sidebar.write("### Catalog Statistics")
@@ -215,11 +263,11 @@ def main():
     query = st.text_input("Ask a question about Better Home products:")
     
     if query:
-        # Determine query type
-        query_type = determine_query_type(query)
+        # Determine query type and product type
+        query_type, product_type = determine_query_type(query, product_terms)
         
         # Generate answer
-        answer = retrieve_and_generate(query, indices, df, query_type)
+        answer = retrieve_and_generate(query, indices, df, query_type, product_type)
         st.write(f"### Answer: {answer}")
     
     # Toggle button for conversation history

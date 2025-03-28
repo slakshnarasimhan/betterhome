@@ -1,0 +1,213 @@
+{
+    "Water Heater": {
+        "standard_name": "Water Heater",
+        "alternatives": [
+            "geyser",
+            "hot water heater",
+            "storage water heater",
+            "instant water heater",
+            "electric water heater",
+            "gas water heater",
+            "tank water heater",
+            "storage geyser",
+            "instant geyser",
+            "electric geyser",
+            "gas geyser",
+            "tank geyser"
+        ],
+        "categories": [
+            "Household Appliances",
+            "Water Heaters",
+            "Bathroom Appliances",
+            "Kitchen Appliances"
+        ]
+    },
+    "Water Purifier": {
+        "standard_name": "Water Purifier",
+        "alternatives": [
+            "ro water purifier",
+            "ro purifier",
+            "water filter",
+            "water filtration system",
+            "ro system",
+            "reverse osmosis",
+            "water treatment system",
+            "drinking water purifier",
+            "ro machine",
+            "water cleaner"
+        ],
+        "categories": [
+            "Household Appliances",
+            "Water Purifiers",
+            "Kitchen Appliances",
+            "Health & Wellness"
+        ]
+    },
+    "Hob Top": {
+        "standard_name": "Hob Top",
+        "alternatives": [
+            "gas hob",
+            "cooking hob",
+            "kitchen hob",
+            "stove top",
+            "cooktop",
+            "gas stove",
+            "cooking stove",
+            "kitchen stove",
+            "gas burner",
+            "cooking burner",
+            "kitchen burner",
+            "gas range",
+            "cooking range",
+            "kitchen range"
+        ],
+        "categories": [
+            "Kitchen Appliances",
+            "Cooking Appliances",
+            "Kitchen & Dining"
+        ]
+    },
+    "Chimney": {
+        "standard_name": "Chimney",
+        "alternatives": [
+            "kitchen chimney",
+            "cooking chimney",
+            "exhaust fan",
+            "kitchen exhaust",
+            "cooking exhaust",
+            "kitchen ventilator",
+            "cooking ventilator",
+            "kitchen hood",
+            "cooking hood",
+            "kitchen extractor",
+            "cooking extractor"
+        ],
+        "categories": [
+            "Kitchen Appliances",
+            "Ventilation",
+            "Kitchen & Dining"
+        ]
+    },
+    "Refrigerator": {
+        "standard_name": "Refrigerator",
+        "alternatives": [
+            "fridge",
+            "refrigerator freezer",
+            "fridge freezer",
+            "cooling system",
+            "ice box",
+            "chiller",
+            "cooler",
+            "deep freezer",
+            "freezer",
+            "refrigerator system"
+        ],
+        "categories": [
+            "Kitchen Appliances",
+            "Refrigeration",
+            "Kitchen & Dining"
+        ]
+    },
+    "Air Conditioner": {
+        "standard_name": "Air Conditioner",
+        "alternatives": [
+            "ac",
+            "air conditioning",
+            "cooling system",
+            "climate control",
+            "air cooler",
+            "ac unit",
+            "air conditioning unit",
+            "split ac",
+            "window ac",
+            "portable ac",
+            "central ac",
+            "air conditioning system"
+        ],
+        "categories": [
+            "Home Appliances",
+            "Cooling Systems",
+            "Climate Control"
+        ]
+    },
+    "Washing Machine": {
+        "standard_name": "Washing Machine",
+        "alternatives": [
+            "washer",
+            "laundry machine",
+            "clothes washer",
+            "laundry system",
+            "washing system",
+            "laundry appliance",
+            "clothes washing machine",
+            "laundry equipment",
+            "washing equipment",
+            "laundry unit"
+        ],
+        "categories": [
+            "Home Appliances",
+            "Laundry",
+            "Cleaning"
+        ]
+    },
+    "Microwave Oven": {
+        "standard_name": "Microwave Oven",
+        "alternatives": [
+            "microwave",
+            "microwave oven",
+            "microwave system",
+            "microwave appliance",
+            "microwave unit",
+            "microwave machine",
+            "microwave device",
+            "microwave equipment",
+            "microwave system",
+            "microwave heater"
+        ],
+        "categories": [
+            "Kitchen Appliances",
+            "Cooking Appliances",
+            "Kitchen & Dining"
+        ]
+    },
+    "Dishwasher": {
+        "standard_name": "Dishwasher",
+        "alternatives": [
+            "dish washing machine",
+            "dish washing system",
+            "dish cleaning machine",
+            "dish cleaning system",
+            "dish washing appliance",
+            "dish cleaning appliance",
+            "dish washing unit",
+            "dish cleaning unit",
+            "dish washing equipment",
+            "dish cleaning equipment"
+        ],
+        "categories": [
+            "Kitchen Appliances",
+            "Cleaning",
+            "Kitchen & Dining"
+        ]
+    },
+    "Vacuum Cleaner": {
+        "standard_name": "Vacuum Cleaner",
+        "alternatives": [
+            "vacuum",
+            "vacuum system",
+            "vacuum appliance",
+            "vacuum unit",
+            "vacuum machine",
+            "vacuum device",
+            "vacuum equipment",
+            "vacuum system",
+            "vacuum cleaner system",
+            "vacuum cleaner appliance"
+        ],
+        "categories": [
+            "Home Appliances",
+            "Cleaning",
+            "Home Care"
+        ]
+    }
+} 
