@@ -18,8 +18,13 @@ client = Ollama()
 
 CSV_FILE_PATH = 'cleaned_products.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
+BLOG_EMBEDDINGS_FILE_PATH = 'blog_embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
-PRODUCT_TERMS_FILE = 'product_terms.json'  # New file for product terms
+BLOG_INDEX_FILE_PATH = 'blog_faiss_index.index'
+PRODUCT_INDEX_FILE_PATH = 'faiss_index.index_product'
+TYPE_INDEX_FILE_PATH = 'faiss_index.index_type'
+BRAND_INDEX_FILE_PATH = 'faiss_index.index_brand'
+PRODUCT_TERMS_FILE = 'product_terms.json'
 
 # Session State for Memory
 if 'conversation_history' not in st.session_state:
@@ -54,14 +59,31 @@ def find_product_type(query, product_terms):
 # ==========================
 
 def load_embeddings(file_path):
-    with open(file_path, 'r') as f:
-        data = json.load(f)
-    return {
-        'product_embeddings': np.array(data['product_embeddings']),
-        'product_type_embeddings': np.array(data['product_type_embeddings']),
-        'brand_embeddings': np.array(data['brand_embeddings']),
-        'metadata': data['metadata']
-    }
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return {
+            'product_embeddings': np.array(data.get('product_embeddings', [])),
+            'product_type_embeddings': np.array(data.get('product_type_embeddings', [])),
+            'brand_embeddings': np.array(data.get('brand_embeddings', [])),
+            'metadata': data.get('metadata', {
+                'total_products': 0,
+                'unique_product_types': 0,
+                'unique_brands': 0
+            })
+        }
+    except Exception as e:
+        print(f"Error loading embeddings: {e}")
+        return {
+            'product_embeddings': np.array([]),
+            'product_type_embeddings': np.array([]),
+            'brand_embeddings': np.array([]),
+            'metadata': {
+                'total_products': 0,
+                'unique_product_types': 0,
+                'unique_brands': 0
+            }
+        }
 
 
 def load_product_catalog(file_path):
@@ -84,12 +106,21 @@ def get_openai_embedding(text, model='text-embedding-ada-002'):
         print(f"Error generating embedding with OpenAI: {e}")
         return np.random.rand(1536)
 
-def retrieve_and_generate_openai(query, context, model='gpt-4'):
+def retrieve_and_generate_openai(query, context, blog_suggestions=None, model='gpt-4'):
     system_prompt = (
         "You are an expert assistant helping with Better Home's product catalog. "
         "When discussing prices, always mention both the Better Home Price and how much cheaper it is compared to the Retail Price. "
-        "Be specific about the savings in INR and percentage terms."
+        "Be specific about the savings in INR and percentage terms. "
+        "Always include the product URL as a markdown link in your response using the format [Click here to buy](url). "
+        "When mentioning blog articles, include them as clickable links using the format [Title](url)."
     )
+    
+    # Add blog suggestions to context if available
+    if blog_suggestions:
+        blog_context = "\n\nRelevant blog articles:\n"
+        for blog in blog_suggestions:
+            blog_context += f"- [{blog['title']}]({blog['url']}) (Published: {blog['date']})\n"
+        context += blog_context
 
     try:
         response = openai.ChatCompletion.create(
@@ -102,6 +133,13 @@ def retrieve_and_generate_openai(query, context, model='gpt-4'):
             temperature=0.7
         )
         answer = response.choices[0].message.content.strip()
+        
+        # Add blog suggestions to the response with clickable links
+        if blog_suggestions:
+            answer += "\n\n### Related Articles:\n"
+            for blog in blog_suggestions:
+                answer += f"- [{blog['title']}]({blog['url']}) (Published: {blog['date']})\n"
+        
         return answer
     except Exception as e:
         print(f"Error generating response with OpenAI: {e}")
@@ -111,13 +149,13 @@ def retrieve_and_generate_openai(query, context, model='gpt-4'):
 # Step 4: FAISS Index Operations
 # ==========================
 
-def build_or_load_faiss_index(embeddings, dimension):
-    if os.path.exists(INDEX_FILE_PATH):
-        index = faiss.read_index(INDEX_FILE_PATH)
+def build_or_load_faiss_index(embeddings, dimension, index_path):
+    if os.path.exists(index_path):
+        index = faiss.read_index(index_path)
     else:
         index = faiss.IndexFlatL2(dimension)
         index.add(embeddings)
-        faiss.write_index(index, INDEX_FILE_PATH)
+        faiss.write_index(index, index_path)
     return index
 
 
@@ -127,7 +165,11 @@ def search_products(query, df, embeddings_dict, k=5):
     query_embedding = query_embedding.reshape(1, -1).astype('float32')
     
     # Build or load FAISS index
-    index = build_or_load_faiss_index(embeddings_dict['product_embeddings'], len(query_embedding[0]))
+    index = build_or_load_faiss_index(
+        embeddings_dict['product_embeddings'], 
+        len(query_embedding[0]),
+        PRODUCT_INDEX_FILE_PATH
+    )
     
     # Search
     D, I = index.search(query_embedding, k)
@@ -166,17 +208,65 @@ def handle_price_query(query, df):
 # ==========================
 
 def format_product_response(products_df):
-    response = "Results:\n"
+    response = "### Results:\n\n"
     for _, product in products_df.iterrows():
         title = product['title']
         brand = product['Brand']
         price = product['Better Home Price']
+        retail_price = product.get('Retail Price', 0)
         url = product.get('url', '#')
         
-        response += f"{title} by {brand}: ₹{price:,.2f}\n"
-        response += f"Buy now: {url}\n\n"
+        # Calculate discount percentage if retail price is available
+        if retail_price > 0:
+            discount = ((retail_price - price) / retail_price) * 100
+            discount_text = f"({discount:.1f}% off retail price ₹{retail_price:,.2f})"
+        else:
+            discount_text = ""
+        
+        response += f"#### {title}\n"
+        response += f"**Brand:** {brand}\n"
+        response += f"**Price:** ₹{price:,.2f} {discount_text}\n"
+        response += f"**[Click here to buy]({url})**\n\n"
+        response += "---\n\n"
     
     return response
+
+
+# ==========================
+# Load Blog Embeddings
+# ==========================
+def load_blog_embeddings(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return {
+            'blog_embeddings': np.array(data['blog_embeddings']),
+            'metadata': data['metadata']
+        }
+    except FileNotFoundError:
+        return None
+
+
+# ==========================
+# Search Blogs
+# ==========================
+def search_relevant_blogs(query, blog_embeddings_dict, k=2):
+    if blog_embeddings_dict is None:
+        return []
+        
+    query_embedding = get_openai_embedding(query)
+    query_embedding = query_embedding.reshape(1, -1).astype('float32')
+    
+    # Build or load FAISS index for blogs
+    if os.path.exists(BLOG_INDEX_FILE_PATH):
+        blog_index = faiss.read_index(BLOG_INDEX_FILE_PATH)
+    else:
+        blog_index = faiss.IndexFlatL2(len(query_embedding[0]))
+        blog_index.add(blog_embeddings_dict['blog_embeddings'])
+        faiss.write_index(blog_index, BLOG_INDEX_FILE_PATH)
+    
+    D, I = blog_index.search(query_embedding, k)
+    return [blog_embeddings_dict['metadata'][i] for i in I[0]]
 
 
 def main():
@@ -184,13 +274,17 @@ def main():
 
     # Load data
     df = load_product_catalog(CSV_FILE_PATH)
-    embeddings_dict = load_embeddings(EMBEDDINGS_FILE_PATH)
+    
+    # Load blog embeddings
+    blog_embeddings_dict = load_blog_embeddings(BLOG_EMBEDDINGS_FILE_PATH)
 
     # Display metadata
     st.sidebar.write("### Catalog Statistics")
-    st.sidebar.write(f"Total Products: {embeddings_dict['metadata']['total_products']}")
-    st.sidebar.write(f"Unique Product Types: {embeddings_dict['metadata']['unique_product_types']}")
-    st.sidebar.write(f"Unique Brands: {embeddings_dict['metadata']['unique_brands']}")
+    st.sidebar.write(f"Total Products: {len(df)}")
+    st.sidebar.write(f"Unique Product Types: {df['Product Type'].nunique()}")
+    st.sidebar.write(f"Unique Brands: {df['Brand'].nunique()}")
+    if blog_embeddings_dict:
+        st.sidebar.write(f"Blog Articles: {len(blog_embeddings_dict['metadata'])}")
 
     # Query box
     query = st.text_input("Ask a question about Better Home products:")
@@ -199,17 +293,31 @@ def main():
         # Check if it's a price-based query
         price_results = handle_price_query(query, df)
         
+        # Find relevant blog articles
+        blog_suggestions = search_relevant_blogs(query, blog_embeddings_dict)
+        
         if price_results is not None:
             # Handle price-based query
             answer = format_product_response(price_results)
+            if blog_suggestions:
+                answer += "\n\n### Related Articles:\n"
+                for blog in blog_suggestions:
+                    answer += f"- [{blog['title']}]({blog['url']}) (Published: {blog['date']})\n"
+            st.markdown(answer, unsafe_allow_html=True)
         else:
             # Handle regular query
-            indices = search_products(query, df, embeddings_dict)
-            context = df.iloc[indices].to_string()
-            answer = retrieve_and_generate_openai(query, context)
-        
-        st.write("### Answer:")
-        st.write(answer)
+            query_embedding = get_openai_embedding(query)
+            query_embedding = query_embedding.reshape(1, -1).astype('float32')
+            
+            # Load product index
+            product_index = faiss.read_index(PRODUCT_INDEX_FILE_PATH)
+            D, I = product_index.search(query_embedding, 5)
+            
+            # Get relevant products
+            context = df.iloc[I[0]].to_string()
+            answer = retrieve_and_generate_openai(query, context, blog_suggestions)
+            st.markdown("### Answer:", unsafe_allow_html=True)
+            st.markdown(answer, unsafe_allow_html=True)
         
         # Update conversation history
         st.session_state['conversation_history'].append({
@@ -221,8 +329,9 @@ def main():
     if st.button('Show Conversation History'):
         st.write("### Conversation History:")
         for item in st.session_state['conversation_history'][-5:]:
-            st.write(f"Q: {item['query']}")
-            st.write(f"A: {item['answer']}\n")
+            st.markdown(f"**Q:** {item['query']}")
+            st.markdown(f"**A:** {item['answer']}", unsafe_allow_html=True)
+            st.markdown("---")
 
 
 if __name__ == "__main__":
