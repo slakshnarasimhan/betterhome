@@ -190,6 +190,19 @@
             "Kitchen & Dining"
         ]
     },
+    "Ceiling Fan": {
+        "standard_name": "Ceiling Fan",
+        "alternatives": [
+            "ceiling fan",
+            "wall fan",
+            "fan"
+        ],
+        "categories": [
+            "Kitchen Appliances",
+            "Cleaning",
+            "Kitchen & Dining"
+        ]
+    },
     "Vacuum Cleaner": {
         "standard_name": "Vacuum Cleaner",
         "alternatives": [

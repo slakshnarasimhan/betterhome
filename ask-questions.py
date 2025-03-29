@@ -2,12 +2,14 @@ import faiss
 import numpy as np
 import json
 import os
-from openai import OpenAI
+#from openai import OpenAI
+import openai
 import pandas as pd
 import streamlit as st
-from openai import OpenAI
+#from openai import OpenAI
 from ollama import Client as Ollama
 import requests
+#import openai
 
 
 # ==========================
@@ -135,9 +137,7 @@ def query_index(index, query_embedding, top_k=5):
 def get_openai_embedding(text):
     # Use the local Ollama client to generate embeddings
     try:
-        response = client.create(model="llama3.2", messages=[{"role": "user", "content": text}])
-
-        #response = client.embed(model="llama3.2", input=text)
+        response = client.embed(model="llama3.2", input=text)
         if hasattr(response, 'embeddings') and response.embeddings:
             embedding = np.array(response.embeddings[0])
             # Normalize the embedding (L2 normalization)
@@ -145,10 +145,10 @@ def get_openai_embedding(text):
             return embedding
         else:
             print("Warning: No embedding received from model. Using fallback embedding.")
-            return np.random.rand(512)  # Fallback to random embedding
+            return np.random.rand(3072)  # Fallback to random embedding with correct dimension
     except Exception as e:
         print(f"Error generating embedding: {e}")
-        return np.random.rand(512)  # Fallback to random embedding
+        return np.random.rand(3072)  # Fallback to random embedding with correct dimension
 
 
 # ==========================
@@ -241,15 +241,92 @@ def retrieve_and_generate(query, indices, df, query_type, product_type=None):
     Be specific about the savings in INR and percentage terms."""
 
     prompt = f"{system_prompt}\n\nContext:\n{context}\n\nQuestion: {query}\n\nAnswer:"
-    response = client.create(model="llama3.2", messages=[
-    {"role": "system", "content": system_prompt},
-    {"role": "user", "content": f"Context:\n{context}\nQuestion: {query}\nAnswer:"}
-    ])
+    
+    # Ensure the correct parameters are passed to the Ollama client
+    try:
+        response = client.create(model="llama3.2", messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Context:\n{context}\nQuestion: {query}\nAnswer:"}
+        ])
+        answer = response.choices[0].message.content
+    except Exception as e:
+        print(f"Error generating response: {e}")
+        answer = "I'm sorry, I couldn't generate a response at this time."
 
-    #response = client.create(model="llama3.2", prompt=f"{system_prompt}\\n\\nContext:\\n{context}\\n\\nQuestion: {query}\\n\\nAnswer:")
+    # Save to memory
+    st.session_state['conversation_history'].append(f"User: {query}\nAssistant: {answer}")
+
+    return answer
 
 
-    answer = response.choices[0].message.content
+def retrieve_and_generate_openai(query, indices, df, embeddings_dict, query_type, product_type=None):
+    query_embedding = get_openai_embedding(query)
+
+    # Initialize df_filtered
+    df_filtered = pd.DataFrame()
+
+    # Select appropriate index based on query type
+    if query_type == 'product_type' and product_type:
+        # Filter the dataframe to only include the specified product type
+        df_filtered = df[df['Product Type'].str.lower() == product_type.lower()]
+        
+        # Sort by price if the query indicates a price-related request
+        if 'cheapest' in query.lower() or 'expensive' in query.lower():
+            df_filtered = df_filtered.sort_values(by='Better Home Price', ascending='cheapest' in query.lower())
+        
+        embeddings_filtered = embeddings_dict['product_type_embeddings'][df_filtered.index]
+        index = faiss.IndexFlatL2(len(embeddings_filtered[0]))
+        index.add(embeddings_filtered)
+        top_k = len(df_filtered)  # Adjust top_k to include all items
+    else:
+        index = indices['product_index']
+        top_k = 5
+
+    indices, distances = query_index(index, query_embedding, top_k)
+
+    # Prepare context based on query type
+    context_parts = []
+    for idx in indices:
+        row = df.iloc[idx]
+        product_url = row.get('url', '#')  # Use 'url' as the column name
+        context_parts.append(
+            f"Product: [{row['title']}]({product_url}). "  # Hyperlink the product URL
+            f"Type: {row['Product Type']}. "
+            f"Brand: {row['Brand']}. "
+            f"Better Home Price: {row['Better Home Price']} INR."
+        )
+
+    # Add total number of items in the catalog for the product type
+    total_items = len(df_filtered)
+    context_parts.append(f"Total number of {product_type} in catalog: {total_items}")
+
+    context = "\n".join(context_parts)
+
+    # Add conversation history
+    if st.session_state['conversation_history']:
+        memory_context = "\n".join(st.session_state['conversation_history'])
+        context = f"Previous Conversation:\n{memory_context}\n\n{context}"
+
+    # Prepare the prompt for the model
+    system_prompt = """You are an expert assistant helping with Better Home's product catalog. 
+    When discussing prices, always mention both the Better Home Price and how much cheaper it is compared to the Retail Price.
+    Be specific about the savings in INR and percentage terms."""
+
+    # Use OpenAI API to generate response with chat model
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Context:\n{context}\nQuestion: {query}\nAnswer:"}
+            ],
+            max_tokens=300,
+            temperature=0.7
+        )
+        answer = response.choices[0].message['content'].strip()
+    except Exception as e:
+        print(f"Error generating response with OpenAI: {e}")
+        answer = "I'm sorry, I couldn't generate a response at this time."
 
     # Save to memory
     st.session_state['conversation_history'].append(f"User: {query}\nAssistant: {answer}")
@@ -286,7 +363,7 @@ def main():
         query_type, product_type = determine_query_type(query, product_terms)
 
         # Generate answer
-        answer = retrieve_and_generate(query, indices, df, query_type, product_type)
+        answer = retrieve_and_generate_openai(query, indices, df, embeddings_dict, query_type, product_type)
         st.write(f"### Answer: {answer}")
 
     # Toggle button for conversation history
