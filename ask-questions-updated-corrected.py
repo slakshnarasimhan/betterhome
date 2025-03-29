@@ -1,4 +1,3 @@
-
 import faiss
 import numpy as np
 import json
@@ -73,33 +72,17 @@ def load_product_catalog(file_path):
 # ==========================
 # Step 3: Generate Query Embedding
 # ==========================
-
-def get_openai_embedding(text, model='llama3.2'):
-    if model == 'llama3.2':
-        try:
-            response = client.create(model="llama3.2", messages=[{"role": "user", "content": text}])
-            embedding = response['data'][0]['embedding']
-            embedding = np.array(embedding) / np.linalg.norm(embedding)
-            return embedding
-        except Exception as e:
-            print(f"Error generating embedding with Ollama: {e}")
-            return np.random.rand(3072)
-    else:
-        try:
-            response = openai.Embedding.create(
-                model="text-embedding-ada-002",
-                input=text
-            )
-            embedding = response['data'][0]['embedding']
-            return np.array(embedding)
-        except Exception as e:
-            print(f"Error generating embedding with OpenAI: {e}")
-            return np.random.rand(1536)
-
-
-# ==========================
-# Step 4: Generate Response with OpenAI
-# ==========================
+def get_openai_embedding(text, model='text-embedding-ada-002'):
+    try:
+        response = openai.Embedding.create(
+            model=model,
+            input=text
+        )
+        embedding = response['data'][0]['embedding']
+        return np.array(embedding)
+    except Exception as e:
+        print(f"Error generating embedding with OpenAI: {e}")
+        return np.random.rand(1536)
 
 def retrieve_and_generate_openai(query, context, model='gpt-4'):
     system_prompt = (
@@ -124,10 +107,77 @@ def retrieve_and_generate_openai(query, context, model='gpt-4'):
         print(f"Error generating response with OpenAI: {e}")
         return "I'm sorry, I couldn't generate a response at this time."
 
+# ==========================
+# Step 4: FAISS Index Operations
+# ==========================
+
+def build_or_load_faiss_index(embeddings, dimension):
+    if os.path.exists(INDEX_FILE_PATH):
+        index = faiss.read_index(INDEX_FILE_PATH)
+    else:
+        index = faiss.IndexFlatL2(dimension)
+        index.add(embeddings)
+        faiss.write_index(index, INDEX_FILE_PATH)
+    return index
+
+
+def search_products(query, df, embeddings_dict, k=5):
+    # Generate query embedding
+    query_embedding = get_openai_embedding(query)
+    query_embedding = query_embedding.reshape(1, -1).astype('float32')
+    
+    # Build or load FAISS index
+    index = build_or_load_faiss_index(embeddings_dict['product_embeddings'], len(query_embedding[0]))
+    
+    # Search
+    D, I = index.search(query_embedding, k)
+    return I[0]  # Return indices of top k matches
+
 
 # ==========================
-# Step 5: Streamlit Interface
+# Step 5: Price-based Queries
 # ==========================
+
+def handle_price_query(query, df):
+    query_lower = query.lower()
+    product_type = None
+    
+    # Check for geyser/water heater in query
+    if 'geyser' in query_lower or 'water heater' in query_lower:
+        product_type = 'Water Heater'
+    
+    # Filter by product type if specified
+    if product_type:
+        df = df[df['Product Type'] == product_type]
+    
+    # Sort based on query type
+    if 'most expensive' in query_lower or 'highest price' in query_lower:
+        sorted_df = df.sort_values('Better Home Price', ascending=False)
+        return sorted_df.head(5)
+    elif 'least expensive' in query_lower or 'cheapest' in query_lower or 'lowest price' in query_lower:
+        sorted_df = df.sort_values('Better Home Price', ascending=True)
+        return sorted_df.head(5)
+    
+    return None
+
+
+# ==========================
+# Step 6: Generate Response
+# ==========================
+
+def format_product_response(products_df):
+    response = "Results:\n"
+    for _, product in products_df.iterrows():
+        title = product['title']
+        brand = product['Brand']
+        price = product['Better Home Price']
+        url = product.get('url', '#')
+        
+        response += f"{title} by {brand}: ₹{price:,.2f}\n"
+        response += f"Buy now: {url}\n\n"
+    
+    return response
+
 
 def main():
     st.title('Better Home Product Q&A System')
@@ -146,16 +196,33 @@ def main():
     query = st.text_input("Ask a question about Better Home products:")
 
     if query:
-        # Generate answer
-        context = "Your context preparation logic here..."
-        answer = retrieve_and_generate_openai(query, context)
-        st.write(f"### Answer: {answer}")
+        # Check if it's a price-based query
+        price_results = handle_price_query(query, df)
+        
+        if price_results is not None:
+            # Handle price-based query
+            answer = format_product_response(price_results)
+        else:
+            # Handle regular query
+            indices = search_products(query, df, embeddings_dict)
+            context = df.iloc[indices].to_string()
+            answer = retrieve_and_generate_openai(query, context)
+        
+        st.write("### Answer:")
+        st.write(answer)
+        
+        # Update conversation history
+        st.session_state['conversation_history'].append({
+            'query': query,
+            'answer': answer
+        })
 
     # Toggle button for conversation history
     if st.button('Show Conversation History'):
         st.write("### Conversation History:")
         for item in st.session_state['conversation_history'][-5:]:
-            st.write(item)
+            st.write(f"Q: {item['query']}")
+            st.write(f"A: {item['answer']}\n")
 
 
 if __name__ == "__main__":

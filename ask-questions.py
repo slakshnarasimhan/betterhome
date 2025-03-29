@@ -3,7 +3,9 @@ import numpy as np
 import json
 import os
 #from openai import OpenAI
-import openai
+from openai import OpenAI
+
+client = OpenAI()
 import pandas as pd
 import streamlit as st
 #from openai import OpenAI
@@ -241,7 +243,7 @@ def retrieve_and_generate(query, indices, df, query_type, product_type=None):
     Be specific about the savings in INR and percentage terms."""
 
     prompt = f"{system_prompt}\n\nContext:\n{context}\n\nQuestion: {query}\n\nAnswer:"
-    
+
     # Ensure the correct parameters are passed to the Ollama client
     try:
         response = client.create(model="llama3.2", messages=[
@@ -269,11 +271,11 @@ def retrieve_and_generate_openai(query, indices, df, embeddings_dict, query_type
     if query_type == 'product_type' and product_type:
         # Filter the dataframe to only include the specified product type
         df_filtered = df[df['Product Type'].str.lower() == product_type.lower()]
-        
+
         # Sort by price if the query indicates a price-related request
         if 'cheapest' in query.lower() or 'expensive' in query.lower():
             df_filtered = df_filtered.sort_values(by='Better Home Price', ascending='cheapest' in query.lower())
-        
+
         embeddings_filtered = embeddings_dict['product_type_embeddings'][df_filtered.index]
         index = faiss.IndexFlatL2(len(embeddings_filtered[0]))
         index.add(embeddings_filtered)
@@ -314,16 +316,14 @@ def retrieve_and_generate_openai(query, indices, df, embeddings_dict, query_type
 
     # Use OpenAI API to generate response with chat model
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Context:\n{context}\nQuestion: {query}\nAnswer:"}
-            ],
-            max_tokens=300,
-            temperature=0.7
-        )
-        answer = response.choices[0].message['content'].strip()
+        response = client.chat.completions.create(model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Context:\n{context}\nQuestion: {query}\nAnswer:"}
+        ],
+        max_tokens=300,
+        temperature=0.7)
+        answer = response.choices[0].message.content.strip()
     except Exception as e:
         print(f"Error generating response with OpenAI: {e}")
         answer = "I'm sorry, I couldn't generate a response at this time."
