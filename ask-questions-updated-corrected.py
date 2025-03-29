@@ -7,6 +7,7 @@ import pandas as pd
 import streamlit as st
 from ollama import Client as Ollama
 import requests
+import traceback
 
 
 # ==========================
@@ -251,22 +252,59 @@ def load_blog_embeddings(file_path):
 # Search Blogs
 # ==========================
 def search_relevant_blogs(query, blog_embeddings_dict, k=2):
-    if blog_embeddings_dict is None:
+    # Return empty list if no blog embeddings are available
+    if blog_embeddings_dict is None or 'blog_embeddings' not in blog_embeddings_dict:
+        print("No blog embeddings available")
         return []
+    
+    try:
+        # Generate query embedding using the same model used for generating blog embeddings
+        response = client.embed(model="nomic-embed-text", input=[query])
+        if not isinstance(response, dict) or 'embeddings' not in response:
+            print("Invalid response format from Ollama API")
+            print(f"Response: {response}")
+            return []
         
-    query_embedding = get_openai_embedding(query)
-    query_embedding = query_embedding.reshape(1, -1).astype('float32')
-    
-    # Build or load FAISS index for blogs
-    if os.path.exists(BLOG_INDEX_FILE_PATH):
-        blog_index = faiss.read_index(BLOG_INDEX_FILE_PATH)
-    else:
-        blog_index = faiss.IndexFlatL2(len(query_embedding[0]))
-        blog_index.add(blog_embeddings_dict['blog_embeddings'])
-        faiss.write_index(blog_index, BLOG_INDEX_FILE_PATH)
-    
-    D, I = blog_index.search(query_embedding, k)
-    return [blog_embeddings_dict['metadata'][i] for i in I[0]]
+        # Extract the embedding from the response
+        query_embedding = np.array(response['embeddings'][0])
+        
+        # Normalize the query embedding
+        norm = np.linalg.norm(query_embedding)
+        if norm > 0:
+            query_embedding = query_embedding / norm
+        
+        query_embedding = query_embedding.reshape(1, -1).astype('float32')
+        
+        # Convert blog embeddings to numpy array if it's a list
+        blog_embeddings = np.array(blog_embeddings_dict['blog_embeddings']).astype('float32')
+        
+        # Print dimensions for debugging
+        print(f"Blog query embedding dimension: {query_embedding.shape[1]}")
+        print(f"Blog embeddings dimension: {blog_embeddings.shape[1]}")
+
+        # Build or load FAISS index for blogs
+        if os.path.exists(BLOG_INDEX_FILE_PATH):
+            blog_index = faiss.read_index(BLOG_INDEX_FILE_PATH)
+            print(f"Blog FAISS index dimension: {blog_index.d}")
+        else:
+            print("Creating new blog index")
+            blog_index = faiss.IndexFlatL2(query_embedding.shape[1])
+            if len(blog_embeddings) > 0:
+                blog_index.add(blog_embeddings)
+            faiss.write_index(blog_index, BLOG_INDEX_FILE_PATH)
+        
+        # Only search if we have blog embeddings
+        if len(blog_embeddings) > 0:
+            D, I = blog_index.search(query_embedding, min(k, len(blog_embeddings_dict['metadata'])))
+            return [blog_embeddings_dict['metadata'][i] for i in I[0]]
+        else:
+            print("No blog embeddings to search")
+            return []
+            
+    except Exception as e:
+        print(f"Error searching blog embeddings: {e}")
+        traceback.print_exc()
+        return []
 
 
 def main():
@@ -275,15 +313,25 @@ def main():
     # Load data
     df = load_product_catalog(CSV_FILE_PATH)
     
-    # Load blog embeddings
-    blog_embeddings_dict = load_blog_embeddings(BLOG_EMBEDDINGS_FILE_PATH)
+    try:
+        # Load blog embeddings with error handling
+        blog_embeddings_dict = load_blog_embeddings(BLOG_EMBEDDINGS_FILE_PATH)
+        if blog_embeddings_dict is None:
+            print("Could not load blog embeddings")
+            blog_embeddings_dict = {
+                'blog_embeddings': np.array([]),
+                'metadata': []
+            }
+    except Exception as e:
+        print(f"Error loading blog embeddings: {e}")
+        blog_embeddings_dict = None
 
     # Display metadata
     st.sidebar.write("### Catalog Statistics")
     st.sidebar.write(f"Total Products: {len(df)}")
     st.sidebar.write(f"Unique Product Types: {df['Product Type'].nunique()}")
     st.sidebar.write(f"Unique Brands: {df['Brand'].nunique()}")
-    if blog_embeddings_dict:
+    if blog_embeddings_dict and len(blog_embeddings_dict.get('metadata', [])) > 0:
         st.sidebar.write(f"Blog Articles: {len(blog_embeddings_dict['metadata'])}")
 
     # Query box
@@ -293,8 +341,12 @@ def main():
         # Check if it's a price-based query
         price_results = handle_price_query(query, df)
         
-        # Find relevant blog articles
-        blog_suggestions = search_relevant_blogs(query, blog_embeddings_dict)
+        try:
+            # Find relevant blog articles
+            blog_suggestions = search_relevant_blogs(query, blog_embeddings_dict)
+        except Exception as e:
+            print(f"Error getting blog suggestions: {e}")
+            blog_suggestions = []
         
         if price_results is not None:
             # Handle price-based query
@@ -305,24 +357,28 @@ def main():
                     answer += f"- [{blog['title']}]({blog['url']}) (Published: {blog['date']})\n"
             st.markdown(answer, unsafe_allow_html=True)
         else:
-            # Handle regular query
-            query_embedding = get_openai_embedding(query)
-            query_embedding = query_embedding.reshape(1, -1).astype('float32')
-            
-            # Load product index
-            product_index = faiss.read_index(PRODUCT_INDEX_FILE_PATH)
-            D, I = product_index.search(query_embedding, 5)
-            
-            # Get relevant products
-            context = df.iloc[I[0]].to_string()
-            answer = retrieve_and_generate_openai(query, context, blog_suggestions)
-            st.markdown("### Answer:", unsafe_allow_html=True)
-            st.markdown(answer, unsafe_allow_html=True)
+            try:
+                # Handle regular query
+                query_embedding = get_openai_embedding(query)
+                query_embedding = query_embedding.reshape(1, -1).astype('float32')
+                
+                # Load product index
+                product_index = faiss.read_index(PRODUCT_INDEX_FILE_PATH)
+                D, I = product_index.search(query_embedding, 5)
+                
+                # Get relevant products
+                context = df.iloc[I[0]].to_string()
+                answer = retrieve_and_generate_openai(query, context, blog_suggestions)
+                st.markdown("### Answer:", unsafe_allow_html=True)
+                st.markdown(answer, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"An error occurred while processing your query: {str(e)}")
+                print(f"Error details: {e}")
         
         # Update conversation history
         st.session_state['conversation_history'].append({
             'query': query,
-            'answer': answer
+            'answer': answer if 'answer' in locals() else "No results found."
         })
 
     # Toggle button for conversation history
