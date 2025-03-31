@@ -211,6 +211,61 @@ def extract_blog_content(url, product_terms):
     except Exception as e:
         print(f"Error extracting content from {url}: {str(e)}")
         return None
+def save_blog_embeddings(blog_embeddings, blog_articles, output_file='blog_embeddings.json'):
+    """
+    Save blog embeddings and all metadata to a JSON file and create FAISS index
+    
+    Parameters:
+    - blog_embeddings: List of embeddings for each blog article
+    - blog_articles: List of dictionaries containing the metadata for each blog article
+    - output_file: Path to save the JSON file
+    """
+    # Ensure we have the same number of embeddings and articles
+    if len(blog_embeddings) != len(blog_articles):
+        print(f"Warning: Mismatch between embeddings ({len(blog_embeddings)}) and articles ({len(blog_articles)})")
+        # Adjust to use the minimum length
+        min_length = min(len(blog_embeddings), len(blog_articles))
+        blog_embeddings = blog_embeddings[:min_length]
+        blog_articles = blog_articles[:min_length]
+
+    # Extract metadata from blog articles
+    metadata = []
+    for article in blog_articles:
+        meta = {
+            'title': article.get('title', 'Untitled'),
+            'url': article.get('url', ''),
+            'date': article.get('date', ''),
+            'author': article.get('author', ''),
+            'categories': article.get('categories', []),
+            'content': article.get('content', '')[:500]  # Store a preview of the content
+        }
+        metadata.append(meta)
+
+    # Save embeddings and metadata to JSON
+    print(f"Saving {len(blog_embeddings)} embeddings with full metadata to {output_file}")
+    with open(output_file, 'w') as f:
+        json.dump({
+            'blog_embeddings': blog_embeddings,
+            'metadata': metadata
+        }, f)
+    print(f"Saved embeddings and metadata to {output_file}")
+
+    # Create and save FAISS index
+    try:
+        print("Creating FAISS index for blog embeddings...")
+        embeddings_array = np.array(blog_embeddings).astype('float32')
+        dimension = embeddings_array.shape[1]
+        print(f"Blog embeddings dimension: {dimension}")
+
+        index = faiss.IndexFlatL2(dimension)
+        index.add(embeddings_array)
+        print(f"Created FAISS index with dimension {index.d}")
+
+        faiss.write_index(index, 'blog_faiss_index.index')
+        print("Saved FAISS index")
+    except Exception as e:
+        print(f"Error creating FAISS index: {e}")
+        traceback.print_exc()
 
 def main():
     print("Starting blog crawling and embedding generation...")
