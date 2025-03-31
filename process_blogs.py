@@ -379,10 +379,13 @@ def main():
 
     # Set up Selenium WebDriver
     options = Options()
+    options.add_argument('--headless')  # already present? good.
+
     options.headless = True
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
+    options.add_argument('--remote-debugging-port=9222')
     service = Service('/usr/bin/chromedriver',log_path="chromedriver.log")  # Ensure this path is correct
     driver = webdriver.Chrome(service=service, options=options)
 
