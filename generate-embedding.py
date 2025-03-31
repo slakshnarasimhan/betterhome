@@ -10,7 +10,7 @@ import faiss
 # ==========================
 # Configuration
 # ==========================
-MODEL_NAME = "llama3.2"  # Use your installed Ollama model
+MODEL_NAME = "nomic-embed-text"  # Use your installed Ollama model
 CSV_FILE_PATH = 'cleaned_products.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
@@ -71,11 +71,12 @@ def generate_local_embeddings(entries, batch_size=10):
     def generate_batch_embeddings(batch):
         try:
             response = client.embed(model=MODEL_NAME, input=batch)
-            if hasattr(response, 'embeddings') and response.embeddings:
-                return response.embeddings
+            if isinstance(response, dict) and 'embeddings' in response:
+                return response['embeddings']
             else:
-                print(f"Failed to extract embeddings for batch.")
+                print(f"Failed to extract embeddings for batch. Response: {response}")
                 return []
+
         except Exception as e:
             print(f"Error generating embeddings for batch: {str(e)}")
             return []
