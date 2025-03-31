@@ -725,13 +725,13 @@ def main():
     st.title('Better Home Product Q&A System')
 
     # Add debugging information
-    st.sidebar.markdown("### Debug Info")
-    st.sidebar.text(f"OpenAI API Key: {'Set' if OPENAI_API_KEY != 'not-set' else 'Not Set'}")
-    st.sidebar.text(f"CSV File exists: {os.path.exists(CSV_FILE_PATH)}")
-    st.sidebar.text(f"Embeddings File exists: {os.path.exists(EMBEDDINGS_FILE_PATH)}")
-    st.sidebar.text(f"Product Index exists: {os.path.exists(PRODUCT_INDEX_FILE_PATH)}")
-    st.sidebar.text(f"Blog Embeddings File exists: {os.path.exists(BLOG_EMBEDDINGS_FILE_PATH)}")
-    st.sidebar.text(f"Blog Index exists: {os.path.exists(BLOG_INDEX_FILE_PATH)}")
+    #st.sidebar.markdown("### Debug Info")
+    #st.sidebar.text(f"OpenAI API Key: {'Set' if OPENAI_API_KEY != 'not-set' else 'Not Set'}")
+    #st.sidebar.text(f"CSV File exists: {os.path.exists(CSV_FILE_PATH)}")
+    #st.sidebar.text(f"Embeddings File exists: {os.path.exists(EMBEDDINGS_FILE_PATH)}")
+    #st.sidebar.text(f"Product Index exists: {os.path.exists(PRODUCT_INDEX_FILE_PATH)}")
+    #st.sidebar.text(f"Blog Embeddings File exists: {os.path.exists(BLOG_EMBEDDINGS_FILE_PATH)}")
+    #st.sidebar.text(f"Blog Index exists: {os.path.exists(BLOG_INDEX_FILE_PATH)}")
     
     # Load data with error handling
     try:
@@ -761,11 +761,11 @@ def main():
             st.sidebar.text("Blog embeddings file not found")
         
         # Display available product types for debugging
-        st.sidebar.markdown("### Available Product Types")
+        #st.sidebar.markdown("### Available Product Types")
         unique_types = df['Product Type'].unique()
         # Convert all product types to strings before joining
         unique_types_str = [str(pt) for pt in unique_types]
-        st.sidebar.text(f"{', '.join(unique_types_str)}")
+        #st.sidebar.text(f"{', '.join(unique_types_str)}")
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
         traceback.print_exc()  # Print detailed error information
@@ -773,10 +773,10 @@ def main():
         return
 
     # Display metadata
-    st.sidebar.write("### Catalog Statistics")
-    st.sidebar.write(f"Total Products: {len(df)}")
-    st.sidebar.write(f"Unique Product Types: {df['Product Type'].nunique()}")
-    st.sidebar.write(f"Unique Brands: {df['Brand'].nunique()}")
+    #st.sidebar.write("### Catalog Statistics")
+    #st.sidebar.write(f"Total Products: {len(df)}")
+    #st.sidebar.write(f"Unique Product Types: {df['Product Type'].nunique()}")
+    #st.sidebar.write(f"Unique Brands: {df['Brand'].nunique()}")
 
     # Query box
     query = st.text_input("Ask a question about Better Home products:")
