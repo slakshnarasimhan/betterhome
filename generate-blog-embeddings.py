@@ -240,7 +240,7 @@ def save_blog_embeddings(blog_embeddings, blog_articles, output_file='blog_embed
         index.add(embeddings_array)
         print(f"Created FAISS index with dimension {index.d}")
 
-        faiss.write_index(index, 'blog_faiss_index.index')
+        faiss.write_index(index, 'faiss_index.index_blog')
         print("Saved FAISS index")
     except Exception as e:
         print(f"Error creating FAISS index: {e}")

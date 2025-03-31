@@ -10,8 +10,9 @@ import faiss
 # ==========================
 # Configuration
 # ==========================
-MODEL_NAME = "nomic-embed-text"  # Use your installed Ollama model
-CSV_FILE_PATH = 'cleaned_products.csv'
+MODEL_NAME = "llama3.2"  # Use your installed Ollama model
+#CSV_FILE_PATH = 'cleaned_products.csv'
+CSV_FILE_PATH = 'cleaned_products_10.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
 
@@ -60,7 +61,7 @@ def prepare_entries(df):
 # ==========================
 # Step 3: Generate Embeddings with Ollama
 # ==========================
-def generate_local_embeddings(entries, batch_size=10):
+def generate_local_embeddings(entries, batch_size=1):
     embeddings = []
     client = Ollama()
     
@@ -70,9 +71,15 @@ def generate_local_embeddings(entries, batch_size=10):
     
     def generate_batch_embeddings(batch):
         try:
+            print("Sending batch to Ollama...")
             response = client.embed(model=MODEL_NAME, input=batch)
+            print("Received response:", response)
             if isinstance(response, dict) and 'embeddings' in response:
+                print("vaalid embeddingg..")
+                for item in response["embeddings"]:
+                    embeddings.append(item)
                 return response['embeddings']
+                #return response['embeddings'][0]
             else:
                 print(f"Failed to extract embeddings for batch. Response: {response}")
                 return []
@@ -107,7 +114,7 @@ def save_embeddings(embeddings_dict, file_name):
 # Step 5: Build & Save FAISS Index
 # ==========================
 def build_faiss_index(embeddings, index_file_path):
-    if not embeddings:
+    if not embeddings or not all(isinstance(e, list) for e in embeddings):
         print("Error: No embeddings to build the index.")
         return None
 
