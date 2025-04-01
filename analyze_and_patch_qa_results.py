@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import pandas as pd
 
 VALIDATED_CSV = 'qa_test_results.csv'
@@ -7,6 +8,16 @@ SUGGESTIONS_FILE = 'diagnostic_suggestions.md'
 df = pd.read_csv(VALIDATED_CSV)
 
 # Generate summary
+=======
+
+import pandas as pd
+
+VALIDATED_CSV = 'qa_test_results_validated.csv'
+SUGGESTIONS_FILE = 'diagnostic_suggestions.md'
+
+df = pd.read_csv(VALIDATED_CSV)
+
+>>>>>>> fc42b70f65caeb649119fcf9e73e500f5996c931
 summary = df['issue'].value_counts().to_dict()
 problem_questions = df[df['issue'] != 'Looks OK']
 

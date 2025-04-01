@@ -23,7 +23,7 @@ def query_api(question):
 
 # Run tests and collect responses
 results = []
-for q in random.sample(questions, min(20, len(questions))):  # Cap to 20 for test run
+for q in random.sample(questions, min(30, len(questions))):  # Cap to 20 for test run
     print(f"Querying: {q}")
     answer = query_api(q)
     results.append({'question': q, 'answer': answer})

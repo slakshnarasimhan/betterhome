@@ -8,71 +8,47 @@ import time
 from datetime import datetime
 import streamlit as st
 import traceback
-from ollama import Client as Ollama
 import faiss
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
-import ollama
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from youtube_transcript_api import YouTubeTranscriptApi
+import re
 
 # Configure OpenAI
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
+MODEL_NAME = "text-embedding-3-small"
 
 def generate_blog_embeddings(blog_articles):
-    """
-    Generate embeddings for blog articles using Ollama's generate method.
-    """
     embeddings = []
-    client = ollama.Client(host='http://localhost:11434')
 
-    for article in blog_articles:
+    def generate_batch(batch):
         try:
-            # Combine title and content for embedding
-            text = f"{article['title']} {article['content']}"
-
-            # Generate text using Ollama
-            response = client.generate(model="llama3.2", prompt=text)
-            if not isinstance(response, dict) or 'response' not in response:
-                print(f"Invalid response format for article {article['title']}")
-                print(f"Response: {response}")
-                # Use random embedding as fallback
-                embedding = np.random.rand(3072)
-            else:
-                # Convert response text to embedding using numpy's hash function
-                response_text = response['response']
-                embedding = np.array([hash(word) % 3072 for word in response_text.split()])
-                if len(embedding) < 3072:
-                    embedding = np.pad(embedding, (0, 3072 - len(embedding)))
-                elif len(embedding) > 3072:
-                    embedding = embedding[:3072]
-
-            # Normalize the embedding
-            norm = np.linalg.norm(embedding)
-            if norm > 0:
-                embedding = embedding / norm
-
-            embeddings.append(embedding.tolist())
-            print(f"Generated embedding for article: {article['title']}")
-
+            response = openai.Embedding.create(
+                model=MODEL_NAME,
+                input=batch
+            )
+            return [e["embedding"] for e in response["data"]]
         except Exception as e:
-            print(f"Error generating embedding for article {article['title']}: {e}")
-            traceback.print_exc()
-            # Use random embedding as fallback
-            embedding = np.random.rand(3072)
-            norm = np.linalg.norm(embedding)
-            if norm > 0:
-                embedding = embedding / norm
-            embeddings.append(embedding.tolist())
+            print(f"Error generating batch embeddings: {str(e)}")
+            return [np.random.rand(1536).tolist() for _ in batch]
+
+    texts = [f"{article['title']} {article['content']}" for article in blog_articles]
+    batch_size = 10
+    batches = [texts[i:i + batch_size] for i in range(0, len(texts), batch_size)]
+
+    with ThreadPoolExecutor() as executor:
+        results = list(tqdm(executor.map(generate_batch, batches), total=len(batches), desc="Generating Embeddings"))
+        for batch_embeddings in results:
+            embeddings.extend(batch_embeddings)
 
     return embeddings
 
-
 def fetch_blog_urls():
-    """Fetch all blog URLs from all pages of the blog"""
     base_url = "https://betterhomeapp.com/blogs/articles"
     blog_urls = []
     page = 1
@@ -118,7 +94,7 @@ def fetch_blog_urls():
                 break
 
             page += 1
-            time.sleep(1)  # Reduced delay
+            time.sleep(1)
 
         blog_urls = list(set(blog_urls))
         print(f"\nTotal unique blog articles found: {len(blog_urls)}")
@@ -128,6 +104,31 @@ def fetch_blog_urls():
         print(f"Error fetching blog URLs: {e}")
         traceback.print_exc()
         return []
+
+def extract_youtube_id(url):
+    patterns = [
+        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?]+)',
+        r'youtube\.com\/shorts\/([^&\n?]+)'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def get_video_transcript(video_id, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            print(f"Attempting to get transcript for video {video_id} (attempt {attempt + 1})")
+            transcript = YouTubeTranscriptApi.get_transcript(video_id)
+            return ' '.join([entry['text'] for entry in transcript])
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed for video {video_id}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+            else:
+                print(f"Failed to get transcript for video {video_id} after {max_retries} attempts")
+                return None
 
 def extract_blog_content(url, product_terms):
     try:
@@ -139,13 +140,11 @@ def extract_blog_content(url, product_terms):
         soup = BeautifulSoup(response.text, 'html.parser')
 
         slug = url.split('/')[-1] if '/' in url else ''
-
         title = soup.find('h1', class_='title') or soup.find('h1')
         title_text = title.get_text().strip() if title else f"Article about {slug.replace('-', ' ')}"
 
         info_div = soup.find('div', class_='info')
-        date = ''
-        author = ''
+        date, author = '', ''
         if info_div:
             date_span = info_div.find('time')
             author_span = info_div.find('span', class_='article-author')
@@ -169,6 +168,27 @@ def extract_blog_content(url, product_terms):
                 content_elements = article.find_all(['p', 'h2', 'h3', 'h4', 'li'])
                 content = ' '.join([elem.get_text().strip() for elem in content_elements])
 
+        video_transcripts = []
+        video_ids = set()
+        for link in soup.find_all('a', href=True):
+            video_id = extract_youtube_id(link['href'])
+            if video_id and video_id not in video_ids:
+                video_ids.add(video_id)
+                transcript = get_video_transcript(video_id)
+                if transcript:
+                    video_transcripts.append(transcript)
+
+        for iframe in soup.find_all('iframe'):
+            video_id = extract_youtube_id(iframe.get('src', ''))
+            if video_id and video_id not in video_ids:
+                video_ids.add(video_id)
+                transcript = get_video_transcript(video_id)
+                if transcript:
+                    video_transcripts.append(transcript)
+
+        if video_transcripts:
+            content += "\n\nVideo Transcripts:\n" + "\n\n".join(video_transcripts)
+
         tags = []
         tag_ul = soup.find('ul', class_='tag-list list-unstyled clearfix')
         if tag_ul:
@@ -186,8 +206,6 @@ def extract_blog_content(url, product_terms):
                 if cat.lower() in content.lower():
                     related_words.add(product)
 
-        print(f"Extracted: {title_text} ({len(content)} chars)")
-
         blog_data = {
             'title': title_text,
             'date': date,
@@ -196,39 +214,23 @@ def extract_blog_content(url, product_terms):
             'categories': tags,
             'related_words': list(related_words),
             'url': url,
-            'slug': slug
+            'slug': slug,
+            'has_videos': len(video_transcripts) > 0,
+            'video_ids': list(video_ids)
         }
 
-        for key, value in blog_data.items():
-            if key == 'content' and (not value or len(value) < 50):
-                print(f"Warning: Short or empty content for {url}")
-            elif key == 'title' and not value:
-                print(f"Warning: Empty title for {url}")
-                blog_data['title'] = f"Article about {slug.replace('-', ' ')}"
-
         return blog_data
-
     except Exception as e:
         print(f"Error extracting content from {url}: {str(e)}")
         return None
+
 def save_blog_embeddings(blog_embeddings, blog_articles, output_file='blog_embeddings.json'):
-    """
-    Save blog embeddings and all metadata to a JSON file and create FAISS index
-    
-    Parameters:
-    - blog_embeddings: List of embeddings for each blog article
-    - blog_articles: List of dictionaries containing the metadata for each blog article
-    - output_file: Path to save the JSON file
-    """
-    # Ensure we have the same number of embeddings and articles
     if len(blog_embeddings) != len(blog_articles):
         print(f"Warning: Mismatch between embeddings ({len(blog_embeddings)}) and articles ({len(blog_articles)})")
-        # Adjust to use the minimum length
         min_length = min(len(blog_embeddings), len(blog_articles))
         blog_embeddings = blog_embeddings[:min_length]
         blog_articles = blog_articles[:min_length]
 
-    # Extract metadata from blog articles
     metadata = []
     for article in blog_articles:
         meta = {
@@ -237,30 +239,22 @@ def save_blog_embeddings(blog_embeddings, blog_articles, output_file='blog_embed
             'date': article.get('date', ''),
             'author': article.get('author', ''),
             'categories': article.get('categories', []),
-            'content': article.get('content', '')[:500]  # Store a preview of the content
+            'content': article.get('content', '')[:500]
         }
         metadata.append(meta)
 
-    # Save embeddings and metadata to JSON
     print(f"Saving {len(blog_embeddings)} embeddings with full metadata to {output_file}")
     with open(output_file, 'w') as f:
-        json.dump({
-            'blog_embeddings': blog_embeddings,
-            'metadata': metadata
-        }, f)
+        json.dump({'blog_embeddings': blog_embeddings, 'metadata': metadata}, f)
     print(f"Saved embeddings and metadata to {output_file}")
 
-    # Create and save FAISS index
     try:
         print("Creating FAISS index for blog embeddings...")
         embeddings_array = np.array(blog_embeddings).astype('float32')
         dimension = embeddings_array.shape[1]
-        print(f"Blog embeddings dimension: {dimension}")
-
         index = faiss.IndexFlatL2(dimension)
         index.add(embeddings_array)
         print(f"Created FAISS index with dimension {index.d}")
-
         faiss.write_index(index, 'blog_faiss_index.index')
         print("Saved FAISS index")
     except Exception as e:
@@ -269,7 +263,6 @@ def save_blog_embeddings(blog_embeddings, blog_articles, output_file='blog_embed
 
 def main():
     print("Starting blog crawling and embedding generation...")
-
     with open('product_terms.json', 'r') as f:
         product_terms = json.load(f)
 
@@ -289,7 +282,6 @@ def main():
         return
 
     print(f"\nExtracted {len(blogs)} blog articles")
-
     print("\nGenerating embeddings...")
     blog_embeddings = generate_blog_embeddings(blogs)
 
@@ -305,3 +297,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
