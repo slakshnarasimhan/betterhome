@@ -3,6 +3,7 @@ home:
   rooms:
     - name: "Master Bathroom"
       used_by: "Elderly parents"
+      color: "White"
       geyser:
         type: "Storage"
         min_capacity_liters: 15
@@ -11,6 +12,7 @@ home:
 
     - name: "Children's Bathroom"
       used_by: "Child"
+      color: "pale blue"
       geyser:
         type: "Instant"
         min_capacity_liters: 3

@@ -9,6 +9,9 @@ from ollama import Client as Ollama
 import requests
 import traceback
 import re
+import yaml  # Add yaml import
+from typing import List, Dict, Any
+from datetime import datetime
 
 
 # ==========================
@@ -35,6 +38,24 @@ PRODUCT_INDEX_FILE_PATH = 'faiss_index.index_product'
 TYPE_INDEX_FILE_PATH = 'faiss_index.index_type'
 BRAND_INDEX_FILE_PATH = 'faiss_index.index_brand'
 PRODUCT_TERMS_FILE = 'product_terms.json'
+HOME_CONFIG_FILE = 'home_config.yaml'  # Updated path to new home config file
+
+# Load home configuration
+def load_home_config(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        print(f"Error loading home configuration: {str(e)}")
+        return None
+
+# Load home configuration
+home_config = load_home_config(HOME_CONFIG_FILE)
+if home_config:
+    print("Home configuration loaded successfully")
+    print(f"Found {len(home_config.get('home', {}).get('rooms', []))} rooms in configuration")
+else:
+    print("Failed to load home configuration")
 
 # Session State for Memory
 if 'conversation_history' not in st.session_state:
@@ -125,31 +146,54 @@ def get_openai_embedding(text, model='text-embedding-ada-002'):
 
 def retrieve_and_generate_openai(query, context):
     # Check if it's a "best" query
-    is_best_query = "best" in query.lower() and any(product_type in query.lower() for product_type in ["fan", "water heater", "geyser", "refrigerator", "washing machine", "air conditioner", "ac", "chimney", "hob", "plywood", "hdhmr"])
+    is_best_query = any(term in query.lower() for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect'])
     
-    # Debug logging
-    print(f"Retrieve and generate - Query: {query}")
-    print(f"Retrieve and generate - Is best query: {is_best_query}")
+    # Check if we have home configuration for personalization
+    has_home_config = home_config is not None and 'home' in home_config
     
-    # Create system prompt based on query type
+    # Create system prompt based on query type and home configuration
     if is_best_query:
-        system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
-        When answering questions about the "best" product, remember that this is a subjective question.
-        Provide a structured response that includes:
-        1. Acknowledge that "best" is subjective and depends on specific needs
-        2. List 2-3 top recommendations with clear reasoning for each
-        3. Include price ranges and key features
-        4. Mention any special considerations (e.g., energy efficiency for fans)
-        5. End with a suggestion to consider specific needs and budget
-        
-        Format your response in markdown with clear sections and bullet points."""
-        print("Using best query system prompt")
+        if has_home_config:
+            system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
+            When answering questions about the "best" product, provide a concise response suitable for WhatsApp:
+            1. Keep your response under 300 words total
+            2. Start with a brief acknowledgment that "best" depends on specific needs
+            3. Make 1-2 personalized recommendations based on the user's home configuration
+            4. Consider the user's location, property type, and floor level when relevant
+            5. Include only essential details: key features, price range, and 1-2 main benefits
+            6. Use bullet points for readability
+            7. End with a very brief suggestion to consider specific needs
+            
+            Format your response in simple markdown with minimal sections."""
+            print("Using personalized best query system prompt with home configuration")
+        else:
+            system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
+            When answering questions about the "best" product, provide a concise response suitable for WhatsApp:
+            1. Keep your response under 300 words total
+            2. Start with a brief acknowledgment that "best" depends on specific needs
+            3. Make 1-2 recommendations based on general criteria
+            4. Include only essential details: key features, price range, and 1-2 main benefits
+            5. Use bullet points for readability
+            6. End with a very brief suggestion to consider specific needs
+            
+            Format your response in simple markdown with minimal sections."""
+            print("Using concise best query system prompt")
     else:
-        system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
-        Answer questions about products based on the provided context. 
-        Be concise and informative, focusing on key features and benefits.
-        Format your response in markdown."""
-        print("Using regular system prompt")
+        if has_home_config:
+            system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
+            Answer questions about products based on the provided context and the user's home configuration. 
+            Be extremely concise (under 150 words) and direct, focusing only on the most important information.
+            Consider the user's location, property type, and floor level when relevant.
+            Format your response in simple markdown with minimal formatting.
+            Avoid unnecessary introductions or explanations."""
+            print("Using personalized regular system prompt with home configuration")
+        else:
+            system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
+            Answer questions about products based on the provided context. 
+            Be extremely concise (under 150 words) and direct, focusing only on the most important information.
+            Format your response in simple markdown with minimal formatting.
+            Avoid unnecessary introductions or explanations."""
+            print("Using concise regular system prompt")
     
     try:
         # Create messages for the API call
@@ -158,12 +202,12 @@ def retrieve_and_generate_openai(query, context):
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
         ]
         
-        # Make the API call
+        # Make the API call with reduced max_tokens for more concise responses
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=messages,
             temperature=0.7,
-            max_tokens=1000
+            max_tokens=500  # Reduced from 1000 to encourage brevity
         )
         
         # Extract and return the answer
@@ -261,15 +305,18 @@ def handle_price_query(query, df, product_terms=None):
     return None
 
 def format_brand_response(products_df, product_type, is_warranty_query=False):
-    # Create a title that reflects the query focus
+    # Limit to 3 brands maximum for brevity
+    products_df = products_df.head(3)
+    
+    # Create a concise title
     if is_warranty_query:
-        response = f"### Available Brands for {product_type} with Warranty Information:\n\n"
+        response = f"### {product_type} Brands with Warranty:\n\n"
     else:
-        response = f"### Available Brands for {product_type}:\n\n"
+        response = f"### {product_type} Brands:\n\n"
     
     # Get total count
     brand_count = len(products_df)
-    response += f"We have {brand_count} brand{'s' if brand_count > 1 else ''} of {product_type.lower()} available:\n\n"
+    response += f"{brand_count} brand{'s' if brand_count > 1 else ''} available:\n\n"
     
     for _, product in products_df.iterrows():
         title = product['title']
@@ -281,7 +328,7 @@ def format_brand_response(products_df, product_type, is_warranty_query=False):
         # Calculate discount percentage if retail price is available
         if retail_price > 0:
             discount = ((retail_price - price) / retail_price) * 100
-            discount_text = f"(up to {discount:.1f}% off retail prices)"
+            discount_text = f"({discount:.1f}% off)"
         else:
             discount_text = ""
         
@@ -292,20 +339,23 @@ def format_brand_response(products_df, product_type, is_warranty_query=False):
             warranty_match = re.search(r'with\s+(\d+)\s+years?\s+warranty', title, re.IGNORECASE)
             if warranty_match:
                 warranty_years = warranty_match.group(1)
-                warranty_text = f"**⭐ {warranty_years} Year Warranty**\n"
+                warranty_text = f"⭐ {warranty_years} Year Warranty\n"
             elif 'warranty' in title.lower():
-                warranty_text = "**⭐ Includes Warranty**\n"
+                warranty_text = "⭐ Includes Warranty\n"
             elif 'year' in title.lower() and re.search(r'(\d+)\s+years?', title, re.IGNORECASE):
                 warranty_years = re.search(r'(\d+)\s+years?', title, re.IGNORECASE).group(1)
-                warranty_text = f"**⭐ {warranty_years} Year Guarantee**\n"
+                warranty_text = f"⭐ {warranty_years} Year Guarantee\n"
         
-        response += f"#### {brand} {discount_text}\n"
-        response += f"**Example product:** {title}\n"
+        # More concise brand listing
+        response += f"**{brand}** {discount_text}\n"
+        response += f"₹{price:,.2f}\n"
         if warranty_text:
             response += warranty_text
-        response += f"**Starting at:** ₹{price:,.2f}\n"
-        response += f"**[Browse {brand} products]({url})**\n\n"
-        response += "---\n\n"
+        # Make the buy link more prominent
+        response += f"🛒 [Buy Now]({url})\n\n"
+    
+    # Add a note about clicking the links
+    response += "*Click on 'Buy Now' to purchase the product.*\n"
     
     return response
 
@@ -439,16 +489,18 @@ def handle_brand_query(query, df, product_terms=None):
 # ==========================
 
 def format_product_response(products_df):
-    response = "### Results:\n\n"
+    # Limit to 3 products maximum for brevity
+    products_df = products_df.head(3)
+    
+    response = "### Products:\n\n"
     
     # Add a special message for BLDC fans if they're in the results
     has_bldc = any(products_df['title'].str.contains('BLDC|Brushless', case=False, na=False))
     if has_bldc:
-        response += "💚 **Energy Efficient BLDC Fan Featured** - These fans use up to 70% less electricity!\n\n"
+        response += "💚 **BLDC Fans** - 70% less electricity!\n\n"
     
     for _, product in products_df.iterrows():
         title = product['title']
-        brand = product['Brand']
         price = product['Better Home Price']
         retail_price = product.get('Retail Price', 0)
         url = product.get('url', '#')
@@ -456,24 +508,27 @@ def format_product_response(products_df):
         # Calculate discount percentage if retail price is available
         if retail_price > 0:
             discount = ((retail_price - price) / retail_price) * 100
-            discount_text = f"({discount:.1f}% off retail price ₹{retail_price:,.2f})"
+            discount_text = f"({discount:.1f}% off)"
         else:
             discount_text = ""
         
         # Add a special highlight for BLDC fans
         is_bldc = 'BLDC' in title or 'Brushless' in title
-        energy_label = "💚 ENERGY EFFICIENT: " if is_bldc else ""
+        energy_label = "💚 " if is_bldc else ""
         
-        response += f"#### {energy_label}{title}\n"
-        response += f"**Brand:** {brand}\n"
-        response += f"**Price:** ₹{price:,.2f} {discount_text}\n"
+        # More concise product listing
+        response += f"**{energy_label}{title}**\n"
+        response += f"₹{price:,.2f} {discount_text}\n"
         
         # Add energy saving information for BLDC fans
         if is_bldc:
-            response += f"**Energy Savings:** Up to 70% less electricity compared to regular fans\n"
-            
-        response += f"**[Click here to buy]({url})**\n\n"
-        response += "---\n\n"
+            response += f"70% energy savings\n"
+        
+        # Make the buy link more prominent
+        response += f"🛒 [Buy Now]({url})\n\n"
+    
+    # Add a note about clicking the links
+    response += "*Click on 'Buy Now' to purchase the product.*\n"
     
     return response
 
@@ -635,7 +690,7 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
 
 def format_blog_response(blog_results, query=None):
     """
-    Format blog search results for display
+    Format blog search results for display in a concise, WhatsApp-friendly format
     
     Parameters:
     - blog_results: List of blog metadata dictionaries
@@ -664,14 +719,15 @@ def format_blog_response(blog_results, query=None):
         if topic_words:
             topic_header = f" About {' '.join(topic_words[:3]).title()}"
     
-    response = f"### 📚 Related Blog Articles{topic_header}\n\n"
+    # Concise header
+    response = f"### 📚 Articles{topic_header}\n\n"
     
-    # Only include this introduction if we have actual content in the blogs
-    content_exists = any(blog.get('content') for blog in blog_results)
-    if content_exists:
-        response += "I found these relevant articles that may provide additional information:\n\n"
-    
+    # Limit to 2 blog articles maximum for brevity
+    blog_count = 0
     for blog in blog_results:
+        if blog_count >= 2:
+            break
+            
         title = blog.get('title', 'Untitled Article')
         url = blog.get('url', '#')
         
@@ -687,17 +743,7 @@ def format_blog_response(blog_results, query=None):
             else:
                 url = "https://betterhomeapp.com/blogs/articles"
         
-        date = blog.get('date', '')
-        
-        # Get relevance scores if available
-        similarity_score = blog.get('_similarity_score', 0)
-        
-        # Add a relevance indicator based on scores
-        relevance_indicator = ""
-        if similarity_score > 0.8:
-            relevance_indicator = "🔍 "  # High relevance
-        
-        # Create a brief excerpt if content is available
+        # Create a very brief excerpt if content is available
         content = blog.get('content', '')
         
         # Improved excerpt that focuses on relevant parts if possible
@@ -715,34 +761,222 @@ def format_blog_response(blog_results, query=None):
                 best_sentence = max(sentence_scores, key=lambda x: x[1])[0]
                 excerpt = best_sentence.strip()
                 
-                # Truncate if too long
-                if len(excerpt) > 200:
-                    excerpt = excerpt[:200] + "..."
+                # Truncate if too long - make it shorter for WhatsApp
+                if len(excerpt) > 100:
+                    excerpt = excerpt[:100] + "..."
             else:
                 # No good match, use beginning of content
-                excerpt = content[:200] + "..." if len(content) > 200 else content
+                excerpt = content[:100] + "..." if len(content) > 100 else content
         elif content:
             # No query provided, just use the beginning
-            excerpt = content[:200] + "..." if len(content) > 200 else content
+            excerpt = content[:100] + "..." if len(content) > 100 else content
         
-        # Format the article entry with enhanced readability
-        response += f"#### {relevance_indicator}📝 [{title}]({url})\n"
+        # Format the article entry with minimal formatting
+        response += f"**{title}**\n"
         
-        # Only show date if it exists and isn't empty
-        if date and date.strip():
-            response += f"**Date:** {date}\n"
-        
-        # Add excerpt if available
+        # Add very brief excerpt if available
         if excerpt:
-            response += f"**Preview:** {excerpt}\n"
+            response += f"{excerpt}\n"
         
-        # Add a cleaner "Read more" link
-        response += f"[**Read Full Article** ↗]({url})\n\n"
-        response += "---\n\n"
+        # Add a more prominent link
+        response += f"📖 [Read Article]({url})\n\n"
+        
+        blog_count += 1
+    
+    # Add a note about clicking the links
+    response += "*Click on 'Read Article' to view the full article.*\n"
     
     return response
 
 
+def get_fan_recommendations_by_user_profile(query: str, df: pd.DataFrame, home_config: Dict[str, Any]) -> str:
+    """Get personalized fan recommendations based on user profile information."""
+    if not home_config or 'home' not in home_config or 'rooms' not in home_config['home']:
+        return None
+        
+    # Filter for ceiling fans
+    fans_df = df[df['Product Type'] == 'Ceiling Fan'].copy()
+    if fans_df.empty:
+        return None
+        
+    # Check if query is about BLDC fans
+    is_bldc_query = 'bldc' in query.lower() or 'brushless' in query.lower() or 'energy efficient' in query.lower()
+    
+    # Initialize recommendations with a concise header
+    recommendations = []
+    recommendations.append("## Fan Recommendations\n")
+    
+    # Get home information for context
+    home_info = home_config.get('home', {})
+    city = home_info.get('city', '')
+    property_type = home_info.get('property_type', '')
+    floor_level = home_info.get('floor_level', 0)
+    total_floors = home_info.get('total_floors', 0)
+    
+    # Add home context if available
+    if city:
+        recommendations.append(f"Based on your location in {city} and your home setup:")
+    
+    # Process each room - limit to 3 rooms maximum for brevity
+    room_count = 0
+    for room in home_config['home']['rooms']:
+        if room_count >= 3:  # Limit to 3 rooms maximum
+            break
+            
+        room_name = room.get('name', 'Unknown Room')
+        room_color = room.get('room_color', '')
+        used_by = room.get('used_by', '')
+        
+        recommendations.append(f"### {room_name}")
+        
+        # Add room context
+        if room_color:
+            recommendations.append(f"Room color: {room_color}")
+        if used_by:
+            recommendations.append(f"Used by: {used_by}")
+        
+        # Add recommendations based on user type
+        if 'elderly' in used_by.lower():
+            recommendations.append("- Quiet operation with remote control")
+        if 'child' in used_by.lower():
+            recommendations.append("- Child-safe features with secure mounting")
+        if 'adult' in used_by.lower():
+            recommendations.append("- Good airflow and energy efficiency")
+            
+        # BLDC recommendation if applicable
+        if is_bldc_query:
+            recommendations.append("- BLDC fans: 70% energy savings, quieter operation")
+        
+        room_count += 1
+    
+    # Add very brief summary
+    recommendations.append("\n### Summary")
+    recommendations.append("- Consider room size and user needs")
+    recommendations.append("- BLDC fans offer energy savings and quiet operation")
+    
+    # Add floor level considerations if applicable
+    if floor_level and total_floors:
+        recommendations.append(f"- Being on floor {floor_level} of {total_floors}: Consider noise levels and ventilation needs")
+        
+    return "\n".join(recommendations)
+
+
+def match_user_profile_with_products(user_profile, product_embeddings, product_metadata, k=3):
+    """
+    Match a user profile with products for personalized recommendations.
+    
+    Args:
+        user_profile: Dictionary containing user profile information
+        product_embeddings: List of product embeddings
+        product_metadata: List of product metadata dictionaries
+        k: Number of top matches to return
+        
+    Returns:
+        DataFrame containing the top k matching products
+    """
+    # Create a user profile embedding
+    profile_entry = (
+        f"Age Group: {user_profile.get('age_group', 'Not Available')}. "
+        f"Room Type: {user_profile.get('room_type', 'Not Available')}. "
+        f"Preferences: {', '.join(user_profile.get('preferences', []))}. "
+        f"Budget: {user_profile.get('budget', 'Not Available')}."
+    )
+    
+    # Generate embedding for the user profile
+    client = Ollama()
+    try:
+        response = client.embed(model=MODEL_NAME, input=profile_entry)
+        if isinstance(response, dict) and 'embeddings' in response:
+            profile_embedding = response['embeddings'][0]
+        else:
+            print("Failed to generate user profile embedding")
+            return None
+    except Exception as e:
+        print(f"Error generating user profile embedding: {str(e)}")
+        return None
+    
+    # Calculate similarity scores
+    similarity_scores = []
+    for i, product_embedding in enumerate(product_embeddings):
+        # Calculate cosine similarity
+        similarity = np.dot(profile_embedding, product_embedding) / (
+            np.linalg.norm(profile_embedding) * np.linalg.norm(product_embedding)
+        )
+        similarity_scores.append((i, similarity))
+    
+    # Sort by similarity score (descending)
+    similarity_scores.sort(key=lambda x: x[1], reverse=True)
+    
+    # Get top k matches
+    top_k_indices = [idx for idx, _ in similarity_scores[:k]]
+    
+    # Create a DataFrame with the top k products
+    top_products = []
+    for idx in top_k_indices:
+        if idx < len(product_metadata):
+            product = product_metadata[idx]
+            product['similarity_score'] = similarity_scores[top_k_indices.index(idx)][1]
+            top_products.append(product)
+    
+    return pd.DataFrame(top_products)
+
+def get_personalized_recommendations(query, df, user_profile=None):
+    """
+    Get personalized product recommendations based on user profile.
+    
+    Args:
+        query: User query
+        df: Product DataFrame
+        user_profile: Dictionary containing user profile information
+        
+    Returns:
+        DataFrame containing personalized recommendations
+    """
+    # If no user profile is provided, return regular search results
+    if not user_profile:
+        return None
+    
+    # Load product embeddings
+    try:
+        with open(EMBEDDINGS_FILE_PATH, 'r') as f:
+            embeddings_dict = json.load(f)
+        
+        product_embeddings = embeddings_dict.get('product_embeddings', [])
+        product_metadata = []
+        
+        # Create product metadata
+        for _, row in df.iterrows():
+            metadata = {
+                'title': row.get('title', 'Not Available'),
+                'Product Type': row.get('Product Type', 'Not Available'),
+                'Brand': row.get('Brand', 'Not Available'),
+                'Better Home Price': row.get('Better Home Price', 'Not Available'),
+                'url': row.get('url', '#'),
+                'Description': row.get('Description', 'Not Available')
+            }
+            product_metadata.append(metadata)
+        
+        # Match user profile with products
+        recommendations = match_user_profile_with_products(
+            user_profile, 
+            product_embeddings, 
+            product_metadata
+        )
+        
+        if recommendations is not None and not recommendations.empty:
+            print(f"Found {len(recommendations)} personalized recommendations")
+            return recommendations
+        else:
+            print("No personalized recommendations found")
+            return None
+            
+    except Exception as e:
+        print(f"Error getting personalized recommendations: {str(e)}")
+        return None
+
+# ==========================
+# Main Function
+# ==========================
 def main():
     st.title('Better Home Product Q&A System')
 
@@ -782,6 +1016,19 @@ def main():
         else:
             st.sidebar.text("Blog embeddings file not found")
         
+        # Load home configuration for personalized recommendations
+        home_config = None
+        if os.path.exists(HOME_CONFIG_FILE):
+            try:
+                with open(HOME_CONFIG_FILE, 'r') as f:
+                    home_config = yaml.safe_load(f)
+                st.sidebar.text("Home configuration loaded")
+                st.sidebar.text(f"Found {len(home_config.get('home', {}).get('rooms', []))} rooms in configuration")
+            except Exception as e:
+                st.sidebar.text(f"Error loading home configuration: {str(e)}")
+        else:
+            st.sidebar.text("Home configuration file not found")
+        
         # Display available product types for debugging
         #st.sidebar.markdown("### Available Product Types")
         unique_types = df['Product Type'].unique()
@@ -807,12 +1054,26 @@ def main():
         query_lower = query.lower()  # Define query_lower here
         try:
             # Check if it's a "best" query first - this needs to be checked before any other processing
-            is_best_query = "best" in query_lower and any(product_type in query_lower for product_type in ["fan", "water heater", "geyser", "refrigerator", "washing machine", "air conditioner", "ac", "chimney", "hob", "plywood", "hdhmr"])
+            is_best_query = any(term in query_lower for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect'])
             
             # Debug logging
             st.sidebar.text(f"Query: {query}")
             st.sidebar.text(f"Is best query: {is_best_query}")
             st.sidebar.text(f"Query lower: {query_lower}")
+            
+            # Special handling for "best fan" queries with user profile
+            if is_best_query and ('fan' in query_lower or 'ceiling fan' in query_lower) and home_config:
+                st.sidebar.text("Using personalized fan recommendations based on user profile")
+                fan_recommendations = get_fan_recommendations_by_user_profile(query, df, home_config)
+                if fan_recommendations:
+                    st.markdown(fan_recommendations, unsafe_allow_html=True)
+                    
+                    # Update conversation history
+                    st.session_state['conversation_history'].append({
+                        'query': query,
+                        'answer': fan_recommendations
+                    })
+                    return
             
             # If it's a "best" query, use the special handling for all product types
             if is_best_query:
@@ -863,6 +1124,30 @@ def main():
                         context += f"Better Home Price: ₹{product.get('Better Home Price', 0):,.2f}\n"
                         context += f"Retail Price: ₹{product.get('Retail Price', 0):,.2f}\n"
                         context += f"URL: {product.get('url', '#')}\n\n"
+                    
+                    # Add home configuration context if available
+                    if home_config and 'home' in home_config:
+                        home_info = home_config['home']
+                        context += "\nUser Home Information:\n"
+                        context += f"City: {home_info.get('city', 'Not specified')}\n"
+                        context += f"Property Type: {home_info.get('property_type', 'Not specified')}\n"
+                        context += f"Floor Level: {home_info.get('floor_level', 'Not specified')} of {home_info.get('total_floors', 'Not specified')}\n\n"
+                        
+                        # Add room information
+                        context += "Rooms:\n"
+                        for room in home_info.get('rooms', []):
+                            room_name = room.get('name', 'Unknown Room')
+                            room_color = room.get('room_color', 'Not specified')
+                            used_by = room.get('used_by', 'Not specified')
+                            
+                            context += f"- {room_name}: Color {room_color}, Used by {used_by}\n"
+                            
+                            # Add kitchen categories if this is a kitchen
+                            if room_name.lower() == 'kitchen' and 'kitchen_categories' in room:
+                                context += "  Kitchen Categories:\n"
+                                for category in room.get('kitchen_categories', []):
+                                    cat_name = category.get('name', 'Unknown')
+                                    context += f"  - {cat_name}\n"
                     
                     # Get relevant blog articles if available
                     blog_results = []
@@ -1077,6 +1362,33 @@ def main():
                         })
                         return
                 
+                # Special handling for air conditioner queries
+                if ('air conditioner' in query_lower or 'ac' in query_lower) and not is_bldc_query:
+                    # Debug logging
+                    st.sidebar.text("Special air conditioner handling triggered")
+                    
+                    # Filter for air conditioners
+                    ac_df = df[df['Product Type'].astype(str) == 'Air Conditioner']
+                    
+                    if len(ac_df) > 0:
+                        answer = format_product_response(ac_df.head(5))
+                        st.markdown("### Air Conditioners:", unsafe_allow_html=True)
+                        st.markdown(answer, unsafe_allow_html=True)
+                        
+                        # Get relevant blogs for air conditioners
+                        if blog_embeddings:
+                            blog_results = search_relevant_blogs("air conditioners", blog_embeddings, product_filter='Air Conditioner')
+                            if blog_results and len(blog_results) > 0:
+                                blog_answer = format_blog_response(blog_results, query)
+                                st.markdown(blog_answer, unsafe_allow_html=True)
+                        
+                        # Update conversation history and return
+                        st.session_state['conversation_history'].append({
+                            'query': query,
+                            'answer': answer
+                        })
+                        return
+                
                 # Regular product availability check (fallback method)
                 product_found = False
                 for pt in df['Product Type'].unique():
@@ -1223,6 +1535,33 @@ def main():
                                     'answer': answer
                                 })
                                 return
+                    
+                    # Special handling for air conditioner queries
+                    if ('air conditioner' in query_lower or 'ac' in query_lower) and not price_results and not is_best_query:
+                        # Debug logging
+                        st.sidebar.text("Special air conditioner handling triggered")
+                        
+                        # Filter for air conditioners
+                        ac_df = df[df['Product Type'].astype(str) == 'Air Conditioner']
+                        
+                        if len(ac_df) > 0:
+                            answer = format_product_response(ac_df.head(5))
+                            st.markdown("### Air Conditioners:", unsafe_allow_html=True)
+                            st.markdown(answer, unsafe_allow_html=True)
+                            
+                            # Get relevant blogs for air conditioners
+                            if blog_embeddings:
+                                blog_results = search_relevant_blogs("air conditioners", blog_embeddings, product_filter='Air Conditioner')
+                                if blog_results and len(blog_results) > 0:
+                                    blog_answer = format_blog_response(blog_results, query)
+                                    st.markdown(blog_answer, unsafe_allow_html=True)
+                            
+                            # Update conversation history and return
+                            st.session_state['conversation_history'].append({
+                                'query': query,
+                                'answer': answer
+                            })
+                            return
                     
                     # Continue with the regular embedding-based query if no special handling applied
                     query_embedding = get_openai_embedding(query)

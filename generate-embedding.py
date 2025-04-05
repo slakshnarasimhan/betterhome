@@ -12,7 +12,7 @@ import faiss
 # ==========================
 MODEL_NAME = "llama3.2"  # Use your installed Ollama model
 #CSV_FILE_PATH = 'cleaned_products.csv'
-CSV_FILE_PATH = 'cleaned_products_10.csv'
+CSV_FILE_PATH = 'cleaned_products.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
 
@@ -41,18 +41,58 @@ def prepare_entries(df):
         else:
             discount_text = "No discount available."
 
-        # Main product entry with emphasis on Product Type and Brand
+        # Extract key features for recommendation
+        product_type = row.get('Product Type', 'Not Available')
+        brand = row.get('Brand', 'Not Available')
+        title = row.get('title', 'Not Available')
+        price = row.get('Better Home Price', 'Not Available')
+        retail_price = row.get('Retail Price', 'Not Available')
+        warranty = row.get('Warranty', 'Not Available')
+        features = row.get('Features', 'Not Available')
+        description = row.get('Description', 'Not Available')
+        url = row.get('url', 'Not Available')
+        
+        # Extract age-appropriate features
+        age_features = ""
+        if 'fan' in product_type.lower():
+            if 'BLDC' in title or 'Brushless' in title:
+                age_features += "Energy efficient, suitable for all ages. "
+            if 'remote' in description.lower() or 'remote' in title.lower():
+                age_features += "Remote control, convenient for elderly users. "
+            if 'child' in description.lower() or 'child' in title.lower():
+                age_features += "Child-safe design. "
+        
+        # Extract room-specific features
+        room_features = ""
+        if 'kitchen' in description.lower() or 'kitchen' in title.lower():
+            room_features += "Kitchen-friendly. "
+        if 'bedroom' in description.lower() or 'bedroom' in title.lower():
+            room_features += "Bedroom-optimized. "
+        if 'living room' in description.lower() or 'living room' in title.lower():
+            room_features += "Living room suitable. "
+        
+        # Extract energy efficiency features
+        energy_features = ""
+        if 'energy' in description.lower() or 'efficient' in description.lower():
+            energy_features += "Energy efficient. "
+        if 'power' in description.lower() and 'low' in description.lower():
+            energy_features += "Low power consumption. "
+        
+        # Main product entry with enhanced feature emphasis
         entry = (
-            f"Product Type: {row.get('Product Type', 'Not Available')}. "
-            f"Brand: {row.get('Brand', 'Not Available')}. "
-            f"Title: {row.get('title', 'Not Available')}. "
-            f"Better Home Price: {row.get('Better Home Price', 'Not Available')} INR. "
-            f"Retail Price: {row.get('Retail Price', 'Not Available')} INR. "
+            f"Product Type: {product_type}. "
+            f"Brand: {brand}. "
+            f"Title: {title}. "
+            f"Better Home Price: {price} INR. "
+            f"Retail Price: {retail_price} INR. "
             f"{discount_text} "
-            f"Warranty: {row.get('Warranty', 'Not Available')}. "
-            f"Features: {row.get('Features', 'Not Available')}. "
-            f"Description: {row.get('Description', 'Not Available')}. "
-            f"Product URL: {row.get('url', 'Not Available')}."
+            f"Warranty: {warranty}. "
+            f"Features: {features}. "
+            f"Age Features: {age_features} "
+            f"Room Features: {room_features} "
+            f"Energy Features: {energy_features} "
+            f"Description: {description}. "
+            f"Product URL: {url}."
         )
         entries.append(entry)
 
@@ -130,6 +170,41 @@ def build_faiss_index(embeddings, index_file_path):
         return None
 
 # ==========================
+# Step 6: Generate User Profile Embeddings
+# ==========================
+def generate_user_profile_embeddings(user_profiles, batch_size=1):
+    """
+    Generate embeddings for user profiles to improve personalized recommendations.
+    
+    Args:
+        user_profiles: List of user profile dictionaries
+        batch_size: Number of profiles to process in each batch
+        
+    Returns:
+        List of embeddings for user profiles
+    """
+    profile_entries = []
+    
+    for profile in user_profiles:
+        # Extract user profile information
+        age_group = profile.get('age_group', 'Not Available')
+        room_type = profile.get('room_type', 'Not Available')
+        preferences = profile.get('preferences', [])
+        budget = profile.get('budget', 'Not Available')
+        
+        # Create a structured profile entry
+        entry = (
+            f"Age Group: {age_group}. "
+            f"Room Type: {room_type}. "
+            f"Preferences: {', '.join(preferences)}. "
+            f"Budget: {budget}."
+        )
+        profile_entries.append(entry)
+    
+    # Use the existing embedding function to generate embeddings
+    return generate_local_embeddings(profile_entries, batch_size)
+
+# ==========================
 # Main Function
 # ==========================
 def main():
@@ -163,16 +238,46 @@ def main():
     print(f"Generated {len(brand_embeddings)} brand embeddings.")
     if brand_embeddings:
         print(f"Brand embedding dimension: {len(brand_embeddings[0])}.")
+    
+    # Generate sample user profiles for testing
+    sample_user_profiles = [
+        {
+            'age_group': 'elderly',
+            'room_type': 'bedroom',
+            'preferences': ['quiet operation', 'remote control', 'energy efficient'],
+            'budget': '₹5000-₹10000'
+        },
+        {
+            'age_group': 'children',
+            'room_type': 'bedroom',
+            'preferences': ['child-safe', 'quiet operation'],
+            'budget': '₹3000-₹8000'
+        },
+        {
+            'age_group': 'adult',
+            'room_type': 'living room',
+            'preferences': ['energy efficient', 'stylish design'],
+            'budget': '₹8000-₹15000'
+        }
+    ]
+    
+    print("Generating embeddings for user profiles.")
+    user_profile_embeddings = generate_user_profile_embeddings(sample_user_profiles)
+    print(f"Generated {len(user_profile_embeddings)} user profile embeddings.")
+    if user_profile_embeddings:
+        print(f"User profile embedding dimension: {len(user_profile_embeddings[0])}.")
 
     # Save embeddings
     embeddings_dict = {
         'product_embeddings': embeddings,
         'product_type_embeddings': product_type_embeddings,
         'brand_embeddings': brand_embeddings,
+        'user_profile_embeddings': user_profile_embeddings,
         'metadata': {
             'total_products': len(df),
             'unique_product_types': df['Product Type'].nunique(),
-            'unique_brands': df['Brand'].nunique()
+            'unique_brands': df['Brand'].nunique(),
+            'user_profiles': sample_user_profiles
         }
     }
     print("Saving embeddings to file.")
@@ -182,6 +287,7 @@ def main():
     build_faiss_index(embeddings, 'faiss_index.index_product')
     build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
     build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
+    build_faiss_index(user_profile_embeddings, 'faiss_index.index_user_profile')
 
 if __name__ == "__main__":
     main()
