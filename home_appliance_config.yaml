@@ -1,0 +1,26 @@
+
+home:
+  rooms:
+    - name: "Master Bathroom"
+      used_by: "Elderly parents"
+      geyser:
+        type: "Storage"
+        min_capacity_liters: 15
+        preferences: ["Auto cut-off", "Thermostat"]
+        budget: 7000
+
+    - name: "Children's Bathroom"
+      used_by: "Child"
+      geyser:
+        type: "Instant"
+        min_capacity_liters: 3
+        preferences: ["Compact", "Safe"]
+        budget: 5000
+
+    - name: "Guest Bathroom"
+      used_by: "Adults"
+      geyser:
+        type: "Storage"
+        min_capacity_liters: 10
+        preferences: ["Wall-mountable", "Quick heating"]
+        budget: 6000
