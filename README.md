@@ -4,12 +4,43 @@ A comprehensive question-answering system for home appliances and products, feat
 
 ## Project Structure
 
-- `process_blogs.py` - Crawls and processes blog content, extracts YouTube transcripts
-- `whatsapp_bot.py` - WhatsApp integration for product queries
-- `test_interface.py` - Streamlit interface for testing the QA system
-- `ask-questions-updated-corrected.py` - Core QA logic and product matching
-- `generate-embedding.py` - Generates embeddings for products and content
+### Core Components
+- `process_blogs.py` - Crawls and processes blog content, extracts YouTube transcripts, and generates blog embeddings
+- `whatsapp_bot.py` - WhatsApp integration for product queries and customer interactions
+- `test_interface.py` - Streamlit interface for testing the QA system with a chat-like interface
+- `ask-questions-updated-corrected.py` - Core QA logic and product matching using embeddings
+- `generate-embedding.py` - Generates embeddings for products and content using OpenAI API
 - `analyze_and_patch_qa_results.py` - Analyzes QA test results and generates diagnostics
+
+### Data Processing
+- `process-catalog.py` - Processes and cleans the product catalog data
+- `generate-embedding-new.py` - Alternative embedding generation script with updated logic
+- `generate-vector-db.py` - Creates vector database for efficient similarity search
+- `generate-blog-embeddings.py` - Specialized script for generating blog content embeddings
+
+### Testing and Validation
+- `test_qa_streamlit.py` - Tests the QA system through Streamlit interface
+- `test_qa_via_api.py` - Tests the QA system through API endpoints
+- `test_interface.py` - Streamlit interface for manual testing
+- `test_streamlit.py` - Basic Streamlit test script
+- `simple_test.py` - Minimal test script for Streamlit functionality
+- `regenerate_test_questions.py` - Generates new test questions for QA validation
+
+### API and Server
+- `betterhome_api_server.py` - FastAPI server for the QA system
+- `start_streamlit.sh` - Shell script to start the Streamlit server
+
+### Development and Analysis
+- `ollama.ipynb` - Jupyter notebook for Ollama model experimentation
+- `test-blog-embedding.py` - Tests blog embedding generation
+- `test.py` - General testing script
+
+### Configuration Files
+- `.env` - Environment variables and API keys
+- `requirements.txt` - Python package dependencies
+- `product_terms.json` - Product categories and synonyms
+- `synonym_dict.json` - Product synonym mappings
+- `updated_synonym_dict.json` - Updated product synonyms
 
 ## Prerequisites
 
