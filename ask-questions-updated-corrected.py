@@ -123,56 +123,57 @@ def get_openai_embedding(text, model='text-embedding-ada-002'):
             print(f"Error generating embedding with OpenAI: {e}")
             return np.random.rand(1536)
 
-def retrieve_and_generate_openai(query, context, model='gpt-4'):
-    system_prompt = (
-        "You are an expert assistant helping with Better Home's product catalog and blog content. "
-        "Your primary goal is to provide helpful information about products. "
-        "When discussing prices, always mention both the Better Home Price and how much cheaper it is compared to the Retail Price. "
-        "Be specific about the savings in INR and percentage terms. "
-        "Always include the product URL as a markdown link in your response using the format [Click here to buy](url). "
-        "If there are relevant blog articles in the context, extract useful information, tips, steps, or considerations from them "
-        "and add a section called 'Additional Tips' that presents this information in a clear, concise manner. "
-        "IMPORTANT: List ALL relevant products found in the context - do not limit your response to just one or two products. "
-        "Start your response with a clear statement about how many unique products were found that match the query. "
-        "Format each product in a clear, easy-to-read manner."
-    )
-
-    # Check if the query is asking for the "best" of a product type
-    if "best" in query.lower() and any(product_type in query.lower() for product_type in ["fan", "water heater", "geyser", "refrigerator", "washing machine", "air conditioner", "ac", "chimney", "hob", "plywood", "hdhmr"]):
-        system_prompt = (
-            "You are an expert assistant helping with Better Home's product catalog. "
-            "When asked about the 'best' product, respond in a structured format that acknowledges the subjective nature of the question. "
-            "Your response should follow this exact format:\n\n"
-            "1. Start with 'It is subjective.'\n"
-            "2. Then provide recommendations based on different criteria, using the format:\n"
-            "   'If you consider [criterion], [product recommendations with specific features]'\n"
-            "3. Include at least 4 different criteria such as performance, look, energy saving, price, etc.\n"
-            "4. For each criterion, mention specific product models and their distinguishing features.\n"
-            "5. For price recommendations, include the starting price in rupees.\n\n"
-            "Example format:\n"
-            "It is subjective.\n"
-            "If you consider performance [product] has the best [feature]\n"
-            "If you consider look, [product]\n"
-            "If you consider energy saving, [product] runs on [power] Watts\n"
-            "If you consider price, [product] starting from [price] rupees\n\n"
-            "Always include the product URL as a markdown link in your response using the format [Click here to buy](url)."
-        )
-
+def retrieve_and_generate_openai(query, context):
+    # Check if it's a "best" query
+    is_best_query = "best" in query.lower() and any(product_type in query.lower() for product_type in ["fan", "water heater", "geyser", "refrigerator", "washing machine", "air conditioner", "ac", "chimney", "hob", "plywood", "hdhmr"])
+    
+    # Debug logging
+    print(f"Retrieve and generate - Query: {query}")
+    print(f"Retrieve and generate - Is best query: {is_best_query}")
+    
+    # Create system prompt based on query type
+    if is_best_query:
+        system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
+        When answering questions about the "best" product, remember that this is a subjective question.
+        Provide a structured response that includes:
+        1. Acknowledge that "best" is subjective and depends on specific needs
+        2. List 2-3 top recommendations with clear reasoning for each
+        3. Include price ranges and key features
+        4. Mention any special considerations (e.g., energy efficiency for fans)
+        5. End with a suggestion to consider specific needs and budget
+        
+        Format your response in markdown with clear sections and bullet points."""
+        print("Using best query system prompt")
+    else:
+        system_prompt = """You are a helpful assistant for Better Home, a home improvement store. 
+        Answer questions about products based on the provided context. 
+        Be concise and informative, focusing on key features and benefits.
+        Format your response in markdown."""
+        print("Using regular system prompt")
+    
     try:
+        # Create messages for the API call
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
+        ]
+        
+        # Make the API call
         response = openai.ChatCompletion.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Context: {context}\nQuestion: {query}\nAnswer:"}
-            ],
-            max_tokens=700,  # Increased token limit to allow for blog content
-            temperature=0.7
+            model="gpt-3.5-turbo",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=1000
         )
-        answer = response.choices[0].message.content.strip()
+        
+        # Extract and return the answer
+        answer = response.choices[0].message.content
+        print(f"Generated answer length: {len(answer)}")
         return answer
+        
     except Exception as e:
-        print(f"Error generating response with OpenAI: {e}")
-        return "I'm sorry, I couldn't generate a response at this time."
+        print(f"Error in retrieve_and_generate_openai: {str(e)}")
+        raise e
 
 # ==========================
 # Step 4: FAISS Index Operations
@@ -805,6 +806,142 @@ def main():
     if query:
         query_lower = query.lower()  # Define query_lower here
         try:
+            # Check if it's a "best" query first - this needs to be checked before any other processing
+            is_best_query = "best" in query_lower and any(product_type in query_lower for product_type in ["fan", "water heater", "geyser", "refrigerator", "washing machine", "air conditioner", "ac", "chimney", "hob", "plywood", "hdhmr"])
+            
+            # Debug logging
+            st.sidebar.text(f"Query: {query}")
+            st.sidebar.text(f"Is best query: {is_best_query}")
+            st.sidebar.text(f"Query lower: {query_lower}")
+            
+            # If it's a "best" query, use the special handling for all product types
+            if is_best_query:
+                # Determine the product type from the query
+                product_type = None
+                
+                # More comprehensive product type detection
+                if 'fan' in query_lower or 'ceiling fan' in query_lower:
+                    product_type = 'Ceiling Fan'
+                    st.sidebar.text("Detected fan in best query")
+                elif 'water heater' in query_lower or 'geyser' in query_lower or 'heater' in query_lower:
+                    product_type = 'Water Heater'
+                elif 'refrigerator' in query_lower or 'fridge' in query_lower:
+                    product_type = 'Refrigerator'
+                elif 'washing machine' in query_lower or 'washer' in query_lower:
+                    product_type = 'Washing Machine'
+                elif 'air conditioner' in query_lower or 'ac' in query_lower:
+                    product_type = 'Air Conditioner'
+                elif 'chimney' in query_lower:
+                    product_type = 'Chimney'
+                elif 'hob' in query_lower or 'hob top' in query_lower:
+                    product_type = 'Hob Top'
+                elif 'plywood' in query_lower or 'hdhmr' in query_lower or 'ply' in query_lower:
+                    product_type = 'Plywood'
+                
+                # If product type not found by direct matching, try using product_terms
+                if not product_type and product_terms:
+                    product_type = find_product_type(query, product_terms)
+                    st.sidebar.text(f"Found product type from dictionary: {product_type}")
+                
+                # Debug logging
+                st.sidebar.text(f"Product type for best query: {product_type}")
+                
+                # If we identified a product type, filter the dataframe
+                if product_type:
+                    filtered_df = df[df['Product Type'].astype(str) == product_type]
+                    
+                    # Debug logging
+                    st.sidebar.text(f"Found {len(filtered_df)} products of type {product_type}")
+                    
+                    # Create a context with all products of this type
+                    context = f"Here are all the {product_type} products available:\n\n"
+                    for i, (idx, product) in enumerate(filtered_df.iterrows()):
+                        context += f"Product {i+1}:\n"
+                        context += f"Title: {product.get('title', 'N/A')}\n"
+                        context += f"Brand: {product.get('Brand', 'N/A')}\n"
+                        context += f"Product Type: {product.get('Product Type', 'N/A')}\n"
+                        context += f"Better Home Price: ₹{product.get('Better Home Price', 0):,.2f}\n"
+                        context += f"Retail Price: ₹{product.get('Retail Price', 0):,.2f}\n"
+                        context += f"URL: {product.get('url', '#')}\n\n"
+                    
+                    # Get relevant blog articles if available
+                    blog_results = []
+                    if blog_embeddings:
+                        try:
+                            blog_results = search_relevant_blogs(query, blog_embeddings, product_filter=product_type)
+                            if blog_results and len(blog_results) > 0:
+                                context += "\n\nHere are some relevant blog articles that may contain useful information:\n\n"
+                                for i, blog in enumerate(blog_results):
+                                    blog_title = blog.get('title', 'Untitled')
+                                    blog_content = blog.get('content', '')
+                                    if len(blog_content) > 1000:
+                                        blog_content = blog_content[:1000] + "..."
+                                    
+                                    context += f"Blog Article {i+1}:\n"
+                                    context += f"Title: {blog_title}\n"
+                                    context += f"Content: {blog_content}\n\n"
+                        except Exception as e:
+                            print(f"Error searching blog embeddings: {str(e)}")
+                            st.sidebar.text(f"Error searching blog embeddings: {str(e)}")
+                    
+                    # Debug logging
+                    st.sidebar.text(f"Context length: {len(context)} characters")
+                    
+                    # Generate the answer using the updated system prompt
+                    try:
+                        # Add a timeout to the OpenAI API call
+                        st.sidebar.text("Calling OpenAI API for best query response...")
+                        answer = retrieve_and_generate_openai(query, context)
+                        st.sidebar.text("Received response from OpenAI API")
+                        st.markdown("### Answer:", unsafe_allow_html=True)
+                        st.markdown(answer, unsafe_allow_html=True)
+                        
+                        # Display related blog articles if found
+                        if blog_results and len(blog_results) > 0:
+                            blog_answer = format_blog_response(blog_results, query)
+                            if blog_answer:
+                                st.markdown(blog_answer, unsafe_allow_html=True)
+                                st.markdown("---")
+                        
+                        # Update conversation history and return
+                        st.session_state['conversation_history'].append({
+                            'query': query,
+                            'answer': answer
+                        })
+                        return
+                    except Exception as e:
+                        st.sidebar.text(f"Error generating answer: {str(e)}")
+                        st.error(f"Error generating answer: {str(e)}")
+                        
+                        # Fallback to a simpler response if OpenAI fails
+                        st.markdown("### Answer:")
+                        st.markdown(f"**It is subjective.** Here are some {product_type} options based on different criteria:")
+                        
+                        # Create a simple structured response
+                        if len(filtered_df) > 0:
+                            # Sort by price for price recommendation
+                            price_sorted = filtered_df.sort_values('Better Home Price')
+                            
+                            # Get the most expensive for performance recommendation
+                            performance_sorted = filtered_df.sort_values('Better Home Price', ascending=False)
+                            
+                            # Create a simple response
+                            response = f"**If you consider performance:** {performance_sorted.iloc[0]['title']} offers the best features.\n\n"
+                            response += f"**If you consider price:** {price_sorted.iloc[0]['title']} is the most affordable option starting from ₹{price_sorted.iloc[0]['Better Home Price']:,.2f}.\n\n"
+                            
+                            # Add more criteria if we have enough products
+                            if len(filtered_df) >= 3:
+                                response += f"**If you consider brand reputation:** {filtered_df.iloc[0]['Brand']} is a well-known and reliable brand.\n\n"
+                            
+                            st.markdown(response)
+                            
+                            # Update conversation history
+                            st.session_state['conversation_history'].append({
+                                'query': query,
+                                'answer': response
+                            })
+                        return
+            
             # Check if query is just a product type directly - special handling for direct product queries
             direct_product_query = False
             product_type = None
@@ -1028,7 +1165,11 @@ def main():
                 # Handle regular query
                 try:
                     # Special handling for ceiling fan and BLDC fan queries
-                    if ('fan' in query_lower or 'ceiling fan' in query_lower) and not price_results:
+                    if ('fan' in query_lower or 'ceiling fan' in query_lower) and not price_results and not is_best_query:
+                        # Debug logging
+                        st.sidebar.text("Special fan handling triggered")
+                        st.sidebar.text(f"is_best_query: {is_best_query}")
+                        
                         # Check if it's specifically about BLDC fans
                         is_bldc_query = 'bldc' in query_lower or 'brushless' in query_lower or 'energy efficient' in query_lower
                         
@@ -1173,8 +1314,6 @@ def main():
                                         context += f"Blog Article {i+1}:\n"
                                         context += f"Title: {blog_title}\n"
                                         context += f"Content: {blog_content}\n\n"
-                                else:
-                                    st.sidebar.text("No relevant blog articles found")
                             except Exception as e:
                                 st.sidebar.text(f"Error searching blog embeddings: {str(e)}")
                                 traceback.print_exc()
