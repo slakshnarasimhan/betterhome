@@ -137,6 +137,27 @@ def retrieve_and_generate_openai(query, context, model='gpt-4'):
         "Format each product in a clear, easy-to-read manner."
     )
 
+    # Check if the query is asking for the "best" of a product type
+    if "best" in query.lower() and any(product_type in query.lower() for product_type in ["fan", "water heater", "geyser", "refrigerator", "washing machine", "air conditioner", "ac", "chimney", "hob", "plywood", "hdhmr"]):
+        system_prompt = (
+            "You are an expert assistant helping with Better Home's product catalog. "
+            "When asked about the 'best' product, respond in a structured format that acknowledges the subjective nature of the question. "
+            "Your response should follow this exact format:\n\n"
+            "1. Start with 'It is subjective.'\n"
+            "2. Then provide recommendations based on different criteria, using the format:\n"
+            "   'If you consider [criterion], [product recommendations with specific features]'\n"
+            "3. Include at least 4 different criteria such as performance, look, energy saving, price, etc.\n"
+            "4. For each criterion, mention specific product models and their distinguishing features.\n"
+            "5. For price recommendations, include the starting price in rupees.\n\n"
+            "Example format:\n"
+            "It is subjective.\n"
+            "If you consider performance [product] has the best [feature]\n"
+            "If you consider look, [product]\n"
+            "If you consider energy saving, [product] runs on [power] Watts\n"
+            "If you consider price, [product] starting from [price] rupees\n\n"
+            "Always include the product URL as a markdown link in your response using the format [Click here to buy](url)."
+        )
+
     try:
         response = openai.ChatCompletion.create(
             model=model,
