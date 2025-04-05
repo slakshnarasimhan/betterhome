@@ -1,7 +1,7 @@
 <<<<<<< HEAD
 import pandas as pd
 
-VALIDATED_CSV = 'qa_test_results.csv'
+VALIDATED_CSV = 'qa_test_results_validated.csv'
 SUGGESTIONS_FILE = 'diagnostic_suggestions.md'
 
 # Read the CSV file
