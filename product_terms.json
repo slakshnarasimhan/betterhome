@@ -22,6 +22,50 @@
             "Kitchen Appliances"
         ]
     },
+    "Glass Block": {
+        "standard_name": "Glass Block",
+        "alternatives": [
+            "glass brick",
+            "glass building block",
+            "glass construction block",
+            "glass partition block",
+            "glass wall block",
+            "glass decorative block",
+            "glass architectural block",
+            "glass masonry block",
+            "glass structural block",
+            "glass design block"
+        ],
+        "categories": [
+            "Building Materials",
+            "Glass Products",
+            "Construction Materials",
+            "Architectural Elements",
+            "Interior Design"
+        ]
+    },
+    "Glass Fitting": {
+        "standard_name": "Glass Fitting",
+        "alternatives": [
+            "glass door fitting",
+            "glass door hardware",
+            "glass door handle",
+            "glass door hinge",
+            "glass door lock",
+            "glass door mechanism",
+            "glass door system",
+            "glass door accessory",
+            "glass door component",
+            "glass door part"
+        ],
+        "categories": [
+            "Door Hardware",
+            "Glass Products",
+            "Home Decor",
+            "Door Fittings",
+            "Glass Accessories"
+        ]
+    },
     "Water Purifier": {
         "standard_name": "Water Purifier",
         "alternatives": [

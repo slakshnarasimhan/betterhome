@@ -10,9 +10,65 @@ import requests
 import traceback
 import re
 import yaml  # Add yaml import
-from typing import List, Dict, Any
-from datetime import datetime
+import sys  # Add sys import for path debugging
+from typing import Dict, Any, List, Optional, Tuple  # Add missing imports
 
+# Print Python path for debugging
+print("Python path:")
+for path in sys.path:
+    print(f"  - {path}")
+
+# Import common modules
+try:
+    from betterhome.common.config import (
+        CSV_FILE_PATH,
+        EMBEDDINGS_FILE_PATH,
+        PRODUCT_INDEX_FILE_PATH,
+        PRODUCT_TERMS_FILE,
+        HOME_CONFIG_FILE,
+        BLOG_EMBEDDINGS_FILE_PATH,
+        BLOG_INDEX_FILE_PATH,
+        load_product_terms,
+        load_home_config
+    )
+    print("Successfully imported config module")
+except Exception as e:
+    print(f"Error importing config module: {str(e)}")
+    traceback.print_exc()
+
+try:
+    from betterhome.common.embeddings import (
+        get_query_embedding,
+        load_embeddings,
+        build_or_load_faiss_index,
+        search_products
+    )
+    print("Successfully imported embeddings module")
+except Exception as e:
+    print(f"Error importing embeddings module: {str(e)}")
+    traceback.print_exc()
+
+try:
+    from betterhome.common.product_utils import (
+        find_product_type,
+        handle_price_query,
+        handle_brand_query,
+        format_brand_response,
+        format_product_response,
+        search_catalog,
+        format_answer
+    )
+    print("Successfully imported product_utils module")
+except Exception as e:
+    print(f"Error importing product_utils module: {str(e)}")
+    traceback.print_exc()
+
+try:
+    from betterhome.common.blog_utils import is_how_to_query
+    print("Successfully imported blog_utils module")
+except Exception as e:
+    print(f"Error importing blog_utils module: {str(e)}")
+    traceback.print_exc()
 
 # ==========================
 # Configuration
@@ -27,40 +83,11 @@ except Exception as e:
 
 client = Ollama()
 
-CSV_FILE_PATH = 'cleaned_products.csv'
-EMBEDDINGS_FILE_PATH = 'embeddings.json'
-# BLOG_EMBEDDINGS_FILE_PATH = 'blog_embeddings.json'  # Commented out
-BLOG_EMBEDDINGS_FILE_PATH = 'blog_embeddings.json'
-INDEX_FILE_PATH = 'faiss_index.index'
-# BLOG_INDEX_FILE_PATH = 'blog_faiss_index.index'    # Commented out
-BLOG_INDEX_FILE_PATH = 'faiss_index.index_blog'
-PRODUCT_INDEX_FILE_PATH = 'faiss_index.index_product'
-TYPE_INDEX_FILE_PATH = 'faiss_index.index_type'
-BRAND_INDEX_FILE_PATH = 'faiss_index.index_brand'
-PRODUCT_TERMS_FILE = 'product_terms.json'
-HOME_CONFIG_FILE = 'home_config.yaml'  # Updated path to new home config file
-
-# Load home configuration
-def load_home_config(file_path):
-    try:
-        with open(file_path, 'r') as f:
-            return yaml.safe_load(f)
-    except Exception as e:
-        print(f"Error loading home configuration: {str(e)}")
-        return None
-
-# Load home configuration
+# Load data
+df = pd.read_csv(CSV_FILE_PATH)
+embedding_data = load_embeddings(EMBEDDINGS_FILE_PATH)
+product_terms = load_product_terms(PRODUCT_TERMS_FILE)
 home_config = load_home_config(HOME_CONFIG_FILE)
-if home_config:
-    print("Home configuration loaded successfully")
-    print(f"Found {len(home_config.get('home', {}).get('rooms', []))} rooms in configuration")
-else:
-    print("Failed to load home configuration")
-
-# Session State for Memory
-if 'conversation_history' not in st.session_state:
-    st.session_state['conversation_history'] = []
-
 
 # ==========================
 # Step 1: Load Product Terms Dictionary
@@ -72,21 +99,34 @@ def load_product_terms(file_path):
 
 
 def find_product_type(query, product_terms):
+    """
+    Find the most relevant product type for a given query using the product terms dictionary.
+    """
     query_lower = query.lower()
     
-    # Special case for HDHMR/plywood
-    if 'hdhmr' in query_lower or 'plywood' in query_lower or 'ply' in query_lower:
-        return 'Plywood'
-    
+    # First check exact matches in product terms dictionary
     for product_type, info in product_terms.items():
         if product_type.lower() in query_lower:
             return product_type
-        for alternative in info['alternatives']:
-            if alternative.lower() in query_lower:
-                return product_type
+            
+        # Check categories
         for category in info['categories']:
             if category.lower() in query_lower:
                 return product_type
+                
+    # If no exact match found, try partial matches
+    for product_type, info in product_terms.items():
+        # Check if any word in the product type is in the query
+        product_type_words = product_type.lower().split()
+        if any(word in query_lower for word in product_type_words):
+            return product_type
+            
+        # Check categories
+        for category in info['categories']:
+            category_words = category.lower().split()
+            if any(word in query_lower for word in category_words):
+                return product_type
+    
     return None
 
 
@@ -213,7 +253,12 @@ def retrieve_and_generate_openai(query, context):
         # Extract and return the answer
         answer = response.choices[0].message.content
         print(f"Generated answer length: {len(answer)}")
-        return answer
+        
+        # Filter the answer to include only products from the catalog
+        catalog_titles = df['title'].str.lower().tolist()
+        filtered_answer = '\n'.join([line for line in answer.split('\n') if any(title in line.lower() for title in catalog_titles)])
+        
+        return filtered_answer
         
     except Exception as e:
         print(f"Error in retrieve_and_generate_openai: {str(e)}")
@@ -591,98 +636,135 @@ def load_blog_embeddings(file_path):
 # ==========================
 # Search Blogs
 # ==========================
-def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold=0.5, product_filter=None):
+def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold=0.3):
     print("Starting blog search...")
     print(f"Query: {query}")
     print(f"Similarity threshold: {similarity_threshold}")
-    print(f"Product filter: {product_filter}")
-
-    # Use OpenAI embeddings instead of Ollama for consistent results
-    query_embedding = get_openai_embedding(query)
-    print(f"Generated query embedding using OpenAI: {len(query_embedding)} dimensions")
     
-    # Reshape for processing
-    query_embedding = query_embedding.reshape(1, -1).astype('float32')
+    # Debug: Check if blog_embeddings_dict is valid
+    if not blog_embeddings_dict:
+        print("ERROR: blog_embeddings_dict is None or empty")
+        return []
     
-    # Convert blog embeddings to numpy array if it's a list
-    blog_embeddings = np.array(blog_embeddings_dict['blog_embeddings']).astype('float32')
+    # Debug: Check the structure of blog_embeddings_dict
+    print(f"Keys in blog_embeddings_dict: {list(blog_embeddings_dict.keys())}")
     
-    # Build or load FAISS index for blogs
-    if os.path.exists(BLOG_INDEX_FILE_PATH):
-        blog_index = faiss.read_index(BLOG_INDEX_FILE_PATH)
-    else:
-        blog_index = faiss.IndexFlatL2(blog_embeddings.shape[1])
-        if len(blog_embeddings) > 0:
-            blog_index.add(blog_embeddings)
-        faiss.write_index(blog_index, BLOG_INDEX_FILE_PATH)
+    blog_embeddings = blog_embeddings_dict['blog_embeddings']
+    print(f"Blog embeddings type: {type(blog_embeddings)}")
+    print(f"Blog embeddings shape: {blog_embeddings.shape if hasattr(blog_embeddings, 'shape') else 'No shape attribute'}")
+    print(f"Number of blog embeddings: {len(blog_embeddings)}")
     
-    # Log the dimensions of the query embedding and the FAISS index
-    print(f"Query embedding dimensions: {query_embedding.shape}")
-    print(f"Blog index dimensions: {blog_index.d}")
-
-    # Check for dimension mismatch and handle it
-    if query_embedding.shape[1] != blog_index.d:
-        print(f"Dimension mismatch: query {query_embedding.shape[1]} vs index {blog_index.d}")
-        # Handle dimension mismatch by truncating or padding the query embedding
-        if query_embedding.shape[1] > blog_index.d:
-            query_embedding = query_embedding[:, :blog_index.d]
-            print(f"Truncated query embedding to {blog_index.d} dimensions")
-        else:
-            padding = np.zeros((1, blog_index.d - query_embedding.shape[1]), dtype=np.float32)
-            query_embedding = np.hstack((query_embedding, padding))
-            print(f"Padded query embedding to {blog_index.d} dimensions")
+    # Generate query embedding using OpenAI for consistency
+    try:
+        query_embedding = get_openai_embedding(query)
+        print(f"Generated query embedding using OpenAI: {query_embedding.shape}")
+    except Exception as e:
+        print(f"Error generating query embedding: {str(e)}")
+        traceback.print_exc()
+        return []
+    
+    # Build or load FAISS index for blog search
+    try:
+        blog_index = build_or_load_faiss_index(
+            blog_embeddings,
+            query_embedding.shape[1],  # Use the same dimension as the query embedding
+            BLOG_INDEX_FILE_PATH
+        )
+        print(f"Successfully built/loaded FAISS index with {blog_index.d} dimensions")
+    except Exception as e:
+        print(f"Error building blog index: {str(e)}")
+        traceback.print_exc()
+        return []
     
     # Only search if we have blog embeddings
     if len(blog_embeddings) > 0:
         # Search for more blog posts than needed so we can filter
-        search_k = min(k * 5, len(blog_embeddings_dict['metadata']))
+        search_k = min(k * 10, len(blog_embeddings_dict['metadata']))  # Increased from k * 5 to k * 10
+        print(f"Searching for top {search_k} blog articles")
         D, I = blog_index.search(query_embedding, search_k)
         print(f"Found {len(I[0])} initial matching blog articles with distances: {D[0]}")
         
         # Get the metadata for found articles
         results = []
+        query_lower = query.lower()
+        is_chimney_query = "chimney" in query_lower
+        
+        # First pass: collect all potential matches with their scores
+        potential_matches = []
         for idx, (distance, i) in enumerate(zip(D[0], I[0])):
             if i < len(blog_embeddings_dict['metadata']):
                 metadata = blog_embeddings_dict['metadata'][i]
                 
-                # Ensure title and URL are present
-                if 'title' not in metadata or not metadata['title']:
-                    metadata['title'] = f"Blog Article {i}"
+                # Debug: Print the title of the article being processed
+                title = metadata.get('title', 'Untitled Article')
+                print(f"Processing blog {i}: {title}")
                 
-                if 'url' not in metadata or not metadata['url']:
-                    if 'slug' in metadata and metadata['slug']:
-                        metadata['url'] = f"https://betterhomeapp.com/blogs/articles/{metadata['slug']}"
-                    else:
-                        metadata['url'] = "https://betterhomeapp.com/blogs/articles"
-                
-                # Calculate similarity score
+                # Calculate base similarity score
                 similarity_score = 1.0 / (1.0 + distance)  # Convert distance to similarity (0-1 scale)
-                print(f"Blog {i}: Similarity score = {similarity_score:.3f}")
+                print(f"Blog {i}: Base similarity score = {similarity_score:.3f}")
                 
                 # Check if query matches related words or categories
-                query_lower = query.lower()
                 matches_related_words = any(word.lower() in query_lower for word in metadata.get('related_words', []))
                 matches_categories = any(tag.lower() in query_lower for tag in metadata.get('categories', []))
-                print(f"Blog {i}: Matches related words = {matches_related_words}, Matches categories = {matches_categories}")
                 
-                # Only include if similarity score is above threshold or matches related words/categories
-                if similarity_score > similarity_threshold or matches_related_words or matches_categories:
+                # For chimney queries, check if the title or content contains "chimney"
+                matches_chimney = False
+                if is_chimney_query:
+                    title_lower = metadata.get('title', '').lower()
+                    content_lower = metadata.get('content', '').lower()
+                    matches_chimney = "chimney" in title_lower or "chimney" in content_lower
+                    
+                    # Boost score for articles with "chimney" in title or content
+                    if matches_chimney:
+                        if "chimney" in title_lower:
+                            similarity_score *= 2.0  # Double the score for title matches
+                            print(f"Blog {i}: Score doubled due to chimney in title")
+                        else:
+                            similarity_score *= 1.5  # 1.5x score for content matches
+                            print(f"Blog {i}: Score boosted by 1.5x due to chimney in content")
+                    
+                    print(f"Blog {i}: Matches chimney = {matches_chimney}")
+                
+                print(f"Blog {i}: Matches related words = {matches_related_words}, Matches categories = {matches_categories}")
+                print(f"Blog {i}: Final similarity score = {similarity_score:.3f}")
+                
+                # Only include if similarity score is above threshold or matches criteria
+                if similarity_score > similarity_threshold or matches_related_words or matches_categories or matches_chimney:
                     metadata['_similarity_score'] = similarity_score
-                    results.append(metadata)
+                    potential_matches.append(metadata)
+                    print(f"Added blog {i} to potential matches with similarity score {similarity_score:.3f}")
                 else:
                     print(f"Skipping blog {i} due to low similarity score: {similarity_score:.3f}")
             else:
                 print(f"Index {i} is out of bounds for metadata array of length {len(blog_embeddings_dict['metadata'])}")
         
         # Sort by similarity score and limit to k results
-        if results:
-            results.sort(key=lambda x: x.get('_similarity_score', 0), reverse=True)
+        if potential_matches:
+            # Sort by similarity score
+            potential_matches.sort(key=lambda x: x.get('_similarity_score', 0), reverse=True)
+            
+            # For chimney queries, ensure chimney-related articles appear first
+            if is_chimney_query:
+                chimney_articles = [article for article in potential_matches 
+                                  if "chimney" in article.get('title', '').lower() 
+                                  or "chimney" in article.get('content', '').lower()]
+                other_articles = [article for article in potential_matches 
+                                if article not in chimney_articles]
+                results = chimney_articles + other_articles
+            else:
+                results = potential_matches
+            
+            # Limit to k results
             results = results[:k]
             print(f"Returning {len(results)} most relevant blog articles")
+            
+            # Debug: Print the titles of the returned articles
+            for i, result in enumerate(results):
+                print(f"Result {i+1}: {result.get('title', 'Untitled Article')} (Score: {result.get('_similarity_score', 0):.3f})")
+            return results
         else:
             print("No sufficiently relevant blog articles found")
-        
-        return results
+            return []
     else:
         print("No blog embeddings to search")
         return []
@@ -978,724 +1060,139 @@ def get_personalized_recommendations(query, df, user_profile=None):
 # Main Function
 # ==========================
 def main():
-    st.title('Better Home Product Q&A System')
-
-    # Add debugging information
-    #st.sidebar.markdown("### Debug Info")
-    #st.sidebar.text(f"OpenAI API Key: {'Set' if OPENAI_API_KEY != 'not-set' else 'Not Set'}")
-    #st.sidebar.text(f"CSV File exists: {os.path.exists(CSV_FILE_PATH)}")
-    #st.sidebar.text(f"Embeddings File exists: {os.path.exists(EMBEDDINGS_FILE_PATH)}")
-    #st.sidebar.text(f"Product Index exists: {os.path.exists(PRODUCT_INDEX_FILE_PATH)}")
-    #st.sidebar.text(f"Blog Embeddings File exists: {os.path.exists(BLOG_EMBEDDINGS_FILE_PATH)}")
-    #st.sidebar.text(f"Blog Index exists: {os.path.exists(BLOG_INDEX_FILE_PATH)}")
+    st.title("Better Home Assistant")
     
-    # Load data with error handling
+    # Initialize session state
+    if 'conversation_history' not in st.session_state:
+        st.session_state['conversation_history'] = []
+    
+    # Build or load FAISS index for product search
     try:
-        df = load_product_catalog(CSV_FILE_PATH)
-        st.sidebar.text(f"Product catalog loaded: {len(df)} items")
-        
-        # Load product terms dictionary
-        product_terms = {}
-        if os.path.exists(PRODUCT_TERMS_FILE):
-            try:
-                product_terms = load_product_terms(PRODUCT_TERMS_FILE)
-                st.sidebar.text(f"Product terms loaded: {len(product_terms)} product types")
-            except Exception as e:
-                st.sidebar.text(f"Error loading product terms: {str(e)}")
-        else:
-            st.sidebar.text("Product terms file not found")
-        
-        # Load blog embeddings if available
-        blog_embeddings = None
-        if os.path.exists(BLOG_EMBEDDINGS_FILE_PATH):
-            blog_embeddings = load_blog_embeddings(BLOG_EMBEDDINGS_FILE_PATH)
-            if blog_embeddings:
-                st.sidebar.text(f"Blog embeddings loaded: {len(blog_embeddings['metadata'])} articles")
-            else:
-                st.sidebar.text("Failed to load blog embeddings")
-        else:
-            st.sidebar.text("Blog embeddings file not found")
-        
-        # Load home configuration for personalized recommendations
-        home_config = None
-        if os.path.exists(HOME_CONFIG_FILE):
-            try:
-                with open(HOME_CONFIG_FILE, 'r') as f:
-                    home_config = yaml.safe_load(f)
-                st.sidebar.text("Home configuration loaded")
-                st.sidebar.text(f"Found {len(home_config.get('home', {}).get('rooms', []))} rooms in configuration")
-            except Exception as e:
-                st.sidebar.text(f"Error loading home configuration: {str(e)}")
-        else:
-            st.sidebar.text("Home configuration file not found")
-        
-        # Display available product types for debugging
-        #st.sidebar.markdown("### Available Product Types")
-        unique_types = df['Product Type'].unique()
-        # Convert all product types to strings before joining
-        unique_types_str = [str(pt) for pt in unique_types]
-        #st.sidebar.text(f"{', '.join(unique_types_str)}")
+        index = build_or_load_faiss_index(
+            embedding_data['product_embeddings'],
+            embedding_data['product_embeddings'].shape[1] if len(embedding_data['product_embeddings']) > 0 else 1536,
+            PRODUCT_INDEX_FILE_PATH
+        )
     except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
-        traceback.print_exc()  # Print detailed error information
-        st.stop()
-        return
-
-    # Display metadata
-    #st.sidebar.write("### Catalog Statistics")
-    #st.sidebar.write(f"Total Products: {len(df)}")
-    #st.sidebar.write(f"Unique Product Types: {df['Product Type'].nunique()}")
-    #st.sidebar.write(f"Unique Brands: {df['Brand'].nunique()}")
-
-    # Query box
-    query = st.text_input("Ask a question about Better Home products:")
-
-    if query:
-        query_lower = query.lower()  # Define query_lower here
+        st.error(f"Error building product index: {str(e)}")
+        index = None
+    
+    # User input
+    user_input = st.text_input("Ask me anything about home products:", key="user_input")
+    
+    if user_input:
+        query = user_input.lower().strip()
+        
         try:
-            # Check if it's a "best" query first - this needs to be checked before any other processing
-            is_best_query = any(term in query_lower for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect'])
-            
-            # Debug logging
-            st.sidebar.text(f"Query: {query}")
-            st.sidebar.text(f"Is best query: {is_best_query}")
-            st.sidebar.text(f"Query lower: {query_lower}")
-            
-            # Special handling for "best fan" queries with user profile
-            if is_best_query and ('fan' in query_lower or 'ceiling fan' in query_lower) and home_config:
-                st.sidebar.text("Using personalized fan recommendations based on user profile")
-                fan_recommendations = get_fan_recommendations_by_user_profile(query, df, home_config)
-                if fan_recommendations:
-                    st.markdown(fan_recommendations, unsafe_allow_html=True)
-                    
-                    # Update conversation history
-                    st.session_state['conversation_history'].append({
-                        'query': query,
-                        'answer': fan_recommendations
-                    })
-                    return
-            
-            # If it's a "best" query, use the special handling for all product types
-            if is_best_query:
-                # Determine the product type from the query
-                product_type = None
-                
-                # More comprehensive product type detection
-                if 'fan' in query_lower or 'ceiling fan' in query_lower:
-                    product_type = 'Ceiling Fan'
-                    st.sidebar.text("Detected fan in best query")
-                elif 'water heater' in query_lower or 'geyser' in query_lower or 'heater' in query_lower:
-                    product_type = 'Water Heater'
-                elif 'refrigerator' in query_lower or 'fridge' in query_lower:
-                    product_type = 'Refrigerator'
-                elif 'washing machine' in query_lower or 'washer' in query_lower:
-                    product_type = 'Washing Machine'
-                elif 'air conditioner' in query_lower or 'ac' in query_lower:
-                    product_type = 'Air Conditioner'
-                elif 'chimney' in query_lower:
-                    product_type = 'Chimney'
-                elif 'hob' in query_lower or 'hob top' in query_lower:
-                    product_type = 'Hob Top'
-                elif 'plywood' in query_lower or 'hdhmr' in query_lower or 'ply' in query_lower:
-                    product_type = 'Plywood'
-                
-                # If product type not found by direct matching, try using product_terms
-                if not product_type and product_terms:
-                    product_type = find_product_type(query, product_terms)
-                    st.sidebar.text(f"Found product type from dictionary: {product_type}")
-                
-                # Debug logging
-                st.sidebar.text(f"Product type for best query: {product_type}")
-                
-                # If we identified a product type, filter the dataframe
-                if product_type:
-                    filtered_df = df[df['Product Type'].astype(str) == product_type]
-                    
-                    # Debug logging
-                    st.sidebar.text(f"Found {len(filtered_df)} products of type {product_type}")
-                    
-                    # Create a context with all products of this type
-                    context = f"Here are all the {product_type} products available:\n\n"
-                    for i, (idx, product) in enumerate(filtered_df.iterrows()):
-                        context += f"Product {i+1}:\n"
-                        context += f"Title: {product.get('title', 'N/A')}\n"
-                        context += f"Brand: {product.get('Brand', 'N/A')}\n"
-                        context += f"Product Type: {product.get('Product Type', 'N/A')}\n"
-                        context += f"Better Home Price: ₹{product.get('Better Home Price', 0):,.2f}\n"
-                        context += f"Retail Price: ₹{product.get('Retail Price', 0):,.2f}\n"
-                        context += f"URL: {product.get('url', '#')}\n\n"
-                    
-                    # Add home configuration context if available
-                    if home_config and 'home' in home_config:
-                        home_info = home_config['home']
-                        context += "\nUser Home Information:\n"
-                        context += f"City: {home_info.get('city', 'Not specified')}\n"
-                        context += f"Property Type: {home_info.get('property_type', 'Not specified')}\n"
-                        context += f"Floor Level: {home_info.get('floor_level', 'Not specified')} of {home_info.get('total_floors', 'Not specified')}\n\n"
-                        
-                        # Add room information
-                        context += "Rooms:\n"
-                        for room in home_info.get('rooms', []):
-                            room_name = room.get('name', 'Unknown Room')
-                            room_color = room.get('room_color', 'Not specified')
-                            used_by = room.get('used_by', 'Not specified')
-                            
-                            context += f"- {room_name}: Color {room_color}, Used by {used_by}\n"
-                            
-                            # Add kitchen categories if this is a kitchen
-                            if room_name.lower() == 'kitchen' and 'kitchen_categories' in room:
-                                context += "  Kitchen Categories:\n"
-                                for category in room.get('kitchen_categories', []):
-                                    cat_name = category.get('name', 'Unknown')
-                                    context += f"  - {cat_name}\n"
-                    
-                    # Get relevant blog articles if available
-                    blog_results = []
-                    if blog_embeddings:
-                        try:
-                            blog_results = search_relevant_blogs(query, blog_embeddings, product_filter=product_type)
-                            if blog_results and len(blog_results) > 0:
-                                context += "\n\nHere are some relevant blog articles that may contain useful information:\n\n"
-                                for i, blog in enumerate(blog_results):
-                                    blog_title = blog.get('title', 'Untitled')
-                                    blog_content = blog.get('content', '')
-                                    if len(blog_content) > 1000:
-                                        blog_content = blog_content[:1000] + "..."
-                                    
-                                    context += f"Blog Article {i+1}:\n"
-                                    context += f"Title: {blog_title}\n"
-                                    context += f"Content: {blog_content}\n\n"
-                        except Exception as e:
-                            print(f"Error searching blog embeddings: {str(e)}")
-                            st.sidebar.text(f"Error searching blog embeddings: {str(e)}")
-                    
-                    # Debug logging
-                    st.sidebar.text(f"Context length: {len(context)} characters")
-                    
-                    # Generate the answer using the updated system prompt
-                    try:
-                        # Add a timeout to the OpenAI API call
-                        st.sidebar.text("Calling OpenAI API for best query response...")
-                        answer = retrieve_and_generate_openai(query, context)
-                        st.sidebar.text("Received response from OpenAI API")
-                        st.markdown("### Answer:", unsafe_allow_html=True)
-                        st.markdown(answer, unsafe_allow_html=True)
-                        
-                        # Display related blog articles if found
-                        if blog_results and len(blog_results) > 0:
-                            blog_answer = format_blog_response(blog_results, query)
-                            if blog_answer:
-                                st.markdown(blog_answer, unsafe_allow_html=True)
-                                st.markdown("---")
-                        
-                        # Update conversation history and return
-                        st.session_state['conversation_history'].append({
-                            'query': query,
-                            'answer': answer
-                        })
-                        return
-                    except Exception as e:
-                        st.sidebar.text(f"Error generating answer: {str(e)}")
-                        st.error(f"Error generating answer: {str(e)}")
-                        
-                        # Fallback to a simpler response if OpenAI fails
-                        st.markdown("### Answer:")
-                        st.markdown(f"**It is subjective.** Here are some {product_type} options based on different criteria:")
-                        
-                        # Create a simple structured response
-                        if len(filtered_df) > 0:
-                            # Sort by price for price recommendation
-                            price_sorted = filtered_df.sort_values('Better Home Price')
-                            
-                            # Get the most expensive for performance recommendation
-                            performance_sorted = filtered_df.sort_values('Better Home Price', ascending=False)
-                            
-                            # Create a simple response
-                            response = f"**If you consider performance:** {performance_sorted.iloc[0]['title']} offers the best features.\n\n"
-                            response += f"**If you consider price:** {price_sorted.iloc[0]['title']} is the most affordable option starting from ₹{price_sorted.iloc[0]['Better Home Price']:,.2f}.\n\n"
-                            
-                            # Add more criteria if we have enough products
-                            if len(filtered_df) >= 3:
-                                response += f"**If you consider brand reputation:** {filtered_df.iloc[0]['Brand']} is a well-known and reliable brand.\n\n"
-                            
-                            st.markdown(response)
-                            
-                            # Update conversation history
-                            st.session_state['conversation_history'].append({
-                                'query': query,
-                                'answer': response
-                            })
-                        return
-            
-            # Check if query is just a product type directly - special handling for direct product queries
-            direct_product_query = False
-            product_type = None
-            
-            # Check for HDHMR/plywood in direct query
-            if 'hdhmr' in query_lower or 'plywood' in query_lower or 'ply' in query_lower:
-                product_type = 'Plywood'
-                direct_product_query = True
-                st.sidebar.text(f"Direct query for product type: {product_type}")
-            
-            # Check other direct product type queries
-            if not direct_product_query and product_terms:
-                product_type = find_product_type(query, product_terms)
-                if product_type:
-                    direct_product_query = True
-                    st.sidebar.text(f"Found direct product type in dictionary: {product_type}")
-            
-            # Handle direct product type queries
-            if direct_product_query and product_type:
-                # Filter by product type
-                filtered_df = df[df['Product Type'].astype(str) == str(product_type)]
-                
-                # Special handling for BLDC fans if that's the query
-                if product_type == 'Ceiling Fan' and ('bldc' in query_lower or 'brushless' in query_lower):
-                    filtered_df = filtered_df[filtered_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                
-                if len(filtered_df) > 0:
-                    st.markdown(f"### {product_type} Products")
-                    answer = format_product_response(filtered_df.head(5))
-                    st.markdown(answer, unsafe_allow_html=True)
-                    
-                    # Search for related blog articles
-                    if blog_embeddings:
-                        st.sidebar.text(f"Searching for blog articles related to {product_type}...")
-                        blog_results = search_relevant_blogs(query, blog_embeddings, product_filter=product_type)
-                        if blog_results and len(blog_results) > 0:
-                            blog_answer = format_blog_response(blog_results, query)
-                            st.markdown(blog_answer, unsafe_allow_html=True)
-                    
-                    # Update conversation history
-                    st.session_state['conversation_history'].append({
-                        'query': query,
-                        'answer': answer
-                    })
-                    return
-                else:
-                    st.sidebar.text(f"No products found for type: {product_type}")
-            
-            # Continue with other query types if not a direct product query or no results found
-            # First, check if it's a product type availability query (e.g., "Do you have ceiling fans?")
-            is_availability_query = any(term in query_lower for term in [
-                'do you have', 'do you sell', 'do you carry', 'available', 'in stock', 'sell', 'offer', 'show me'
-            ])
-            
-            if is_availability_query:
-                # Print debugging info
-                st.sidebar.text(f"Detected availability query: {query}")
-                
-                # Check if query matches any product type using product_terms dictionary
-                matched_product_type = None
-                if product_terms:
-                    matched_product_type = find_product_type(query, product_terms)
-                    if matched_product_type:
-                        st.sidebar.text(f"Matched product type from dictionary: {matched_product_type}")
-                
-                # Special check for geysers/water heaters if not already matched
-                if not matched_product_type and any(term in query_lower for term in [
-                    'geyser', 'geysers', 'water heater', 'water heaters', 'heater', 'heaters'
-                ]):
-                    st.sidebar.text("Detected geyser/water heater query")
-                    # Get all water heaters
-                    water_heaters = df[df['Product Type'].str.contains('Water Heater|Geyser', case=False, na=False)]
-                    
-                    if len(water_heaters) > 0:
-                        st.markdown("### Yes, we have Water Heaters/Geysers!")
-                        answer = format_product_response(water_heaters.head(5))
-                        st.markdown(answer, unsafe_allow_html=True)
-                        
-                        # Update conversation history
-                        st.session_state['conversation_history'].append({
-                            'query': query,
-                            'answer': answer
-                        })
-                        return
-                
-                # Use the matched product type from dictionary if found
-                if matched_product_type:
-                    product_df = df[df['Product Type'].str.contains(matched_product_type, case=False, na=False)]
-                    
-                    if len(product_df) > 0:
-                        st.markdown(f"### Yes, we have {matched_product_type} products!")
-                        
-                        # Special case for fans - prioritize BLDC fans 
-                        if 'fan' in matched_product_type.lower():
-                            bldc_products = product_df[product_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                            regular_products = product_df[~product_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                            
-                            # Combine with BLDC fans first
-                            sample_products = pd.concat([bldc_products.head(3), regular_products.head(2)])
-                            if len(bldc_products) > 0:
-                                st.markdown("💚 **Featured: Energy-efficient BLDC fans**")
-                        else:
-                            sample_products = product_df.head(5)
-                        
-                        answer = format_product_response(sample_products)
-                        st.markdown(answer, unsafe_allow_html=True)
-                        
-                        # Update conversation history
-                        st.session_state['conversation_history'].append({
-                            'query': query,
-                            'answer': answer
-                        })
-                        return
-                
-                # Special handling for BLDC fan queries
-                is_bldc_query = 'bldc' in query_lower or 'brushless' in query_lower or 'energy efficient' in query_lower
-                
-                if is_bldc_query and ('fan' in query_lower or 'ceiling fan' in query_lower):
-                    # Handle BLDC fan availability query
-                    fan_df = df[df['Product Type'].astype(str) == 'Ceiling Fan']
-                    bldc_fans = fan_df[fan_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                    
-                    if len(bldc_fans) > 0:
-                        st.markdown("### Yes, we have BLDC Ceiling Fans!")
-                        st.markdown("💚 These energy-efficient fans use up to 70% less electricity than conventional fans.")
-                        answer = format_product_response(bldc_fans.head(5))
-                        st.markdown(answer, unsafe_allow_html=True)
-                        
-                        # Update conversation history
-                        st.session_state['conversation_history'].append({
-                            'query': query,
-                            'answer': answer
-                        })
-                        return
-                
-                # Special handling for air conditioner queries
-                if ('air conditioner' in query_lower or 'ac' in query_lower) and not is_bldc_query:
-                    # Debug logging
-                    st.sidebar.text("Special air conditioner handling triggered")
-                    
-                    # Filter for air conditioners
-                    ac_df = df[df['Product Type'].astype(str) == 'Air Conditioner']
-                    
-                    if len(ac_df) > 0:
-                        answer = format_product_response(ac_df.head(5))
-                        st.markdown("### Air Conditioners:", unsafe_allow_html=True)
-                        st.markdown(answer, unsafe_allow_html=True)
-                        
-                        # Get relevant blogs for air conditioners
-                        if blog_embeddings:
-                            blog_results = search_relevant_blogs("air conditioners", blog_embeddings, product_filter='Air Conditioner')
-                            if blog_results and len(blog_results) > 0:
-                                blog_answer = format_blog_response(blog_results, query)
-                                st.markdown(blog_answer, unsafe_allow_html=True)
-                        
-                        # Update conversation history and return
-                        st.session_state['conversation_history'].append({
-                            'query': query,
-                            'answer': answer
-                        })
-                        return
-                
-                # Regular product availability check (fallback method)
-                product_found = False
-                for pt in df['Product Type'].unique():
-                    pt_lower = str(pt).lower()  # Ensure conversion to string
-                    
-                    # Debug print for each product type being checked
-                    st.sidebar.text(f"Checking product type: {pt}")
-                    
-                    # More relaxed matching for product types
-                    if any(word in pt_lower for word in query_lower.split() if len(word) > 2) or \
-                       any(word in query_lower for word in pt_lower.split() if len(word) > 2):
-                        product_found = True
-                        st.markdown(f"### Yes, we have {pt} products!")
-                        
-                        # Special case for fans - prioritize BLDC fans
-                        if pt.lower() == 'ceiling fan' or 'fan' in pt.lower():
-                            fan_df = df[df['Product Type'].astype(str) == pt]
-                            bldc_fans = fan_df[fan_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                            regular_fans = fan_df[~fan_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                            
-                            # Combine with BLDC fans first
-                            sample_products = pd.concat([bldc_fans.head(3), regular_fans.head(2)])
-                            st.markdown("💚 **Featured: Energy-efficient BLDC fans**")
-                        else:
-                            # For other product types, take the first 5
-                            sample_products = df[df['Product Type'].astype(str) == str(pt)].head(5)
-                            
-                        answer = format_product_response(sample_products)
-                        st.markdown(answer, unsafe_allow_html=True)
-                        break
-                
-                if not product_found:
-                    st.markdown("### Product Type Not Found")
-                    st.markdown(f"I'm sorry, but I couldn't find that product type in our catalog. Here are the product types we currently offer:")
-                    unique_types_str = [str(pt) for pt in df['Product Type'].unique()]
-                    st.markdown(", ".join(unique_types_str))
-                    
-                    # Store conversation history
-                    st.session_state['conversation_history'].append({
-                        'query': query,
-                        'answer': "Product type not found in our catalog."
-                    })
-                    return
-            
-            # Check if it's a price-based query
-            price_results = handle_price_query(query, df, product_terms)
-            
-            # Check if it's a brand-related query
-            brand_results = handle_brand_query(query, df, product_terms)
-            
-            if brand_results is not None:
-                # Handle brand-specific query
-                results_df = brand_results['dataframe']
-                product_type = brand_results['product_type']
-                st.sidebar.text(f"Handling brand query - found {len(results_df)} brands for {product_type}")
-                answer = format_brand_response(results_df, product_type, brand_results['is_warranty_query'])
-                st.markdown(answer, unsafe_allow_html=True)
-                
-                # Add blog results for brand queries if available
-                if blog_embeddings:
-                    # Create a more specific query for blog search
-                    is_warranty_query = brand_results.get('is_warranty_query', False)
-                    
-                    if is_warranty_query:
-                        # For warranty queries, specifically search for warranty content
-                        brand_blog_query = f"{product_type} brands warranty guarantee quality"
-                    else:
-                        brand_blog_query = f"{product_type} brands information"
-                    
-                    # Add the product_filter parameter to ensure we get relevant blogs
-                    blog_results = search_relevant_blogs(
-                        brand_blog_query, 
-                        blog_embeddings, 
-                        product_filter=product_type
-                    )
-                    
-                    if blog_results and len(blog_results) > 0:
-                        blog_answer = format_blog_response(blog_results, query)
-                        st.markdown(blog_answer, unsafe_allow_html=True)
-            
-            elif price_results is not None:
-                # Handle price-based query
-                answer = format_product_response(price_results)
-                st.markdown(answer, unsafe_allow_html=True)
-            else:
-                # Handle regular query
+            # Check if it's a how-to question
+            if is_how_to_query(query):
+                # Load blog embeddings
                 try:
-                    # Special handling for ceiling fan and BLDC fan queries
-                    if ('fan' in query_lower or 'ceiling fan' in query_lower) and not price_results and not is_best_query:
-                        # Debug logging
-                        st.sidebar.text("Special fan handling triggered")
-                        st.sidebar.text(f"is_best_query: {is_best_query}")
-                        
-                        # Check if it's specifically about BLDC fans
-                        is_bldc_query = 'bldc' in query_lower or 'brushless' in query_lower or 'energy efficient' in query_lower
-                        
-                        # Filter for ceiling fans
-                        fan_df = df[df['Product Type'].astype(str) == 'Ceiling Fan']
-                        
-                        if is_bldc_query:
-                            # If specifically asking about BLDC fans, filter for those
-                            bldc_fans = fan_df[fan_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                            if len(bldc_fans) > 0:
-                                answer = format_product_response(bldc_fans.head(5))
-                                st.markdown("### BLDC Ceiling Fans (Energy Efficient):", unsafe_allow_html=True)
-                                st.markdown(answer, unsafe_allow_html=True)
-                                
-                                # Get relevant blogs for BLDC fans
-                                if blog_embeddings:
-                                    blog_results = search_relevant_blogs("BLDC ceiling fans energy efficient", blog_embeddings, product_filter='Ceiling Fan')
-                                    if blog_results and len(blog_results) > 0:
-                                        blog_answer = format_blog_response(blog_results, query)
-                                        st.markdown(blog_answer, unsafe_allow_html=True)
-                                
-                                # Update conversation history and return
-                                st.session_state['conversation_history'].append({
-                                    'query': query,
-                                    'answer': answer
-                                })
-                                return
-                        else:
-                            # For general fan queries, prioritize BLDC fans first, then show regular fans
-                            bldc_fans = fan_df[fan_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                            regular_fans = fan_df[~fan_df['title'].str.contains('BLDC|Brushless', case=False, na=False)]
-                            
-                            # Combine with BLDC fans first
-                            prioritized_fans = pd.concat([bldc_fans.head(3), regular_fans.head(2)])
-                            
-                            if len(prioritized_fans) > 0:
-                                answer = format_product_response(prioritized_fans.head(5))
-                                st.markdown("### Ceiling Fans (Energy Efficient BLDC Fans Highlighted):", unsafe_allow_html=True)
-                                st.markdown(answer, unsafe_allow_html=True)
-                                
-                                # Get relevant blogs for fans
-                                if blog_embeddings:
-                                    blog_results = search_relevant_blogs("ceiling fans", blog_embeddings, product_filter='Ceiling Fan')
-                                    if blog_results and len(blog_results) > 0:
-                                        blog_answer = format_blog_response(blog_results, query)
-                                        st.markdown(blog_answer, unsafe_allow_html=True)
-                                
-                                # Update conversation history and return
-                                st.session_state['conversation_history'].append({
-                                    'query': query,
-                                    'answer': answer
-                                })
-                                return
-                    
-                    # Special handling for air conditioner queries
-                    if ('air conditioner' in query_lower or 'ac' in query_lower) and not price_results and not is_best_query:
-                        # Debug logging
-                        st.sidebar.text("Special air conditioner handling triggered")
-                        
-                        # Filter for air conditioners
-                        ac_df = df[df['Product Type'].astype(str) == 'Air Conditioner']
-                        
-                        if len(ac_df) > 0:
-                            answer = format_product_response(ac_df.head(5))
-                            st.markdown("### Air Conditioners:", unsafe_allow_html=True)
-                            st.markdown(answer, unsafe_allow_html=True)
-                            
-                            # Get relevant blogs for air conditioners
-                            if blog_embeddings:
-                                blog_results = search_relevant_blogs("air conditioners", blog_embeddings, product_filter='Air Conditioner')
-                                if blog_results and len(blog_results) > 0:
-                                    blog_answer = format_blog_response(blog_results, query)
-                                    st.markdown(blog_answer, unsafe_allow_html=True)
-                            
-                            # Update conversation history and return
-                            st.session_state['conversation_history'].append({
-                                'query': query,
-                                'answer': answer
-                            })
+                    print(f"Loading blog embeddings from {BLOG_EMBEDDINGS_FILE_PATH}")
+                    blog_embeddings_dict = load_blog_embeddings(BLOG_EMBEDDINGS_FILE_PATH)
+                    if blog_embeddings_dict and blog_embeddings_dict['blog_embeddings'].shape[0] > 0:
+                        print(f"Successfully loaded {blog_embeddings_dict['blog_embeddings'].shape[0]} blog embeddings")
+                        # Search for relevant blogs
+                        blog_results = search_relevant_blogs(query, blog_embeddings_dict, k=3)
+                        if blog_results:
+                            print(f"Found {len(blog_results)} relevant blog articles")
+                            response = format_blog_response(blog_results, query)
+                            st.write(response)
+                            st.session_state['conversation_history'].append(("user", user_input))
+                            st.session_state['conversation_history'].append(("assistant", response))
                             return
-                    
-                    # Continue with the regular embedding-based query if no special handling applied
-                    query_embedding = get_openai_embedding(query)
-                    st.sidebar.text(f"Query embedding generated: {len(query_embedding)} dimensions")
-                    query_embedding = query_embedding.reshape(1, -1).astype('float32')
-                    
-                    # Load product index
-                    try:
-                        product_index = faiss.read_index(PRODUCT_INDEX_FILE_PATH)
-                        index_dim = product_index.d
-                        st.sidebar.text(f"Product index loaded: {product_index.ntotal} vectors, {index_dim} dimensions")
-                        
-                        # Check dimension mismatch and adapt if necessary
-                        query_dim = query_embedding.shape[1]
-                        if query_dim != index_dim:
-                            st.sidebar.text(f"Dimension mismatch: query {query_dim} vs index {index_dim}")
-                            if query_dim > index_dim:
-                                # Truncate the query embedding
-                                query_embedding = query_embedding[:, :index_dim]
-                                st.sidebar.text(f"Truncated query embedding to {index_dim} dimensions")
-                            else:
-                                # Pad the query embedding
-                                padding = np.zeros((1, index_dim - query_dim), dtype=np.float32)
-                                query_embedding = np.hstack((query_embedding, padding))
-                                st.sidebar.text(f"Padded query embedding to {index_dim} dimensions")
-                        
-                        # Search for more products initially to account for possible duplicates
-                        k_search = 10  # Search for more products initially
-                        D, I = product_index.search(query_embedding, min(k_search, product_index.ntotal))
-                        
-                        # Get relevant products with better formatting
-                        all_products = df.iloc[I[0]]
-                        
-                        # Remove duplicate products based on title
-                        unique_products = all_products.drop_duplicates(subset=['title'])
-                        
-                        # Take only the top 5 unique products
-                        products = unique_products.head(5)
-                        st.sidebar.text(f"Found {len(products)} unique relevant products")
-                        
-                        # Create a more structured context
-                        context = "Here are the relevant products:\n\n"
-                        for i, (idx, product) in enumerate(products.iterrows()):
-                            context += f"Product {i+1}:\n"
-                            context += f"Title: {product.get('title', 'N/A')}\n"
-                            context += f"Brand: {product.get('Brand', 'N/A')}\n"
-                            context += f"Product Type: {product.get('Product Type', 'N/A')}\n"
-                            context += f"Better Home Price: ₹{product.get('Better Home Price', 0):,.2f}\n"
-                            context += f"Retail Price: ₹{product.get('Retail Price', 0):,.2f}\n"
-                            context += f"URL: {product.get('url', '#')}\n\n"
-                        
-                        # Search for relevant blog articles if available
-                        blog_results = []
-                        if blog_embeddings:
-                            try:
-                                st.sidebar.text("Searching for relevant blog articles...")
-                                # Determine appropriate product filter based on query
-                                product_filter = None
-                                query_lower = query.lower()
-                                
-                                # For BLDC or ceiling fan queries, set product filter
-                                if 'bldc' in query_lower or 'fan' in query_lower or 'ceiling' in query_lower:
-                                    product_filter = 'Ceiling Fan'
-                                elif 'plywood' in query_lower or 'hdhmr' in query_lower:
-                                    product_filter = 'Plywood'
-                                elif 'water heater' in query_lower or 'geyser' in query_lower:
-                                    product_filter = 'Water Heater'
-                                
-                                # For general queries about products, don't use a strict product filter
-                                if query_lower.startswith('tell me about') or query_lower.startswith('what is') or query_lower.startswith('how'):
-                                    # Use lower similarity threshold for informational queries
-                                    blog_results = search_relevant_blogs(query, blog_embeddings, similarity_threshold=0.5)
-                                else:
-                                    # Use product filter if available, otherwise do a general search
-                                    blog_results = search_relevant_blogs(query, blog_embeddings, product_filter=product_filter)
-                                
-                                if blog_results and len(blog_results) > 0:
-                                    st.sidebar.text(f"Found {len(blog_results)} relevant blog articles")
-                                    
-                                    # Add blog content to context
-                                    context += "\n\nHere are some relevant blog articles that may contain useful information:\n\n"
-                                    for i, blog in enumerate(blog_results):
-                                        blog_title = blog.get('title', 'Untitled')
-                                        blog_content = blog.get('content', '')
-                                        # Trim content if too long
-                                        if len(blog_content) > 1000:
-                                            blog_content = blog_content[:1000] + "..."
-                                        
-                                        context += f"Blog Article {i+1}:\n"
-                                        context += f"Title: {blog_title}\n"
-                                        context += f"Content: {blog_content}\n\n"
-                            except Exception as e:
-                                st.sidebar.text(f"Error searching blog embeddings: {str(e)}")
-                                traceback.print_exc()
                         else:
-                            st.sidebar.text("Blog embeddings not available")
-                        answer = retrieve_and_generate_openai(query, context)
-                        st.markdown("### Answer:", unsafe_allow_html=True)
-                        st.markdown(answer, unsafe_allow_html=True)
-                        
-                        # Display related blog articles if found
-                        if blog_results and len(blog_results) > 0:
-                            blog_answer = format_blog_response(blog_results, query)
-                            if blog_answer:
-                                st.markdown(blog_answer, unsafe_allow_html=True)
-                                # Add a separator to make it distinct
-                                st.markdown("---")
-                        else:
-                            st.sidebar.text("No blog content to display")
-                    except Exception as e:
-                        st.error(f"Error searching product index: {str(e)}")
-                        st.sidebar.text(f"Product index error: {traceback.format_exc()}")
+                            print("No relevant blog articles found")
+                            response = "I couldn't find any articles that directly answer your how-to question. Please try rephrasing your question or ask about a specific product."
+                            st.write(response)
+                            st.session_state['conversation_history'].append(("user", user_input))
+                            st.session_state['conversation_history'].append(("assistant", response))
+                            return
+                    else:
+                        print("Failed to load blog embeddings or no embeddings found")
+                        response = "I'm having trouble accessing our knowledge base right now. Please try again later or ask about a specific product."
+                        st.write(response)
+                        st.session_state['conversation_history'].append(("user", user_input))
+                        st.session_state['conversation_history'].append(("assistant", response))
+                        return
                 except Exception as e:
-                    st.error(f"Error generating query embedding: {str(e)}")
-                    st.sidebar.text(f"Embedding error: {traceback.format_exc()}")
+                    print(f"Error searching blogs: {str(e)}")
+                    traceback.print_exc()
+                    response = "I encountered an error while searching for information. Please try again later or ask about a specific product."
+                    st.write(response)
+                    st.session_state['conversation_history'].append(("user", user_input))
+                    st.session_state['conversation_history'].append(("assistant", response))
+                    return
+
+            # Handle price queries
+            if any(word in query for word in ['price', 'cost', 'expensive', 'cheap', 'budget']):
+                products = handle_price_query(query, df, product_terms)
+                response = format_product_response(products)
+                st.write(response)
+                if not products.empty:
+                    st.dataframe(products)
+                st.session_state['conversation_history'].append(("user", user_input))
+                st.session_state['conversation_history'].append(("assistant", response))
+                return
             
-            # Update conversation history
-            st.session_state['conversation_history'].append({
-                'query': query,
-                'answer': answer if 'answer' in locals() else "No results found."
-            })
+            # Handle brand queries
+            if any(word in query for word in ['brand', 'warranty', 'company', 'manufacturer']):
+                brand_result = handle_brand_query(query, df, product_terms)
+                if brand_result:
+                    response = format_brand_response(
+                        brand_result['dataframe'], 
+                        brand_result['product_type'], 
+                        brand_result['is_warranty_query']
+                    )
+                    st.write(response)
+                    st.dataframe(brand_result['dataframe'])
+                else:
+                    response = "I couldn't find any brands matching your query. Please try rephrasing your question."
+                    st.write(response)
+                st.session_state['conversation_history'].append(("user", user_input))
+                st.session_state['conversation_history'].append(("assistant", response))
+                return
+            
+            # Handle general "best" product queries
+            if any(term in query for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect']):
+                context = ""  # Define the context as needed
+                response = retrieve_and_generate_openai(query, context)
+                st.write(response)
+                st.session_state['conversation_history'].append(("user", user_input))
+                st.session_state['conversation_history'].append(("assistant", response))
+                return
+            
+            # Handle general product search
+            if index is None:
+                st.error("Product search index is not available. Please try again later.")
+                st.session_state['conversation_history'].append(("user", user_input))
+                st.session_state['conversation_history'].append(("assistant", "I'm sorry, but I'm having trouble searching for products right now. Please try again later."))
+                return
+                
+            products = search_catalog(query, df, index)
+            response = format_answer(products, query)
+            st.write(response)
+            if products:  # Check if the list is not empty
+                # Convert the list of dictionaries to a DataFrame for display
+                products_df = pd.DataFrame(products)
+                st.dataframe(products_df)
+            st.session_state['conversation_history'].append(("user", user_input))
+            st.session_state['conversation_history'].append(("assistant", response))
+            
         except Exception as e:
-            st.error(f"An error occurred while processing your query: {str(e)}")
-            st.sidebar.text(f"General error: {traceback.format_exc()}")
-            print(f"Error details: {traceback.format_exc()}")
-
-    # Toggle button for conversation history
-    if st.button('Show Conversation History'):
-        st.write("### Conversation History:")
-        for item in st.session_state['conversation_history'][-5:]:
-            st.markdown(f"**Q:** {item['query']}")
-            st.markdown(f"**A:** {item['answer']}", unsafe_allow_html=True)
-            st.markdown("---")
-
+            error_msg = f"I apologize, but I encountered an error: {str(e)}"
+            st.error(error_msg)
+            st.session_state['conversation_history'].append(("user", user_input))
+            st.session_state['conversation_history'].append(("assistant", error_msg))
+    
+    # Display conversation history
+    if st.session_state['conversation_history']:
+        st.subheader("Conversation History")
+        for role, message in st.session_state['conversation_history']:
+            if role == "user":
+                st.write(f"You: {message}")
+            else:
+                st.write(f"Assistant: {message}")
 
 if __name__ == "__main__":
     main()
