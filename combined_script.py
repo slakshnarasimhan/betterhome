@@ -211,12 +211,90 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 
     return final_list
 
+# Function to get product recommendation reason
+def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float) -> str:
+    """Generate a personalized recommendation reason for a product"""
+    reasons = []
+    
+    # Budget consideration
+    budget_saved = product.get('retail_price', 0) - product.get('price', 0)
+    if budget_saved > 0:
+        reasons.append(f"Offers excellent value with savings of {format_currency(budget_saved)} compared to retail price")
+
+    # Energy efficiency
+    if product.get('energy_rating') in ['5 Star', '4 Star']:
+        reasons.append(f"High energy efficiency ({product['energy_rating']}) helps reduce electricity bills")
+
+    # Room and appliance specific reasons
+    if appliance_type == 'ceiling_fan':
+        if 'BLDC Motor' in product.get('features', []):
+            reasons.append("BLDC motor technology ensures high energy efficiency and silent operation - perfect for Chennai's climate")
+        if room == 'hall':
+            reasons.append("Ideal for your hall, providing effective air circulation in the common area")
+    
+    elif appliance_type == 'bathroom_exhaust':
+        if demographics.get('elders', 0) > 0 and 'humidity sensor' in [f.lower() for f in product.get('features', [])]:
+            reasons.append("Automatic humidity sensing is beneficial for elder care, preventing bathroom dampness")
+        reasons.append("Essential for Chennai's humid climate to prevent mold and maintain bathroom freshness")
+    
+    elif appliance_type == 'geyser':
+        if demographics.get('elders', 0) > 0:
+            if 'Temperature Control' in product.get('features', []):
+                reasons.append("Temperature control feature ensures safety for elderly family members")
+        if product.get('capacity', '').lower().endswith('l'):
+            capacity = int(product.get('capacity', '0L')[:-1])
+            family_size = sum(demographics.values())
+            if capacity >= family_size * 5:
+                reasons.append(f"Capacity of {product['capacity']} is suitable for your family size of {family_size} members")
+    
+    elif appliance_type == 'refrigerator':
+        if product.get('capacity', '').lower().endswith('l'):
+            capacity = int(product.get('capacity', '0L')[:-1])
+            family_size = sum(demographics.values())
+            if capacity >= family_size * 100:
+                reasons.append(f"Capacity of {product['capacity']} is ideal for your family size of {family_size} members")
+        if demographics.get('kids', 0) > 0 and 'Child lock' in product.get('features', []):
+            reasons.append("Child lock feature provides additional safety for homes with children")
+    
+    elif appliance_type == 'washing_machine':
+        family_size = sum(demographics.values())
+        if product.get('capacity', '').lower().endswith('kg'):
+            capacity = float(product.get('capacity', '0kg')[:-2])
+            if capacity >= family_size * 1.5:
+                reasons.append(f"Capacity of {product['capacity']} is perfect for your family size")
+        if demographics.get('kids', 0) > 0:
+            if 'Anti-allergen' in product.get('features', []):
+                reasons.append("Anti-allergen feature is beneficial for families with children")
+    
+    elif appliance_type == 'chimney':
+        if 'auto-clean' in product.get('type', '').lower():
+            reasons.append("Auto-clean feature reduces maintenance effort, ideal for busy families")
+        if product.get('suction_power', '').lower().endswith('m³/hr'):
+            power = int(product.get('suction_power', '0 m³/hr').split()[0])
+            if power >= 1200:
+                reasons.append("Strong suction power effectively handles Indian cooking needs")
+
+    # Add a general note about warranty if available
+    if product.get('warranty'):
+        reasons.append(f"Comes with {product['warranty']} for peace of mind")
+
+    return " • " + "\n • ".join(reasons)
+
 # Function to generate PDF
 def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any]) -> None:
     """Generate a PDF with user information and product recommendations"""
     doc = SimpleDocTemplate("product_recommendations.pdf", pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
+
+    # Add custom styles
+    styles.add(ParagraphStyle(
+        name='RecommendationReason',
+        parent=styles['Normal'],
+        leftIndent=20,
+        textColor=colors.HexColor('#006400'),  # Dark green color
+        fontSize=10
+    ))
 
     # Add user information
     story.append(Paragraph("User Information", styles['Heading1']))
@@ -244,6 +322,10 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any]) -> None:
         story.append(Paragraph(f"Ceiling Fan: {fan['brand']} {fan['model']}", styles['Normal']))
         story.append(Paragraph(f"Price: {format_currency(fan['price'])} (Retail: {format_currency(fan['retail_price'])})", styles['Normal']))
         story.append(Paragraph(f"Features: {', '.join(fan['features'])}", styles['Normal']))
+        # Add recommendation reason
+        reason = get_product_recommendation_reason(fan, 'ceiling_fan', 'hall', user_data['demographics'], final_list['summary']['total_budget'])
+        story.append(Paragraph(f"Why we recommend this:", styles['Normal']))
+        story.append(Paragraph(reason, styles['RecommendationReason']))
         story.append(Spacer(1, 12))
 
     # Kitchen
@@ -254,6 +336,10 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any]) -> None:
                 story.append(Paragraph(f"{appliance_type.title()}: {item['brand']} {item['model']}", styles['Normal']))
                 story.append(Paragraph(f"Price: {format_currency(item['price'])} (Retail: {format_currency(item['retail_price'])})", styles['Normal']))
                 story.append(Paragraph(f"Features: {', '.join(item['features'])}", styles['Normal']))
+                # Add recommendation reason
+                reason = get_product_recommendation_reason(item, appliance_type, 'kitchen', user_data['demographics'], final_list['summary']['total_budget'])
+                story.append(Paragraph(f"Why we recommend this:", styles['Normal']))
+                story.append(Paragraph(reason, styles['RecommendationReason']))
                 story.append(Spacer(1, 12))
 
     # Bedrooms
@@ -264,6 +350,10 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any]) -> None:
             story.append(Paragraph(f"Ceiling Fan: {fan['brand']} {fan['model']}", styles['Normal']))
             story.append(Paragraph(f"Price: {format_currency(fan['price'])} (Retail: {format_currency(fan['retail_price'])})", styles['Normal']))
             story.append(Paragraph(f"Features: {', '.join(fan['features'])}", styles['Normal']))
+            # Add recommendation reason
+            reason = get_product_recommendation_reason(fan, 'ceiling_fan', bedroom, user_data['demographics'], final_list['summary']['total_budget'])
+            story.append(Paragraph(f"Why we recommend this:", styles['Normal']))
+            story.append(Paragraph(reason, styles['RecommendationReason']))
             story.append(Spacer(1, 12))
         
         # Bathroom appliances
@@ -272,6 +362,10 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any]) -> None:
             story.append(Paragraph(f"Exhaust Fan: {exhaust_fan['brand']} {exhaust_fan['model']}", styles['Normal']))
             story.append(Paragraph(f"Price: {format_currency(exhaust_fan['price'])} (Retail: {format_currency(exhaust_fan['retail_price'])})", styles['Normal']))
             story.append(Paragraph(f"Features: {', '.join(exhaust_fan['features'])}", styles['Normal']))
+            # Add recommendation reason
+            reason = get_product_recommendation_reason(exhaust_fan, 'bathroom_exhaust', f"{bedroom}.bathroom", user_data['demographics'], final_list['summary']['total_budget'])
+            story.append(Paragraph(f"Why we recommend this:", styles['Normal']))
+            story.append(Paragraph(reason, styles['RecommendationReason']))
             story.append(Spacer(1, 12))
 
     # Laundry
@@ -282,6 +376,10 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any]) -> None:
                 story.append(Paragraph(f"{appliance_type.replace('_', ' ').title()}: {item['brand']} {item['model']}", styles['Normal']))
                 story.append(Paragraph(f"Price: {format_currency(item['price'])} (Retail: {format_currency(item['retail_price'])})", styles['Normal']))
                 story.append(Paragraph(f"Features: {', '.join(item['features'])}", styles['Normal']))
+                # Add recommendation reason
+                reason = get_product_recommendation_reason(item, appliance_type, 'laundry', user_data['demographics'], final_list['summary']['total_budget'])
+                story.append(Paragraph(f"Why we recommend this:", styles['Normal']))
+                story.append(Paragraph(reason, styles['RecommendationReason']))
                 story.append(Spacer(1, 12))
 
     doc.build(story)
