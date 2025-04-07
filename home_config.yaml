@@ -1,0 +1,93 @@
+home:
+  name: "My Home"
+  address: "123 Main Street"
+  city: "Mumbai"
+  property_type: "Apartment"
+  floor_level: 12
+  total_floors: 25
+  rooms:
+    - name: "Master Bathroom"
+      room_color: "White"
+      has_bathroom: "yes"
+      used_by: "Elderly parents"
+      geyser:
+        type: "Storage"
+        min_capacity_liters: 15
+        preferences: ["Auto cut-off", "Thermostat"]
+        budget: 7000
+
+    - name: "Children's Bathroom"
+      room_color: "Pale blue"
+      has_bathroom: "yes"
+      used_by: "Child"
+      geyser:
+        type: "Instant"
+        min_capacity_liters: 3
+        preferences: ["Compact", "Safe"]
+        budget: 5000
+
+    - name: "Guest Bathroom"
+      room_color: "Beige"
+      has_bathroom: "yes"
+      used_by: "Adults"
+      geyser:
+        type: "Storage"
+        min_capacity_liters: 10
+        preferences: ["Wall-mountable", "Quick heating"]
+        budget: 6000
+
+    - name: "Master Bedroom"
+      room_color: "Light gray"
+      has_bathroom: "no"
+      used_by: "Adults"
+
+    - name: "Children's Bedroom"
+      room_color: "Light blue"
+      has_bathroom: "no"
+      used_by: "Child"
+
+    - name: "Guest Bedroom"
+      room_color: "Cream"
+      has_bathroom: "no"
+      used_by: "Adults"
+
+    - name: "Living Room"
+      room_color: "Off-white"
+      has_bathroom: "no"
+      used_by: "All family members"
+
+    - name: "Kitchen"
+      room_color: "White"
+      has_bathroom: "no"
+      used_by: "Adults"
+      kitchen_categories:
+        - name: "Hob Top"
+          preferences: ["Gas", "4 burners", "Flame failure device"]
+          budget: 30000
+        - name: "Chimney"
+          preferences: ["Wall-mounted", "Auto-clean"]
+          budget: 40000
+        - name: "Dishwasher"
+          preferences: ["Built-in", "Energy efficient"]
+          budget: 45000
+        - name: "Water Purifier"
+          preferences: ["RO", "Under counter"]
+          budget: 20000
+        - name: "Refrigerator"
+          preferences: ["Double door", "Frost-free"]
+          budget: 50000
+        - name: "Microwave"
+          preferences: ["Convection", "Child lock"]
+          budget: 15000
+        - name: "Mixer Grinder"
+          preferences: ["3 jars", "High power"]
+          budget: 5000
+        - name: "Toaster"
+          preferences: ["2-slice", "Auto pop-up"]
+          budget: 3000
+        - name: "Electric Kettle"
+          preferences: ["Quick boil", "Auto shut-off"]
+          budget: 2000
+        - name: "Coffee Maker"
+          preferences: ["Programmable", "Thermal carafe"]
+          budget: 8000 
