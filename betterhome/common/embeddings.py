@@ -91,12 +91,35 @@ def build_or_load_faiss_index(embeddings: np.ndarray, dimension: int, index_path
     Returns:
         FAISS index
     """
+    print(f"Embeddings shape: {embeddings.shape}")  # Debug: Print embeddings shape
+    print(f"Expected dimension: {dimension}")  # Debug: Print expected dimension
+    
+    if embeddings.size == 0:
+        raise ValueError("Embeddings array is empty. Cannot build FAISS index.")
+    
+    # Debug: Print a sample of the embeddings
+    print(f"Sample embedding: {embeddings[0] if len(embeddings) > 0 else 'No embeddings'}")
+    
     if os.path.exists(index_path):
-        index = faiss.read_index(index_path)
+        try:
+            index = faiss.read_index(index_path)
+            print(f"Loaded FAISS index from {index_path} with dimension {index.d}")  # Debug: Print loaded index dimension
+            if index.d != dimension:
+                print(f"Dimension mismatch in existing index. Rebuilding index with correct dimensions ({dimension})")
+                os.remove(index_path)
+                index = faiss.IndexFlatL2(dimension)
+                index.add(embeddings)
+                faiss.write_index(index, index_path)
+        except Exception as e:
+            print(f"Error reading index: {str(e)}. Rebuilding index.")  # Debug: Print error and rebuild
+            index = faiss.IndexFlatL2(dimension)
+            index.add(embeddings)
+            faiss.write_index(index, index_path)
     else:
         index = faiss.IndexFlatL2(dimension)
         index.add(embeddings)
         faiss.write_index(index, index_path)
+        print(f"Created new FAISS index with dimension {index.d}")  # Debug: Print new index dimension
     return index
 
 def search_products(query: str, df: pd.DataFrame, embeddings_dict: Dict[str, Any], k: int = 5) -> List[int]:

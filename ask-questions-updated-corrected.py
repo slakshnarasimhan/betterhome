@@ -256,7 +256,9 @@ def retrieve_and_generate_openai(query, context):
         
         # Filter the answer to include only products from the catalog
         catalog_titles = df['title'].str.lower().tolist()
+        print(f"Catalog titles: {catalog_titles}")  # Debug: Print catalog titles
         filtered_answer = '\n'.join([line for line in answer.split('\n') if any(title in line.lower() for title in catalog_titles)])
+        print(f"Filtered answer: {filtered_answer}")  # Debug: Print filtered answer
         
         return filtered_answer
         
@@ -636,53 +638,46 @@ def load_blog_embeddings(file_path):
 # ==========================
 # Search Blogs
 # ==========================
-def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold=0.3):
-    print("Starting blog search...")
-    print(f"Query: {query}")
-    print(f"Similarity threshold: {similarity_threshold}")
-    
+def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold=0.2):
     # Debug: Check if blog_embeddings_dict is valid
     if not blog_embeddings_dict:
-        print("ERROR: blog_embeddings_dict is None or empty")
         return []
     
-    # Debug: Check the structure of blog_embeddings_dict
-    print(f"Keys in blog_embeddings_dict: {list(blog_embeddings_dict.keys())}")
-    
     blog_embeddings = blog_embeddings_dict['blog_embeddings']
-    print(f"Blog embeddings type: {type(blog_embeddings)}")
-    print(f"Blog embeddings shape: {blog_embeddings.shape if hasattr(blog_embeddings, 'shape') else 'No shape attribute'}")
-    print(f"Number of blog embeddings: {len(blog_embeddings)}")
     
     # Generate query embedding using OpenAI for consistency
     try:
         query_embedding = get_openai_embedding(query)
-        print(f"Generated query embedding using OpenAI: {query_embedding.shape}")
     except Exception as e:
-        print(f"Error generating query embedding: {str(e)}")
         traceback.print_exc()
+        return []
+    
+    # Debug: Check query embedding dimensions
+    if query_embedding.shape[0] != blog_embeddings.shape[1]:
         return []
     
     # Build or load FAISS index for blog search
     try:
         blog_index = build_or_load_faiss_index(
             blog_embeddings,
-            query_embedding.shape[1],  # Use the same dimension as the query embedding
+            query_embedding.shape[0],  # Use the correct dimension of the query embedding
             BLOG_INDEX_FILE_PATH
         )
-        print(f"Successfully built/loaded FAISS index with {blog_index.d} dimensions")
     except Exception as e:
-        print(f"Error building blog index: {str(e)}")
         traceback.print_exc()
         return []
     
     # Only search if we have blog embeddings
     if len(blog_embeddings) > 0:
         # Search for more blog posts than needed so we can filter
-        search_k = min(k * 10, len(blog_embeddings_dict['metadata']))  # Increased from k * 5 to k * 10
-        print(f"Searching for top {search_k} blog articles")
-        D, I = blog_index.search(query_embedding, search_k)
-        print(f"Found {len(I[0])} initial matching blog articles with distances: {D[0]}")
+        search_k = min(k * 15, len(blog_embeddings_dict['metadata']))  # Increased from k * 10 to k * 15
+        # Add detailed exception logging around the search process
+        try:
+            query_embedding = query_embedding.reshape(1, -1).astype('float32')
+            D, I = blog_index.search(query_embedding, search_k)
+        except Exception as e:
+            traceback.print_exc()
+            return []
         
         # Get the metadata for found articles
         results = []
@@ -695,13 +690,11 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
             if i < len(blog_embeddings_dict['metadata']):
                 metadata = blog_embeddings_dict['metadata'][i]
                 
-                # Debug: Print the title of the article being processed
-                title = metadata.get('title', 'Untitled Article')
-                print(f"Processing blog {i}: {title}")
+                # Check if the article is chimney-related
+                is_chimney_related = 'chimney' in metadata.get('title', '').lower() or 'chimney' in metadata.get('content', '').lower()
                 
                 # Calculate base similarity score
                 similarity_score = 1.0 / (1.0 + distance)  # Convert distance to similarity (0-1 scale)
-                print(f"Blog {i}: Base similarity score = {similarity_score:.3f}")
                 
                 # Check if query matches related words or categories
                 matches_related_words = any(word.lower() in query_lower for word in metadata.get('related_words', []))
@@ -710,33 +703,22 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
                 # For chimney queries, check if the title or content contains "chimney"
                 matches_chimney = False
                 if is_chimney_query:
-                    title_lower = metadata.get('title', '').lower()
-                    content_lower = metadata.get('content', '').lower()
-                    matches_chimney = "chimney" in title_lower or "chimney" in content_lower
+                    matches_chimney = is_chimney_related
                     
                     # Boost score for articles with "chimney" in title or content
                     if matches_chimney:
-                        if "chimney" in title_lower:
+                        if "chimney" in metadata.get('title', '').lower():
                             similarity_score *= 2.0  # Double the score for title matches
-                            print(f"Blog {i}: Score doubled due to chimney in title")
                         else:
                             similarity_score *= 1.5  # 1.5x score for content matches
-                            print(f"Blog {i}: Score boosted by 1.5x due to chimney in content")
-                    
-                    print(f"Blog {i}: Matches chimney = {matches_chimney}")
-                
-                print(f"Blog {i}: Matches related words = {matches_related_words}, Matches categories = {matches_categories}")
-                print(f"Blog {i}: Final similarity score = {similarity_score:.3f}")
                 
                 # Only include if similarity score is above threshold or matches criteria
                 if similarity_score > similarity_threshold or matches_related_words or matches_categories or matches_chimney:
                     metadata['_similarity_score'] = similarity_score
                     potential_matches.append(metadata)
-                    print(f"Added blog {i} to potential matches with similarity score {similarity_score:.3f}")
-                else:
-                    print(f"Skipping blog {i} due to low similarity score: {similarity_score:.3f}")
-            else:
-                print(f"Index {i} is out of bounds for metadata array of length {len(blog_embeddings_dict['metadata'])}")
+        except Exception as e:
+            traceback.print_exc()
+            return []
         
         # Sort by similarity score and limit to k results
         if potential_matches:
@@ -756,17 +738,10 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
             
             # Limit to k results
             results = results[:k]
-            print(f"Returning {len(results)} most relevant blog articles")
-            
-            # Debug: Print the titles of the returned articles
-            for i, result in enumerate(results):
-                print(f"Result {i+1}: {result.get('title', 'Untitled Article')} (Score: {result.get('_similarity_score', 0):.3f})")
             return results
         else:
-            print("No sufficiently relevant blog articles found")
             return []
     else:
-        print("No blog embeddings to search")
         return []
 
 
@@ -1124,66 +1099,51 @@ def main():
                     st.session_state['conversation_history'].append(("assistant", response))
                     return
 
+            # Temporarily disable product search
             # Handle price queries
             if any(word in query for word in ['price', 'cost', 'expensive', 'cheap', 'budget']):
                 products = handle_price_query(query, df, product_terms)
-                response = format_product_response(products)
-                st.write(response)
-                if not products.empty:
-                    st.dataframe(products)
-                st.session_state['conversation_history'].append(("user", user_input))
-                st.session_state['conversation_history'].append(("assistant", response))
-                return
-            
+                if products is not None:
+                    response = format_product_response(products)
+                    st.write(response)
+                    st.session_state['conversation_history'].append(("user", user_input))
+                    st.session_state['conversation_history'].append(("assistant", response))
+                    return
+
             # Handle brand queries
             if any(word in query for word in ['brand', 'warranty', 'company', 'manufacturer']):
                 brand_result = handle_brand_query(query, df, product_terms)
-                if brand_result:
-                    response = format_brand_response(
-                        brand_result['dataframe'], 
-                        brand_result['product_type'], 
-                        brand_result['is_warranty_query']
-                    )
+                if brand_result is not None:
+                    response = format_brand_response(brand_result['dataframe'], brand_result['product_type'], brand_result['is_warranty_query'])
                     st.write(response)
-                    st.dataframe(brand_result['dataframe'])
-                else:
-                    response = "I couldn't find any brands matching your query. Please try rephrasing your question."
-                    st.write(response)
-                st.session_state['conversation_history'].append(("user", user_input))
-                st.session_state['conversation_history'].append(("assistant", response))
-                return
-            
+                    st.session_state['conversation_history'].append(("user", user_input))
+                    st.session_state['conversation_history'].append(("assistant", response))
+                    return
+
             # Handle general "best" product queries
             if any(term in query for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect']):
-                context = ""  # Define the context as needed
-                response = retrieve_and_generate_openai(query, context)
+                response = retrieve_and_generate_openai(query, "")
                 st.write(response)
                 st.session_state['conversation_history'].append(("user", user_input))
                 st.session_state['conversation_history'].append(("assistant", response))
                 return
-            
+
             # Handle general product search
-            if index is None:
-                st.error("Product search index is not available. Please try again later.")
+            if index is not None:
+                products = search_catalog(query, df, index)
+                response = format_answer(products, query)
+                st.write(response)
+                if products:  # Check if the list is not empty
+                    # Convert the list of dictionaries to a DataFrame for display
+                    products_df = pd.DataFrame(products)
+                    st.dataframe(products_df)
                 st.session_state['conversation_history'].append(("user", user_input))
-                st.session_state['conversation_history'].append(("assistant", "I'm sorry, but I'm having trouble searching for products right now. Please try again later."))
-                return
-                
-            products = search_catalog(query, df, index)
-            response = format_answer(products, query)
-            st.write(response)
-            if products:  # Check if the list is not empty
-                # Convert the list of dictionaries to a DataFrame for display
-                products_df = pd.DataFrame(products)
-                st.dataframe(products_df)
-            st.session_state['conversation_history'].append(("user", user_input))
-            st.session_state['conversation_history'].append(("assistant", response))
+                st.session_state['conversation_history'].append(("assistant", response))
             
         except Exception as e:
-            error_msg = f"I apologize, but I encountered an error: {str(e)}"
-            st.error(error_msg)
+            st.error(f"I apologize, but I encountered an error: {str(e)}")
             st.session_state['conversation_history'].append(("user", user_input))
-            st.session_state['conversation_history'].append(("assistant", error_msg))
+            st.session_state['conversation_history'].append(("assistant", f"I apologize, but I encountered an error: {str(e)}"))
     
     # Display conversation history
     if st.session_state['conversation_history']:
