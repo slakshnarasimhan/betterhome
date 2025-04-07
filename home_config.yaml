@@ -90,4 +90,182 @@ home:
           budget: 2000
         - name: "Coffee Maker"
           preferences: ["Programmable", "Thermal carafe"]
-          budget: 8000 
+          budget: 8000
+
+# Default configurations and constraints for home appliances
+
+chimney:
+  min_width_difference: 10  # Minimum width difference (cm) between stove and chimney
+  default_width: 90  # Default chimney width in cm
+  min_suction_power: 800  # Minimum suction power in m³/hr
+  max_suction_power: 1500  # Maximum suction power in m³/hr
+
+refrigerator:
+  capacity_per_person: 100  # Liters per person
+  min_capacity: 200  # Minimum capacity in liters
+  max_capacity: 700  # Maximum capacity in liters
+  default_type: "Double-door frost-free"
+
+washing_machine:
+  capacity_ranges:
+    small_family: 6.5  # Up to 2 people
+    medium_family: 7.5  # 3-4 people
+    large_family: 8.0  # 5+ people
+  default_type: "Top load fully automatic"
+
+ceiling_fan:
+  room_sizes:
+    small: # up to 100 sq ft
+      sweep_size: "900mm"
+      recommended_type: "Standard"
+    medium: # 100-200 sq ft
+      sweep_size: "1200mm"
+      recommended_type: "Premium"
+    large: # 200+ sq ft
+      sweep_size: "1400mm"
+      recommended_type: "Energy-saving"
+  default_features:
+    - "Remote control"
+    - "Speed regulator"
+  mounting_height:
+    min: 8  # feet
+    max: 12 # feet
+    optimal: 9 # feet
+
+bathroom_exhaust:
+  room_sizes:
+    small: # up to 40 sq ft
+      size: "4 inch"
+      airflow: "50 CMH"
+    medium: # 40-80 sq ft
+      size: "6 inch"
+      airflow: "100 CMH"
+    large: # 80+ sq ft
+      size: "8 inch"
+      airflow: "150 CMH"
+  placement:
+    min_height: 7  # feet from floor
+    optimal_height: 8 # feet from floor
+  required_features:
+    - "Auto shutoff"
+    - "Low noise"
+
+geyser:
+  usage_types:
+    single_person:
+      instant:
+        capacity: "3L"
+        wattage: "3000W"
+      storage:
+        capacity: "6L"
+        wattage: "2000W"
+    small_family:  # 2-3 people
+      instant:
+        capacity: "6L"
+        wattage: "4500W"
+      storage:
+        capacity: "15L"
+        wattage: "2000W"
+    large_family:  # 4+ people
+      storage:
+        capacity: "25L"
+        wattage: "2000W"
+  required_features:
+    - "Auto shutoff"
+    - "Temperature control"
+  installation:
+    min_height: 6  # feet from floor
+    optimal_height: 7 # feet from floor
+
+shower_system:
+  bathroom_types:
+    standard:
+      recommended_type: "Single function"
+      flow_rate: "1.5 GPM"
+    premium:
+      recommended_type: "Multi-function"
+      flow_rate: "2.0 GPM"
+    luxury:
+      recommended_type: "Rain shower"
+      flow_rate: "2.5 GPM"
+  installation:
+    shower_height: 6.5  # feet from floor
+    required_pressure: 20  # PSI
+    optimal_pressure: 45  # PSI
+
+room_sizes:
+  small: 
+    area_range: [80, 120]  # square feet
+    ceiling_height: 9  # feet
+    recommended_fan_size: 900  # mm
+  medium:
+    area_range: [120, 200]
+    ceiling_height: 9
+    recommended_fan_size: 1200
+  large:
+    area_range: [200, 400]
+    ceiling_height: 10
+    recommended_fan_size: 1400
+
+bathroom_sizes:
+  small:
+    area_range: [20, 40]
+    exhaust_size: 4  # inches
+    geyser_capacity: 3  # liters
+  medium:
+    area_range: [40, 80]
+    exhaust_size: 6
+    geyser_capacity: 6
+  large:
+    area_range: [80, 120]
+    exhaust_size: 8
+    geyser_capacity: 10
+
+kitchen_sizes:
+  small:
+    area_range: [50, 80]
+    chimney_width: 60  # cm
+    refrigerator_capacity: 200  # liters
+  medium:
+    area_range: [80, 120]
+    chimney_width: 90
+    refrigerator_capacity: 300
+  large:
+    area_range: [120, 200]
+    chimney_width: 120
+    refrigerator_capacity: 500
+
+climate_zones:
+  coastal:
+    humidity: high
+    corrosion_risk: high
+    recommended_features:
+      - rust protection
+      - moisture resistance
+      - anti-corrosion coating
+  inland:
+    humidity: moderate
+    corrosion_risk: low
+    recommended_features:
+      - standard protection
+      - dust resistance
+  
+budget_ranges:
+  premium:
+    min: 500000
+    appliance_split:
+      kitchen: 0.4
+      bathroom: 0.3
+      comfort: 0.3
+  mid:
+    min: 300000
+    appliance_split:
+      kitchen: 0.35
+      bathroom: 0.35
+      comfort: 0.3
+  budget:
+    min: 150000
+    appliance_split:
+      kitchen: 0.4
+      bathroom: 0.3
+      comfort: 0.3 

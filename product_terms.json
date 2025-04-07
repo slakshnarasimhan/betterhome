@@ -266,5 +266,96 @@
             "Cleaning",
             "Home Care"
         ]
+    },
+    "chimney": {
+        "types": ["Auto-clean filterless", "Auto-clean baffle filter", "Standard mesh filter"],
+        "features": ["Touch control", "Motion sensor", "LED lights", "Push button control"],
+        "suction_power": ["800-1000 m³/hr", "1000-1200 m³/hr", "1200-1500 m³/hr"]
+    },
+    "refrigerator": {
+        "types": ["Side-by-side", "French door", "Double-door frost-free", "Single-door direct cool"],
+        "features": ["Inverter technology", "Multi-door design", "Smart features", "Multiple cooling modes", "Basic cooling"],
+        "capacity_ranges": ["200L-300L", "300L-400L", "400L-500L", "500L+"]
+    },
+    "washing_machine": {
+        "types": ["Front load fully automatic", "Top load fully automatic", "Semi-automatic"],
+        "features": ["Steam wash", "Inverter motor", "Multiple wash programs", "Digital display", "Basic wash programs"],
+        "capacity_ranges": ["6-6.5 kg", "7-7.5 kg", "8+ kg"]
+    },
+    "ceiling_fan": {
+        "types": ["Standard", "Premium", "Energy-saving", "Smart", "Decorative"],
+        "features": [
+            "Remote control",
+            "Speed regulator",
+            "LED light",
+            "Anti-dust",
+            "Summer/Winter mode",
+            "Smart connectivity"
+        ],
+        "sweep_sizes": ["900mm", "1200mm", "1400mm"],
+        "speed_options": ["3-speed", "5-speed"],
+        "mounting_types": ["Standard mount", "Low ceiling mount", "High ceiling mount"]
+    },
+    "bathroom_exhaust": {
+        "types": ["Axial", "Centrifugal", "Mixed flow"],
+        "features": [
+            "Auto shutoff",
+            "Humidity sensor",
+            "Low noise",
+            "LED indicator",
+            "Timer function"
+        ],
+        "sizes": ["4 inch", "6 inch", "8 inch"],
+        "airflow_rates": ["50 CMH", "100 CMH", "150 CMH"],
+        "mounting_types": ["Wall mount", "Ceiling mount", "Window mount"]
+    },
+    "geyser": {
+        "types": ["Instant", "Storage", "Gas", "Solar"],
+        "features": [
+            "Auto shutoff",
+            "Temperature control",
+            "Digital display",
+            "Anti-scaling",
+            "Multi-function safety",
+            "Energy saving mode"
+        ],
+        "capacities": {
+            "instant": ["1L", "3L", "6L"],
+            "storage": ["6L", "10L", "15L", "25L"]
+        },
+        "wattage": ["3000W", "4500W", "6000W"],
+        "pressure_rating": ["6.5 Bar", "8 Bar"]
+    },
+    "shower_system": {
+        "types": ["Single function", "Multi-function", "Rain shower", "Hand shower"],
+        "features": [
+            "Temperature control",
+            "Pressure balance",
+            "Multiple spray patterns",
+            "Anti-clog nozzles",
+            "Water-saving"
+        ],
+        "flow_rates": ["1.5 GPM", "2.0 GPM", "2.5 GPM"],
+        "finish_types": ["Chrome", "Brushed nickel", "Oil-rubbed bronze"]
+    },
+    "kitchen": {
+        "chimney": ["auto clean", "filterless", "touch control", "motion sensor"],
+        "refrigerator": ["frost free", "double door", "side by side", "convertible"],
+        "dishwasher": ["built-in", "free standing", "counter top"]
+    },
+    "bathroom": {
+        "geyser": ["instant", "storage", "gas", "electric"],
+        "shower": ["rain", "hand", "thermostatic", "digital"],
+        "exhaust": ["axial", "centrifugal", "inline"]
+    },
+    "comfort": {
+        "washing_machine": ["front load", "top load", "semi automatic", "fully automatic"],
+        "ceiling_fan": ["standard", "decorative", "energy saving", "smart"],
+        "air_conditioner": ["split", "window", "inverter", "non-inverter"]
+    },
+    "budget_categories": {
+        "premium": ["luxury", "high-end", "smart", "advanced"],
+        "mid": ["standard", "regular", "basic plus"],
+        "budget": ["basic", "essential", "entry level"]
     }
 } 

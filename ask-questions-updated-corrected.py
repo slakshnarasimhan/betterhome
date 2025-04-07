@@ -244,7 +244,7 @@ def retrieve_and_generate_openai(query, context):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
         ]
-
+        
         # Make the API call with reduced max_tokens for more concise responses
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -252,17 +252,17 @@ def retrieve_and_generate_openai(query, context):
             temperature=0.7,
             max_tokens=500  # Reduced from 1000 to encourage brevity
         )
-
+        
         # Extract and return the answer
         answer = response.choices[0].message.content
         print(f"Generated answer: {answer}")
-
+        
         # Filter the answer to include only products from the catalog
         catalog_titles = df['title'].str.lower().tolist()
         print(f"Catalog titles: {catalog_titles}")  # Debug: Print catalog titles
         filtered_answer = '\n'.join([line for line in answer.split('\n') if any(title in line.lower() for title in catalog_titles)])
         print(f"Filtered answer: {filtered_answer}")  # Debug: Print filtered answer
-
+        
         return filtered_answer
     except Exception as e:
         print(f"Error in retrieve_and_generate_openai: {str(e)}")
@@ -718,7 +718,7 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
         search_k = min(k * 2, len(blog_embeddings_dict['metadata']))
         try:
             query_embedding = query_embedding.reshape(1, -1).astype('float32')
-            D, I = blog_index.search(query_embedding, search_k)
+        D, I = blog_index.search(query_embedding, search_k)
         except Exception as e:
             traceback.print_exc()
             return []
@@ -745,12 +745,12 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
                     metadata['_similarity_score'] = similarity_score
                     results.append(metadata)
         
-        # Sort by similarity score
+            # Sort by similarity score
         if results:
             results.sort(key=lambda x: x.get('_similarity_score', 0), reverse=True)
             return results[:k]
     
-    return []
+        return []
 
 
 def format_blog_response(blog_results, query=None):
@@ -816,7 +816,7 @@ def format_blog_response(blog_results, query=None):
             response += "• Basic (₹5,000-10,000) - Standard suction power, mesh filters\n"
             response += "• Mid-Range (₹10,000-20,000) - Better suction, baffle filters, auto-clean\n"
             response += "• Premium (₹20,000+) - High suction power, advanced features, premium finish\n\n"
-        else:
+            else:
             # For other queries, extract a brief summary
             summary = content.split('\n\n')[0]  # Get first paragraph
             if len(summary) > 50:
@@ -862,7 +862,7 @@ def extract_key_points(content, query):
                 points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
                 if points:
                     key_points.extend(points)
-                else:
+            else:
                     # If no bullet points, extract sentences
                     sentences = re.split(r'(?<=[.!?])\s+', section)
                     key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
@@ -1303,6 +1303,6 @@ def main():
             # Append error to conversation history without displaying
             st.session_state['conversation_history'].append(("user", user_input))
             st.session_state['conversation_history'].append(("assistant", f"I apologize, but I encountered an error: {str(e)}"))
-    
+
 if __name__ == "__main__":
     main()
