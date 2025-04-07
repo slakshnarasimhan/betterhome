@@ -52,5 +52,38 @@ def main_wrapper():
     else:
         run_blog_processing(args.sources, args.max_articles)
 
+# Add Samsung home appliances buying guide URL
+BLOG_SOURCES.append({
+    "name": "Samsung Home Appliances Buying Guide",
+    "url": "https://www.samsung.com/in/home-appliances/buying-guide/",
+    "base_url": "https://www.samsung.com/in/home-appliances/buying-guide/",
+    "article_url_pattern": "/home-appliances/buying-guide/",
+    "max_pages": 1  # Assuming we want to process one page
+})
+
+# Add blog URLs for the brands
+BLOG_SOURCES.extend([
+    {
+        "name": "AO Smith Blog",
+        "url": "https://www.aosmith.com/resources/blog/",
+        "max_pages": 1
+    },
+    {
+        "name": "Ashirvad Blog",
+        "url": "https://www.ashirvad.com/blog/",
+        "max_pages": 1
+    },
+    {
+        "name": "Astral Blog",
+        "url": "https://www.astralpipes.com/blog/",
+        "max_pages": 1
+    },
+    {
+        "name": "Better Home Blog",
+        "url": "https://betterhomeapp.com/blogs/articles",
+        "max_pages": 3
+    }
+])
+
 if __name__ == "__main__":
     main_wrapper() 

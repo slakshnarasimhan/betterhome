@@ -203,6 +203,7 @@ def retrieve_and_generate_openai(query, context):
             5. Include only essential details: key features, price range, and 1-2 main benefits
             6. Use bullet points for readability
             7. End with a very brief suggestion to consider specific needs
+            8. For fan queries, explicitly mention considerations like room size and power consumption
             
             Format your response in simple markdown with minimal sections."""
             print("Using personalized best query system prompt with home configuration")
@@ -236,12 +237,14 @@ def retrieve_and_generate_openai(query, context):
             print("Using concise regular system prompt")
     
     try:
+        print(f"Processing query: {query}")
+
         # Create messages for the API call
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
         ]
-        
+
         # Make the API call with reduced max_tokens for more concise responses
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -249,19 +252,18 @@ def retrieve_and_generate_openai(query, context):
             temperature=0.7,
             max_tokens=500  # Reduced from 1000 to encourage brevity
         )
-        
+
         # Extract and return the answer
         answer = response.choices[0].message.content
-        print(f"Generated answer length: {len(answer)}")
-        
+        print(f"Generated answer: {answer}")
+
         # Filter the answer to include only products from the catalog
         catalog_titles = df['title'].str.lower().tolist()
         print(f"Catalog titles: {catalog_titles}")  # Debug: Print catalog titles
         filtered_answer = '\n'.join([line for line in answer.split('\n') if any(title in line.lower() for title in catalog_titles)])
         print(f"Filtered answer: {filtered_answer}")  # Debug: Print filtered answer
-        
+
         return filtered_answer
-        
     except Exception as e:
         print(f"Error in retrieve_and_generate_openai: {str(e)}")
         raise e
@@ -638,14 +640,57 @@ def load_blog_embeddings(file_path):
 # ==========================
 # Search Blogs
 # ==========================
-def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold=0.2):
+def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold=0.1):
     # Debug: Check if blog_embeddings_dict is valid
     if not blog_embeddings_dict:
         return []
     
     blog_embeddings = blog_embeddings_dict['blog_embeddings']
+    query_lower = query.lower()
     
-    # Generate query embedding using OpenAI for consistency
+    # First, try to find exact matches for specific appliance types
+    if any(appliance in query_lower for appliance in ['washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave']):
+        exact_matches = []
+        search_appliance = None
+        
+        # Determine which appliance we're searching for
+        if 'washing machine' in query_lower:
+            search_appliance = 'washing machine'
+        elif 'chimney' in query_lower:
+            search_appliance = 'chimney'
+        elif 'refrigerator' in query_lower:
+            search_appliance = 'refrigerator'
+        elif 'air conditioner' in query_lower:
+            search_appliance = 'air conditioner'
+        elif 'microwave' in query_lower:
+            search_appliance = 'microwave'
+        
+        for metadata in blog_embeddings_dict['metadata']:
+            title = metadata.get('title', '').lower()
+            content = metadata.get('content', '').lower()
+            
+            # Skip irrelevant articles
+            if any(irrelevant in title for irrelevant in ['roti', 'toaster', 'cooker', 'mixer', 'dishwasher']) and search_appliance != 'dishwasher':
+                continue
+                
+            # Check for appliance type in title with relevant keywords
+            if (search_appliance in title and 
+                any(word in title + ' ' + content for word in ['choose', 'guide', 'buying', 'types', 'best'])):
+                metadata['_similarity_score'] = 1.0  # Highest score for title matches
+                exact_matches.append(metadata)
+            # If no title match but appliance type is in content with relevant keywords
+            elif (search_appliance in content and 
+                  any(word in title + ' ' + content for word in ['choose', 'guide', 'buying', 'types', 'best'])):
+                metadata['_similarity_score'] = 0.8  # Lower score for content matches
+                exact_matches.append(metadata)
+        
+        # If we found exact matches, return them first
+        if exact_matches:
+            # Sort by similarity score
+            exact_matches.sort(key=lambda x: x.get('_similarity_score', 0), reverse=True)
+            return exact_matches[:k]
+    
+    # If no exact matches or not a washing machine query, proceed with regular search
     try:
         query_embedding = get_openai_embedding(query)
     except Exception as e:
@@ -660,7 +705,7 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
     try:
         blog_index = build_or_load_faiss_index(
             blog_embeddings,
-            query_embedding.shape[0],  # Use the correct dimension of the query embedding
+            query_embedding.shape[0],
             BLOG_INDEX_FILE_PATH
         )
     except Exception as e:
@@ -670,8 +715,7 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
     # Only search if we have blog embeddings
     if len(blog_embeddings) > 0:
         # Search for more blog posts than needed so we can filter
-        search_k = min(k * 15, len(blog_embeddings_dict['metadata']))  # Increased from k * 10 to k * 15
-        # Add detailed exception logging around the search process
+        search_k = min(k * 2, len(blog_embeddings_dict['metadata']))
         try:
             query_embedding = query_embedding.reshape(1, -1).astype('float32')
             D, I = blog_index.search(query_embedding, search_k)
@@ -681,170 +725,298 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
         
         # Get the metadata for found articles
         results = []
-        query_lower = query.lower()
-        is_chimney_query = "chimney" in query_lower
-        
-        # First pass: collect all potential matches with their scores
-        potential_matches = []
         for idx, (distance, i) in enumerate(zip(D[0], I[0])):
             if i < len(blog_embeddings_dict['metadata']):
                 metadata = blog_embeddings_dict['metadata'][i]
+                title = metadata.get('title', '').lower()
                 
-                # Check if the article is chimney-related
-                is_chimney_related = 'chimney' in metadata.get('title', '').lower() or 'chimney' in metadata.get('content', '').lower()
-                
-                # Calculate base similarity score
-                similarity_score = 1.0 / (1.0 + distance)  # Convert distance to similarity (0-1 scale)
-                
-                # Check if query matches related words or categories
-                matches_related_words = any(word.lower() in query_lower for word in metadata.get('related_words', []))
-                matches_categories = any(tag.lower() in query_lower for tag in metadata.get('categories', []))
-                
-                # For chimney queries, check if the title or content contains "chimney"
-                matches_chimney = False
-                if is_chimney_query:
-                    matches_chimney = is_chimney_related
+                # Skip dishwasher articles when searching for washing machines
+                if 'washing machine' in query_lower and 'dishwasher' in title:
+                    continue
                     
-                    # Boost score for articles with "chimney" in title or content
-                    if matches_chimney:
-                        if "chimney" in metadata.get('title', '').lower():
-                            similarity_score *= 2.0  # Double the score for title matches
-                        else:
-                            similarity_score *= 1.5  # 1.5x score for content matches
+                similarity_score = 1.0 / (1.0 + distance)
                 
-                # Only include if similarity score is above threshold or matches criteria
-                if similarity_score > similarity_threshold or matches_related_words or matches_categories or matches_chimney:
+                # Boost score if title matches query intent
+                if any(word in title for word in query_lower.split()):
+                    similarity_score *= 2.0
+                
+                # Only include if similarity score is above threshold
+                if similarity_score > similarity_threshold:
                     metadata['_similarity_score'] = similarity_score
-                    potential_matches.append(metadata)
-        except Exception as e:
-            traceback.print_exc()
-            return []
+                    results.append(metadata)
         
-        # Sort by similarity score and limit to k results
-        if potential_matches:
-            # Sort by similarity score
-            potential_matches.sort(key=lambda x: x.get('_similarity_score', 0), reverse=True)
-            
-            # For chimney queries, ensure chimney-related articles appear first
-            if is_chimney_query:
-                chimney_articles = [article for article in potential_matches 
-                                  if "chimney" in article.get('title', '').lower() 
-                                  or "chimney" in article.get('content', '').lower()]
-                other_articles = [article for article in potential_matches 
-                                if article not in chimney_articles]
-                results = chimney_articles + other_articles
-            else:
-                results = potential_matches
-            
-            # Limit to k results
-            results = results[:k]
-            return results
-        else:
-            return []
-    else:
-        return []
+        # Sort by similarity score
+        if results:
+            results.sort(key=lambda x: x.get('_similarity_score', 0), reverse=True)
+            return results[:k]
+    
+    return []
 
 
 def format_blog_response(blog_results, query=None):
     """
     Format blog search results for display in a concise, WhatsApp-friendly format
-    
-    Parameters:
-    - blog_results: List of blog metadata dictionaries
-    - query: The original user query (for context)
-    
-    Returns:
-    - Formatted markdown text or None if no results
     """
     if not blog_results or len(blog_results) == 0:
         return None
     
-    # Extract query topic for header if available
+    # Extract query topic for header
     topic_header = ""
     if query:
-        # Try to extract the subject of the query
         query_words = query.lower().split()
-        
-        # Simplified logic to extract likely topic words
         stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 
                       'about', 'like', 'of', 'do', 'does', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 
                       'those', 'list', 'show', 'tell', 'me', 'get', 'can', 'could', 'would', 'should', 'how'}
-        
-        # Get potential topic words (non-stop words)
         topic_words = [word for word in query_words if word not in stop_words and len(word) > 3]
-        
         if topic_words:
             topic_header = f" About {' '.join(topic_words[:3]).title()}"
     
-    # Concise header
     response = f"### 📚 Articles{topic_header}\n\n"
     
-    # Limit to 2 blog articles maximum for brevity
+    # Limit to 2 blog articles maximum
     blog_count = 0
     for blog in blog_results:
         if blog_count >= 2:
             break
             
-        title = blog.get('title', 'Untitled Article')
+        title = blog.get('title', '')
         url = blog.get('url', '#')
-        
-        # Make sure we're not displaying generic titles like "Article X"
-        if not title or title.startswith('Article '):
-            title = "Blog Article (Click to read)"
-        
-        # Ensure we have a valid URL
-        if not url or url == '#':
-            # If no URL is available, try to construct one from other metadata
-            if 'slug' in blog:
-                url = f"https://betterhomeapp.com/blogs/articles/{blog['slug']}"
-            else:
-                url = "https://betterhomeapp.com/blogs/articles"
-        
-        # Create a very brief excerpt if content is available
         content = blog.get('content', '')
         
-        # Improved excerpt that focuses on relevant parts if possible
-        excerpt = ""
-        if content and query:
-            # Try to find most relevant sentence containing query words
-            query_words = set(query.lower().split()) - {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'in', 'on', 'at'}
-            sentences = content.replace('\n', ' ').split('. ')
+        # Skip if no title or content
+        if not title or not content:
+            continue
+        
+        # Format the article entry
+        response += f"**{title}**\n\n"
+        
+        # Provide structured information based on appliance type
+        query_lower = query.lower()
+        if 'washing machine' in query_lower:
+            # Existing washing machine content...
+            pass
+        elif 'chimney' in query_lower:
+            # Add key factors for chimneys
+            response += "**Key Factors to Consider:**\n"
+            response += "• Suction Power - 700-1000 m³/hr for small kitchens, 1000-1500 m³/hr for larger ones\n"
+            response += "• Type - Wall-mounted, Island, Built-in, Corner based on kitchen layout\n"
+            response += "• Filter Type - Baffle (best), Mesh (budget), Charcoal (odor control)\n"
+            response += "• Size - Match with your cooktop width (usually 2-3 inches wider)\n"
+            response += "• Auto-Clean Feature - Reduces maintenance effort but costs more\n\n"
             
-            # Score sentences by how many query words they contain
-            sentence_scores = [(s, sum(1 for w in query_words if w in s.lower())) for s in sentences if len(s) > 20]
+            # Add types of chimneys
+            response += "**Types of Chimneys:**\n"
+            response += "• Wall-Mounted - Most common, suitable for kitchens with cooktop against wall\n"
+            response += "• Island - For kitchen islands, hangs from ceiling\n"
+            response += "• Built-in - Integrated into cabinet, saves space\n"
+            response += "• Angular/Corner - Specifically designed for corner installations\n\n"
             
-            if sentence_scores:
-                # Get the most relevant sentence (highest score)
-                best_sentence = max(sentence_scores, key=lambda x: x[1])[0]
-                excerpt = best_sentence.strip()
-                
-                # Truncate if too long - make it shorter for WhatsApp
-                if len(excerpt) > 100:
-                    excerpt = excerpt[:100] + "..."
-            else:
-                # No good match, use beginning of content
-                excerpt = content[:100] + "..." if len(content) > 100 else content
-        elif content:
-            # No query provided, just use the beginning
-            excerpt = content[:100] + "..." if len(content) > 100 else content
+            # Add budget considerations
+            response += "**Budget Guide:**\n"
+            response += "• Basic (₹5,000-10,000) - Standard suction power, mesh filters\n"
+            response += "• Mid-Range (₹10,000-20,000) - Better suction, baffle filters, auto-clean\n"
+            response += "• Premium (₹20,000+) - High suction power, advanced features, premium finish\n\n"
+        else:
+            # For other queries, extract a brief summary
+            summary = content.split('\n\n')[0]  # Get first paragraph
+            if len(summary) > 50:
+                response += f"{summary[:200]}...\n\n"
         
-        # Format the article entry with minimal formatting
-        response += f"**{title}**\n"
-        
-        # Add very brief excerpt if available
-        if excerpt:
-            response += f"{excerpt}\n"
-        
-        # Add a more prominent link
-        response += f"📖 [Read Article]({url})\n\n"
-        
+        response += f"📖 [Read Full Article]({url})\n\n"
         blog_count += 1
     
-    # Add a note about clicking the links
-    response += "*Click on 'Read Article' to view the full article.*\n"
-    
+    response += "*Click on 'Read Full Article' to view the complete article.*\n"
     return response
 
+def extract_key_points(content, query):
+    """
+    Extract key points from blog content based on the user's query.
+    
+    Parameters:
+    - content: The full content of the blog article
+    - query: The user's original query
+    
+    Returns:
+    - List of key points extracted from the content
+    """
+    if not content or not query:
+        return []
+    
+    # Clean up the content
+    content = content.replace('\n', ' ').replace('\r', ' ')
+    
+    # Identify the type of query to extract relevant information
+    query_lower = query.lower()
+    
+    # Extract key points based on query type
+    key_points = []
+    
+    # For "how to choose" queries
+    if 'how to choose' in query_lower or 'how to select' in query_lower or 'how to buy' in query_lower:
+        # Look for sections with headings like "Factors to consider", "What to look for", etc.
+        factor_sections = re.findall(r'(?:Factors to consider|What to look for|Key factors|Important considerations|Tips for choosing|How to choose|Buying guide|Selection criteria|Summary).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+        
+        if factor_sections:
+            for section in factor_sections:
+                # Extract bullet points or numbered lists
+                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                if points:
+                    key_points.extend(points)
+                else:
+                    # If no bullet points, extract sentences
+                    sentences = re.split(r'(?<=[.!?])\s+', section)
+                    key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+        
+        # For washing machine specific queries, look for comparison sections
+        if 'washing machine' in query_lower:
+            comparison_sections = re.findall(r'(?:Fully automatic vs Semi-automatic|Top load vs front load|Comparison).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+            
+            if comparison_sections:
+                for section in comparison_sections:
+                    # Extract comparison points
+                    points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                    if points:
+                        key_points.extend(points)
+                    else:
+                        # If no bullet points, extract sentences with comparison keywords
+                        sentences = re.split(r'(?<=[.!?])\s+', section)
+                        comparison_sentences = [s.strip() for s in sentences if any(word in s.lower() for word in ['better', 'more', 'less', 'versus', 'vs', 'compared', 'difference'])]
+                        key_points.extend(comparison_sentences)
+    
+    # For "types of" queries
+    elif 'types of' in query_lower or 'kinds of' in query_lower or 'varieties of' in query_lower:
+        # Look for sections about types or categories
+        type_sections = re.findall(r'(?:Types of|Categories of|Different types|Varieties of|Fully automatic vs Semi-automatic|Top load vs front load).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+        
+        if type_sections:
+            for section in type_sections:
+                # Extract bullet points or numbered lists
+                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                if points:
+                    key_points.extend(points)
+                else:
+                    # If no bullet points, extract sentences
+                    sentences = re.split(r'(?<=[.!?])\s+', section)
+                    key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+    
+    # For "best" queries
+    elif 'best' in query_lower or 'recommend' in query_lower or 'top' in query_lower:
+        # Look for recommendations or conclusions
+        recommendation_sections = re.findall(r'(?:Recommendation|Conclusion|Summary|Best choice|Top pick).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+        
+        if recommendation_sections:
+            for section in recommendation_sections:
+                # Extract bullet points or numbered lists
+                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                if points:
+                    key_points.extend(points)
+                else:
+                    # If no bullet points, extract sentences
+                    sentences = re.split(r'(?<=[.!?])\s+', section)
+                    key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+        
+        # For washing machine specific queries, look for pros and cons
+        if 'washing machine' in query_lower:
+            pros_cons_sections = re.findall(r'(?:Pros and cons|Advantages and disadvantages|Benefits and drawbacks).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+            
+            if pros_cons_sections:
+                for section in pros_cons_sections:
+                    # Extract pros and cons points
+                    points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                    if points:
+                        key_points.extend(points)
+    
+    # For general queries, extract the introduction and any summary sections
+    else:
+        # Extract introduction
+        intro_match = re.search(r'(?:Introduction|Overview).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+        if intro_match:
+            intro = intro_match.group(0)
+            sentences = re.split(r'(?<=[.!?])\s+', intro)
+            key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+        
+        # Extract summary
+        summary_match = re.search(r'(?:Summary|Conclusion).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+        if summary_match:
+            summary = summary_match.group(0)
+            sentences = re.split(r'(?<=[.!?])\s+', summary)
+            key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+    
+    # If we still don't have enough key points, extract general information
+    if len(key_points) < 3:
+        # Look for bullet points or numbered lists throughout the content
+        points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', content)
+        if points:
+            key_points.extend(points)
+        
+        # If still not enough, extract sentences with important keywords
+        if len(key_points) < 3:
+            # Extract product type from query
+            product_type = None
+            if product_terms:
+                product_type = find_product_type(query, product_terms)
+            
+            if product_type:
+                # Look for sentences containing the product type
+                product_sentences = re.findall(f'[^.!?]*{product_type}[^.!?]*[.!?]', content, re.IGNORECASE)
+                key_points.extend([s.strip() for s in product_sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+    
+    # Clean up and format key points
+    cleaned_points = []
+    for point in key_points:
+        # Remove extra whitespace
+        point = re.sub(r'\s+', ' ', point).strip()
+        
+        # Skip points that are too short or too long
+        if len(point) < 20 or len(point) > 200:
+            continue
+        
+        # Skip points that are just numbers or symbols
+        if re.match(r'^[\d\s\.\-\*]+$', point):
+            continue
+        
+        # Skip duplicate points
+        if point not in cleaned_points:
+            cleaned_points.append(point)
+    
+    # Limit to 5 key points maximum
+    return cleaned_points[:5]
+
+def extract_summary(content, query):
+    """
+    Extract a summary from the blog content when key points cannot be extracted.
+    
+    Parameters:
+    - content: The full content of the blog article
+    - query: The user's original query
+    
+    Returns:
+    - A summary of the content or None if no summary can be extracted
+    """
+    if not content or not query:
+        return None
+    
+    # Clean up the content
+    content = content.replace('\n', ' ').replace('\r', ' ')
+    
+    # Try to find a summary section
+    summary_match = re.search(r'(?:Summary|Conclusion|Overview).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+    if summary_match:
+        summary = summary_match.group(0)
+        # Clean up the summary
+        summary = re.sub(r'(?:Summary|Conclusion|Overview):\s*', '', summary, flags=re.IGNORECASE)
+        summary = summary.strip()
+        if len(summary) > 50 and len(summary) < 500:
+            return summary
+    
+    # If no summary section found, try to extract the first paragraph
+    paragraphs = re.split(r'\n\n', content)
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if len(paragraph) > 50 and len(paragraph) < 500:
+            return paragraph
+    
+    return None
 
 def get_fan_recommendations_by_user_profile(query: str, df: pd.DataFrame, home_config: Dict[str, Any]) -> str:
     """Get personalized fan recommendations based on user profile information."""
@@ -1073,30 +1245,22 @@ def main():
                             print(f"Found {len(blog_results)} relevant blog articles")
                             response = format_blog_response(blog_results, query)
                             st.write(response)
-                            st.session_state['conversation_history'].append(("user", user_input))
-                            st.session_state['conversation_history'].append(("assistant", response))
                             return
                         else:
                             print("No relevant blog articles found")
                             response = "I couldn't find any articles that directly answer your how-to question. Please try rephrasing your question or ask about a specific product."
                             st.write(response)
-                            st.session_state['conversation_history'].append(("user", user_input))
-                            st.session_state['conversation_history'].append(("assistant", response))
                             return
                     else:
                         print("Failed to load blog embeddings or no embeddings found")
                         response = "I'm having trouble accessing our knowledge base right now. Please try again later or ask about a specific product."
                         st.write(response)
-                        st.session_state['conversation_history'].append(("user", user_input))
-                        st.session_state['conversation_history'].append(("assistant", response))
                         return
                 except Exception as e:
                     print(f"Error searching blogs: {str(e)}")
                     traceback.print_exc()
                     response = "I encountered an error while searching for information. Please try again later or ask about a specific product."
                     st.write(response)
-                    st.session_state['conversation_history'].append(("user", user_input))
-                    st.session_state['conversation_history'].append(("assistant", response))
                     return
 
             # Temporarily disable product search
@@ -1106,8 +1270,6 @@ def main():
                 if products is not None:
                     response = format_product_response(products)
                     st.write(response)
-                    st.session_state['conversation_history'].append(("user", user_input))
-                    st.session_state['conversation_history'].append(("assistant", response))
                     return
 
             # Handle brand queries
@@ -1116,16 +1278,12 @@ def main():
                 if brand_result is not None:
                     response = format_brand_response(brand_result['dataframe'], brand_result['product_type'], brand_result['is_warranty_query'])
                     st.write(response)
-                    st.session_state['conversation_history'].append(("user", user_input))
-                    st.session_state['conversation_history'].append(("assistant", response))
                     return
 
             # Handle general "best" product queries
             if any(term in query for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect']):
                 response = retrieve_and_generate_openai(query, "")
                 st.write(response)
-                st.session_state['conversation_history'].append(("user", user_input))
-                st.session_state['conversation_history'].append(("assistant", response))
                 return
 
             # Handle general product search
@@ -1137,22 +1295,14 @@ def main():
                     # Convert the list of dictionaries to a DataFrame for display
                     products_df = pd.DataFrame(products)
                     st.dataframe(products_df)
+                # Append to conversation history without displaying
                 st.session_state['conversation_history'].append(("user", user_input))
                 st.session_state['conversation_history'].append(("assistant", response))
-            
         except Exception as e:
             st.error(f"I apologize, but I encountered an error: {str(e)}")
+            # Append error to conversation history without displaying
             st.session_state['conversation_history'].append(("user", user_input))
             st.session_state['conversation_history'].append(("assistant", f"I apologize, but I encountered an error: {str(e)}"))
     
-    # Display conversation history
-    if st.session_state['conversation_history']:
-        st.subheader("Conversation History")
-        for role, message in st.session_state['conversation_history']:
-            if role == "user":
-                st.write(f"You: {message}")
-            else:
-                st.write(f"Assistant: {message}")
-
 if __name__ == "__main__":
     main()
