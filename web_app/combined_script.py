@@ -486,6 +486,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['laundry']['dryer'] = recommendations
     
     return final_list
+
 def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
     """Generate a description for each room based on user requirements"""
     if room == 'hall':
@@ -560,8 +561,6 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
         import traceback
         traceback.print_exc()
         return None
-
-
 
 # Function to get product recommendation reason
 def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float) -> str:
@@ -639,7 +638,7 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
 # Function to generate PDF
 def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_filename: str) -> None:
     """Generate a beautiful PDF with user information and product recommendations"""
-    doc = SimpleDocTemplate(f"{excel_filename.replace('.xlsx', '.pdf')}", pagesize=letter)
+    doc = SimpleDocTemplate(f"{excel_filename}", pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
 
@@ -741,7 +740,7 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_fi
 
 def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_filename: str) -> None:
     """Generate a text file with user information and product recommendations"""
-    with open(f"{excel_filename.replace('.xlsx', '.txt')}", 'w') as f:
+    with open(f"{excel_filename}", 'w') as f:
         # Write user information
         f.write("USER INFORMATION\n")
         f.write("================\n")
@@ -843,10 +842,13 @@ if __name__ == "__main__":
     # Generate initial recommendations
     final_list = generate_final_product_list(user_data)
     
-    # Generate output files with the same base filename
-    generate_pdf(user_data, final_list, excel_filename)
-    generate_text_file(user_data, final_list, excel_filename)
+    # Generate output files with the correct suffixes
+    output_base_path = excel_filename.replace('.xlsx', '')
+    pdf_filename = f"{output_base_path}.pdf"
+    txt_filename = f"{output_base_path}.txt"
+    generate_pdf(user_data, final_list, pdf_filename)
+    generate_text_file(user_data, final_list, txt_filename)
     
     print("\nProduct recommendations have been generated!")
-    print(f"Check {excel_filename.replace('.xlsx', '.pdf')} and {excel_filename.replace('.xlsx', '.txt')} for details.")
+    print(f"Check {pdf_filename} and {txt_filename} for details.")
 

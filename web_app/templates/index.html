@@ -106,6 +106,14 @@
                     <label for="hall_color" class="form-label required">Hall: Colour theme?</label>
                     <input type="text" class="form-control" id="hall_color" name="hall_color" required>
                 </div>
+                <div class="mb-3">
+                    <label for="hall_square_feet" class="form-label">Hall: What is the square feet?</label>
+                    <input type="text" class="form-control" id="hall_square_feet" name="hall_square_feet">
+                </div>
+                <div class="mb-3">
+                    <label for="hall_other_info" class="form-label">Hall: Any other information?</label>
+                    <textarea class="form-control" id="hall_other_info" name="hall_other_info" rows="2"></textarea>
+                </div>
             </div>
 
             <!-- Kitchen Requirements -->
@@ -124,11 +132,31 @@
                     <input type="number" class="form-control" id="kitchen_burners" name="kitchen_burners" required>
                 </div>
                 <div class="mb-3">
+                    <label for="kitchen_stove_width" class="form-label">Kitchen: Stove width?</label>
+                    <input type="text" class="form-control" id="kitchen_stove_width" name="kitchen_stove_width">
+                </div>
+                <div class="mb-3">
                     <label for="kitchen_fan" class="form-label required">Kitchen: Do you need a small fan?</label>
                     <select class="form-select" id="kitchen_fan" name="kitchen_fan" required>
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
                     </select>
+                </div>
+                <div class="mb-3">
+                    <label for="kitchen_dishwasher_capacity" class="form-label">Kitchen: Dishwasher capacity?</label>
+                    <input type="text" class="form-control" id="kitchen_dishwasher_capacity" name="kitchen_dishwasher_capacity">
+                </div>
+                <div class="mb-3">
+                    <label for="kitchen_refrigerator_type" class="form-label">Kitchen: Refrigerator type?</label>
+                    <input type="text" class="form-control" id="kitchen_refrigerator_type" name="kitchen_refrigerator_type">
+                </div>
+                <div class="mb-3">
+                    <label for="kitchen_refrigerator_capacity" class="form-label">Kitchen: Refrigerator capacity?</label>
+                    <input type="text" class="form-control" id="kitchen_refrigerator_capacity" name="kitchen_refrigerator_capacity">
+                </div>
+                <div class="mb-3">
+                    <label for="kitchen_other_info" class="form-label">Kitchen: Do you need any other appliances or do you have any other information?</label>
+                    <textarea class="form-control" id="kitchen_other_info" name="kitchen_other_info" rows="2"></textarea>
                 </div>
             </div>
 
@@ -154,6 +182,39 @@
                     <label for="master_color" class="form-label required">Master: What is the colour theme?</label>
                     <input type="text" class="form-control" id="master_color" name="master_color" required>
                 </div>
+                <div class="mb-3">
+                    <label for="master_area" class="form-label">Master: What is the area of the bedroom in square feet?</label>
+                    <input type="text" class="form-control" id="master_area" name="master_area">
+                </div>
+                <div class="mb-3">
+                    <label for="master_bathroom_for_elders" class="form-label">Master: Is this bathroom for elders (above the age 60)?</label>
+                    <select class="form-select" id="master_bathroom_for_elders" name="master_bathroom_for_elders">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="master_water_heater_ceiling" class="form-label">Master: Is the water heater going to be inside the false ceiling in the bathroom?</label>
+                    <select class="form-select" id="master_water_heater_ceiling" name="master_water_heater_ceiling">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="master_exhaust_color" class="form-label">Master: Exhaust fan colour?</label>
+                    <input type="text" class="form-control" id="master_exhaust_color" name="master_exhaust_color">
+                </div>
+                <div class="mb-3">
+                    <label for="master_led_mirror" class="form-label">Master: Would you like to have a LED Mirror?</label>
+                    <select class="form-select" id="master_led_mirror" name="master_led_mirror">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="master_other_info" class="form-label">Master: Any other information?</label>
+                    <textarea class="form-control" id="master_other_info" name="master_other_info" rows="2"></textarea>
+                </div>
             </div>
 
             <!-- Bedroom 2 Requirements -->
@@ -178,6 +239,39 @@
                     <label for="bedroom2_color" class="form-label required">Bedroom 2: What is the colour theme?</label>
                     <input type="text" class="form-control" id="bedroom2_color" name="bedroom2_color" required>
                 </div>
+                <div class="mb-3">
+                    <label for="bedroom2_area" class="form-label">Bedroom 2: What is the area of the bedroom in square feet?</label>
+                    <input type="text" class="form-control" id="bedroom2_area" name="bedroom2_area">
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom2_for_kids" class="form-label">Bedroom 2: Is this for kids above</label>
+                    <select class="form-select" id="bedroom2_for_kids" name="bedroom2_for_kids">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom2_water_heater_ceiling" class="form-label">Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?</label>
+                    <select class="form-select" id="bedroom2_water_heater_ceiling" name="bedroom2_water_heater_ceiling">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom2_exhaust_color" class="form-label">Bedroom 2: Exhaust fan colour?</label>
+                    <input type="text" class="form-control" id="bedroom2_exhaust_color" name="bedroom2_exhaust_color">
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom2_led_mirror" class="form-label">Bedroom 2: Would you like to have a LED Mirror?</label>
+                    <select class="form-select" id="bedroom2_led_mirror" name="bedroom2_led_mirror">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom2_other_info" class="form-label">Bedroom 2: Any other information?</label>
+                    <textarea class="form-control" id="bedroom2_other_info" name="bedroom2_other_info" rows="2"></textarea>
+                </div>
             </div>
 
             <!-- Laundry Requirements -->
@@ -193,6 +287,19 @@
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="form-section">
+                <h3>Additional Information</h3>
+                <div class="mb-3">
+                    <label for="other_info" class="form-label">Any other information?</label>
+                    <textarea class="form-control" id="other_info" name="other_info" rows="3"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="questions_comments" class="form-label">Questions and comments</label>
+                    <textarea class="form-control" id="questions_comments" name="questions_comments" rows="3"></textarea>
                 </div>
             </div>
 

@@ -848,9 +848,6 @@ def get_user_information() -> Dict[str, Any]:
         # Read the Excel file
         df = pd.read_excel('web_app/uploads/Lakshmi_Narasimhan_20250417_134253.xlsx')
         
-        # Debug: Print column names to identify discrepancies
-        print("Debug: Excel file columns:", df.columns.tolist())
-        
         # Clean up column names by removing newlines and extra spaces
         df.columns = [col.split('\n')[0].strip() for col in df.columns]
         row = df.iloc[0]
@@ -874,29 +871,40 @@ def get_user_information() -> Dict[str, Any]:
             },
             'kitchen': {
                 'chimney_width': str(row['Kitchen: Chimney width?']),
+                'chimney_type': None,  # Not in Excel
+                'refrigerator_type': str(row['Kitchen: Refrigerator type?']),
+                'refrigerator_capacity': str(row['Kitchen: Refrigerator capacity?']),
                 'gas_stove_type': str(row['Kitchen: Gas stove type?']),
                 'gas_stove_burners': str(row['Kitchen: Number of burners?']),
-                'small_fan': str(row['Kitchen: Do you need a small fan?'])
+                'small_fan': str(row['Kitchen: Do you need a small fan?']),
+                'color_theme': None  # Not in Excel
             },
             'master_bedroom': {
                 'ac': str(row['Master: Air Conditioner (AC)?']),
+                'ac_type': None,  # Not in Excel
                 'color_theme': str(row['Master: What is the colour theme?']),
                 'bathroom': {
                     'water_heater_type': str(row['Master: How do you bath with the hot & cold water?']),
-                    'exhaust_fan_size': str(row['Master: Exhaust fan size?'])
+                    'exhaust_fan_size': str(row['Master: Exhaust fan size?']),
+                    'shower_type': None  # Not in Excel
                 }
             },
             'bedroom_2': {
                 'ac': str(row['Bedroom 2: Air Conditioner (AC)?']),
+                'ac_type': None,  # Not in Excel
                 'color_theme': str(row['Bedroom 2: What is the colour theme?']),
                 'bathroom': {
                     'water_heater_type': str(row['Bedroom 2: How do you bath with the hot & cold water?']),
-                    'exhaust_fan_size': str(row['Bedroom 2: Exhaust fan size?'])
+                    'exhaust_fan_size': str(row['Bedroom 2: Exhaust fan size?']),
+                    'shower_type': None  # Not in Excel
                 }
             },
             'laundry': {
                 'washing_machine_type': str(row['Laundry: Washing Machine?']),
-                'dryer_type': str(row['Laundry: Dryer?'])
+                'washing_machine_capacity': None,  # Not in Excel
+                'dryer_type': str(row['Laundry: Dryer?']),
+                'dryer_capacity': None,  # Not in Excel
+                'color_theme': None  # Not in Excel
             }
         }
         
@@ -911,6 +919,9 @@ def get_user_information() -> Dict[str, Any]:
                     d[k] = None
         
         clean_dict(user_data)
+        
+        # Override budget for testing
+        user_data['total_budget'] = 100000.0
         
         return user_data
     except Exception as e:
