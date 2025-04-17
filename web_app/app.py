@@ -94,7 +94,7 @@ def submit():
             txt_content = f.read()
         
         return render_template('results.html', 
-                             pdf_file=pdf_filename,
+                             pdf_path=url_for('download_file', filename=os.path.basename(pdf_filename)),
                              txt_content=txt_content)
     else:
         # Debugging output to check filenames and their existence
