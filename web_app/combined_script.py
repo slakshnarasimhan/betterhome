@@ -7,10 +7,6 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import sys
-import os
-import subprocess
-from datetime import datetime
-from flask import request, render_template
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -40,11 +36,17 @@ def load_config() -> Dict[str, Any]:
 # Function to analyze user requirements
 def analyze_user_requirements(excel_file: str):
     try:
+        # Read the Excel file
         df = pd.read_excel(excel_file)
-        print("\nDebug: Excel file columns:", df.columns.tolist())
-        print("\nDebug: First row of data:", df.iloc[0].to_dict())
         
-        # Extract user information
+        # Debug: Print column names to identify discrepancies
+        print("Debug: Excel file columns:", df.columns.tolist())
+        
+        # Clean up column names by removing newlines and extra spaces
+        df.columns = [col.split('\n')[0].strip() for col in df.columns]
+        row = df.iloc[0]
+        
+        # Convert DataFrame to dictionary
         user_data = {
             'name': df.iloc[0]['Name'],
             'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
@@ -56,30 +58,27 @@ def analyze_user_requirements(excel_file: str):
             'demographics': {
                 'adults': int(df.iloc[0]['Adults (between the age 18 to 50)']),
                 'elders': int(df.iloc[0]['Elders (above the age 60)']),
-                'kids': int(df.iloc[0]['Kids (below the age 18)'])}
+                'kids': int(df.iloc[0]['Kids (below the age 18)'])
+            }
         }
         
         # Extract room requirements
         requirements = {
             'hall': {
-                'fans': int(df.iloc[0]["Hall: Fan(s)?\n(A gentle breeze, a comforting presence during Chennai's warm evenings) "]),
-                'ac': df.iloc[0]["Hall: Air Conditioner (AC)?\n(A cool, refreshing escape from Chennai's warmth, creating a space for relaxation)"] == 'Yes',
+                'fans': int(df.iloc[0]["Hall: Fan(s)?"]),
+                'ac': df.iloc[0]["Hall: Air Conditioner (AC)?"] == 'Yes',
                 'color_theme': df.iloc[0]['Hall: Colour theme?']
             },
             'kitchen': {
                 'chimney_width': df.iloc[0]['Kitchen: Chimney width?'],
-                'stove_type': df.iloc[0]['Kitchen: Gas stove type?\n(Where the warmth of home-cooked meals brings comfort and connection)'],
+                'stove_type': df.iloc[0]['Kitchen: Gas stove type?'],
                 'num_burners': int(df.iloc[0]['Kitchen: Number of burners?']),
-                'stove_width': df.iloc[0]['Kitchen: Stove width?'],
                 'small_fan': df.iloc[0]['Kitchen: Do you need a small fan?'] == 'Yes',
-                'dishwasher_capacity': df.iloc[0]['Kitchen: Dishwasher capacity?'],
-                'refrigerator_type': df.iloc[0]['Kitchen: Refrigerator type?'],
-                'refrigerator_capacity': df.iloc[0]['Kitchen: Refrigerator capacity?'],
                 'color_theme': None  # No color theme specified for kitchen
             },
             'master_bedroom': {
                 'ac': df.iloc[0]['Master: Air Conditioner (AC)?'] == 'Yes',
-                'exhaust_fan': {
+                'bathroom': {
                     'water_heater_type': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?']
                 },
@@ -87,7 +86,7 @@ def analyze_user_requirements(excel_file: str):
             },
             'bedroom_2': {
                 'ac': df.iloc[0]['Bedroom 2: Air Conditioner (AC)?'] == 'Yes',
-                'exhaust_fan': {
+                'bathroom': {
                     'water_heater_type': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?']
                 },
@@ -110,7 +109,35 @@ def analyze_user_requirements(excel_file: str):
         
     except Exception as e:
         print(f"Error reading Excel file: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
+
+def calculate_total_cost(recommendations):
+    """Calculate total cost of recommendations"""
+    total_cost = 0
+    processed_types = set()  # Track which product types we've already counted
+    
+    for room, products in recommendations.items():
+        if not isinstance(products, dict):
+            continue
+            
+        for product_type, options in products.items():
+            if not options or not isinstance(options, list):
+                continue
+                
+            # Only count the highest-priced option for each product type
+            if product_type not in processed_types:
+                try:
+                    prices = [float(option.get('price', 0)) for option in options if isinstance(option, dict)]
+                    if prices:
+                        max_price = max(prices)
+                        total_cost += max_price
+                    processed_types.add(product_type)
+                except (ValueError, TypeError):
+                    continue
+    
+    return total_cost 
 
 # Function to get budget category
 def get_budget_category(total_budget: float, appliance_type: str) -> str:
@@ -288,8 +315,7 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
                     'warranty': product.get('warranty', 'Standard warranty applies'),
                     'in_stock': product.get('in_stock', True),
                     'delivery_time': product.get('delivery_time', 'Contact store for details'),
-                    'relevance_score': 0,
-                    'is_bestseller': product.get('is_bestseller', False)  # Add bestseller status
+                    'relevance_score': 0
                 }
             
             # Add color options and check color match
@@ -313,25 +339,22 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
                 product_groups[product_key]['relevance_score'] += 1
             if target_budget_category == 'premium':
                 product_groups[product_key]['relevance_score'] += 2  # Prefer premium products
-            
-            # Add extra points for bestsellers
-            if product.get('is_bestseller', False):
-                product_groups[product_key]['relevance_score'] += 5  # Give significant boost to bestsellers
     
     # Convert product groups to list
     for product in product_groups.values():
         product['color_options'] = list(product['color_options'])
         recommendations.append(product)
     
-    # Sort by relevance score (including bestseller boost) and price
+    # Sort by relevance score and price (preferring higher-priced options)
     recommendations.sort(key=lambda x: (-x['relevance_score'], -float(x.get('price', 0))))
     
     return recommendations[:2]
 
 # Function to generate final product list
-def generate_final_product_list(user_data):
-    """Generate the final product list based on user requirements"""
-    return {
+def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate a final list of preferred products with specific recommendations"""
+    # Initialize room-specific recommendations
+    final_list = {
         'hall': {
             'ceiling_fans': [],
             'ac': []
@@ -339,14 +362,16 @@ def generate_final_product_list(user_data):
         'kitchen': {
             'chimney': [],
             'refrigerator': [],
-            'gas_stove': []
+            'gas_stove': [],
+            'small_fan': []
         },
         'master_bedroom': {
             'ac': [],
             'fans': [],
             'bathroom': {
                 'water_heater': [],
-                'exhaust_fan': []
+                'exhaust_fan': [],
+                'shower': []
             }
         },
         'bedroom_2': {
@@ -354,86 +379,267 @@ def generate_final_product_list(user_data):
             'fans': [],
             'bathroom': {
                 'water_heater': [],
-                'exhaust_fan': []
+                'exhaust_fan': [],
+                'shower': []
             }
         },
         'laundry': {
             'washing_machine': [],
             'dryer': []
         },
-        'total_budget': float(user_data['What is your overall budget for home appliances?']),
-        'demographics': {
-            'adults': int(user_data['Adults (between the age 18 to 50)']),
-            'elders': int(user_data['Elders (above the age 60)']),
-            'kids': int(user_data['Kids (below the age 18)'])
+        'summary': {
+            'total_budget': user_data['total_budget'],
+            'family_size': sum(user_data['demographics'].values()),
+            'location_considerations': ['Chennai climate considered for appliance selection'],
+            'budget_allocation': {},
+            'lifestyle_factors': ['Family size and composition considered']
         }
     }
 
+    # Process hall requirements
+    if user_data['hall'].get('ac', False):
+        budget_category = get_budget_category(user_data['total_budget'], 'ac')
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data)
+        final_list['hall']['ac'] = recommendations
+    
+    if user_data['hall'].get('fans'):
+        budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data)
+        final_list['hall']['ceiling_fans'] = recommendations
+    
+    # Process kitchen requirements
+    if user_data['kitchen'].get('chimney_width'):
+        budget_category = get_budget_category(user_data['total_budget'], 'chimney')
+        recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+        final_list['kitchen']['chimney'] = recommendations
+    
+    if user_data['kitchen'].get('refrigerator_capacity'):
+        budget_category = get_budget_category(user_data['total_budget'], 'refrigerator')
+        recommendations = get_specific_product_recommendations('refrigerator', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+        final_list['kitchen']['refrigerator'] = recommendations
+    
+    if user_data['kitchen'].get('gas_stove_type'):
+        budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
+        recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+        final_list['kitchen']['gas_stove'] = recommendations
+    
+    if user_data['kitchen'].get('small_fan', False):
+        budget_category = get_budget_category(user_data['total_budget'], 'small_fan')
+        recommendations = get_specific_product_recommendations('small_fan', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+        final_list['kitchen']['small_fan'] = recommendations
+    
+    # Process master bedroom requirements
+    if user_data['master_bedroom'].get('ac', False):
+        budget_category = get_budget_category(user_data['total_budget'], 'ac')
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        final_list['master_bedroom']['ac'] = recommendations
+    
+    budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+    recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+    final_list['master_bedroom']['fans'] = recommendations
+    
+    # Process master bedroom bathroom requirements
+    if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('water_heater_type'):
+        budget_category = get_budget_category(user_data['total_budget'], 'geyser')
+        recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        final_list['master_bedroom']['bathroom']['water_heater'] = recommendations
+    
+    if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'):
+        budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        final_list['master_bedroom']['bathroom']['exhaust_fan'] = recommendations
+    
+    # Process bedroom 2 requirements
+    if user_data['bedroom_2'].get('ac', False):
+        budget_category = get_budget_category(user_data['total_budget'], 'ac')
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        final_list['bedroom_2']['ac'] = recommendations
+    
+    budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+    recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+    final_list['bedroom_2']['fans'] = recommendations
+    
+    # Process bedroom 2 bathroom requirements
+    if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('water_heater_type'):
+        budget_category = get_budget_category(user_data['total_budget'], 'geyser')
+        recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        final_list['bedroom_2']['bathroom']['water_heater'] = recommendations
+    
+    if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
+        budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
+    
+    # Process laundry requirements
+    print("\nDebug: Laundry data:", user_data['laundry'])
+    if user_data['laundry'].get('washing_machine_type'):
+        print("\nDebug: Found washing machine type:", user_data['laundry']['washing_machine_type'])
+        budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
+        print("\nDebug: Budget category:", budget_category)
+        recommendations = get_specific_product_recommendations('washing_machine', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data)
+        print("\nDebug: Washing machine recommendations:", recommendations)
+        final_list['laundry']['washing_machine'] = recommendations
+    
+    if user_data['laundry'].get('dryer_type', '').lower() == 'yes':
+        budget_category = get_budget_category(user_data['total_budget'], 'dryer')
+        recommendations = get_specific_product_recommendations('dryer', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data)
+        final_list['laundry']['dryer'] = recommendations
+    
+    return final_list
+def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
+    """Generate a description for each room based on user requirements"""
+    if room == 'hall':
+        return f"A welcoming space with {user_data['hall'].get('fans', 'no')} fan(s) and {'an AC' if user_data['hall'].get('ac', False) else 'no AC'}, " \
+               f"complemented by a {user_data['hall'].get('color_theme', 'neutral')} color theme."
+    
+    elif room == 'kitchen':
+        return f"A functional kitchen with a {user_data['kitchen'].get('chimney_width', 'standard')} chimney, " \
+               f"{user_data['kitchen'].get('stove_type', 'standard')} with {user_data['kitchen'].get('num_burners', '4')} burners, " \
+               f"and {'a small fan' if user_data['kitchen'].get('small_fan', False) else 'no fan'}."
+    
+    elif room == 'master_bedroom':
+        return f"Master bedroom with {user_data['master_bedroom'].get('color_theme', 'neutral')} theme, " \
+               f"{'an AC' if user_data['master_bedroom'].get('ac', False) else 'no AC'}, " \
+               f"and a bathroom equipped with {user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+    
+    elif room == 'bedroom_2':
+        return f"Second bedroom with {user_data['bedroom_2'].get('color_theme', 'neutral')} theme, " \
+               f"{'an AC' if user_data['bedroom_2'].get('ac', False) else 'no AC'}, " \
+               f"and a bathroom equipped with {user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+    
+    elif room == 'laundry':
+        return f"Laundry area equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine" \
+               f"{' and a dryer' if user_data['laundry'].get('dryer_type', '').lower() == 'yes' else ''}."
+    
+    return ""
+
+def get_user_information(excel_filename: str) -> Dict[str, Any]:
+    """Read user information from the Excel file"""
+    try:
+        # Read the Excel file
+        df = pd.read_excel(excel_filename)
+        
+        # Debug: Print column names to identify discrepancies
+        print("Debug: Excel file columns:", df.columns.tolist())
+        
+        # Clean up column names by removing newlines and extra spaces
+        df.columns = [col.split('\n')[0].strip() for col in df.columns]
+        row = df.iloc[0]
+        
+        # Convert DataFrame to dictionary
+        user_data = {
+            'name': df.iloc[0]['Name'],
+            'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
+            'email': df.iloc[0]['E-mail'],
+            'address': df.iloc[0]['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)'],
+            'total_budget': float(df.iloc[0]['What is your overall budget for home appliances?']),
+            'num_bedrooms': int(df.iloc[0]['Number of bedrooms']),
+            'num_bathrooms': int(df.iloc[0]['Number of bathrooms']),
+            'demographics': {
+                'adults': int(df.iloc[0]['Adults (between the age 18 to 50)']),
+                'elders': int(df.iloc[0]['Elders (above the age 60)']),
+                'kids': int(df.iloc[0]['Kids (below the age 18)'])
+            }
+        }
+        
+        # Clean up NaN values
+        def clean_dict(d):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    clean_dict(v)
+                elif pd.isna(v):
+                    d[k] = None
+                elif isinstance(v, str) and v.lower() == 'nan':
+                    d[k] = None
+        
+        clean_dict(user_data)
+        
+        return user_data
+    except Exception as e:
+        print(f"Error reading user information: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+
 # Function to get product recommendation reason
-def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, user_data: Dict[str, Any], total_budget: float) -> str:
+def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float) -> str:
     """Generate a personalized recommendation reason for a product"""
     reasons = []
     
-    # Calculate price savings
-    retail_price = float(product.get('retail_price', 0))
-    actual_price = float(product.get('price', 0))
-    savings = retail_price - actual_price
-    
-    if savings > 0:
-        reasons.append(f"Offers excellent value with savings of ₹{savings:,.2f} compared to retail price")
-    
-    # Add bestseller status if applicable
-    if product.get('is_bestseller', False):
-        reasons.append("One of our best-selling products with proven customer satisfaction")
-    
-    # Add color match reason if applicable
+    # Budget consideration
+    budget_saved = product.get('retail_price', 0) - product.get('price', 0)
+    if budget_saved > 0:
+        reasons.append(f"Offers excellent value with savings of {format_currency(budget_saved)} compared to retail price")
+
+    # Color matching
     if product.get('color_match', False):
-        reasons.append("Color options complement your room's color theme")
+        reasons.append(f"Color options ({', '.join(product.get('color_options', []))}) complement your room's color theme")
+
+    # Energy efficiency
+    if product.get('energy_rating') in ['5 Star', '4 Star']:
+        reasons.append(f"High energy efficiency ({product['energy_rating']}) helps reduce electricity bills")
+
+    # Room and appliance specific reasons
+    if appliance_type == 'ceiling_fan':
+        if 'BLDC Motor' in product.get('features', []):
+            reasons.append("BLDC motor technology ensures high energy efficiency and silent operation - perfect for Chennai's climate")
+        if room == 'hall':
+            reasons.append("Ideal for your hall, providing effective air circulation in the common area")
     
-    # Calculate family size
-    family_size = int(user_data['Adults (between the age 18 to 50)']) + int(user_data['Elders (above the age 60)']) + int(user_data['Kids (below the age 18)'])
+    elif appliance_type == 'bathroom_exhaust':
+        if demographics.get('elders', 0) > 0 and 'humidity sensor' in [f.lower() for f in product.get('features', [])]:
+            reasons.append("Automatic humidity sensing is beneficial for elder care, preventing bathroom dampness")
+        reasons.append("Essential for Chennai's humid climate to prevent mold and maintain bathroom freshness")
     
-    # Add appliance-specific reasons
-    if appliance_type == 'refrigerator':
-        if 'inverter' in str(product.get('features', '')).lower():
-            reasons.append("Energy-efficient design helps reduce electricity bills")
-        if family_size >= 4 and float(product.get('capacity', 0)) >= 300:
-            reasons.append("Capacity well-suited for your family size")
+    elif appliance_type == 'geyser':
+        if demographics.get('elders', 0) > 0:
+            if 'Temperature Control' in product.get('features', []):
+                reasons.append("Temperature control feature ensures safety for elderly family members")
+        if product.get('capacity', '').lower().endswith('l'):
+            capacity = int(product.get('capacity', '0L')[:-1])
+            family_size = sum(demographics.values())
+            if capacity >= family_size * 5:
+                reasons.append(f"Capacity of {product['capacity']} is suitable for your family size of {family_size} members")
+    
+    elif appliance_type == 'refrigerator':
+        if product.get('capacity', '').lower().endswith('l'):
+            capacity = int(product.get('capacity', '0L')[:-1])
+            family_size = sum(demographics.values())
+            if capacity >= family_size * 100:
+                reasons.append(f"Capacity of {product['capacity']} is ideal for your family size of {family_size} members")
+        if demographics.get('kids', 0) > 0 and 'Child lock' in product.get('features', []):
+            reasons.append("Child lock feature provides additional safety for homes with children")
     
     elif appliance_type == 'washing_machine':
-        if 'front load' in str(product.get('features', '')).lower():
-            reasons.append("Advanced washing technology ensures thorough cleaning while being gentle on clothes")
-        if family_size >= 4 and float(product.get('capacity', 0)) >= 7:
-            reasons.append("Capacity suitable for your family's laundry needs")
-    
-    elif appliance_type == 'ac':
-        if 'inverter' in str(product.get('features', '')).lower():
-            reasons.append("Energy-efficient inverter technology for lower electricity bills")
-        if family_size >= 4 and float(product.get('capacity', 0)) >= 1.5:
-            reasons.append("Cooling capacity appropriate for your room size")
-    
-    elif appliance_type == 'ceiling_fan':
-        if 'BLDC' in str(product.get('features', '')).upper():
-            reasons.append("Energy-efficient BLDC motor technology")
-        if 'remote' in str(product.get('features', '')).lower():
-            reasons.append("Convenient remote control operation")
+        family_size = sum(demographics.values())
+        if product.get('capacity', '').lower().endswith('kg'):
+            capacity = float(product.get('capacity', '0kg')[:-2])
+            if capacity >= family_size * 1.5:
+                reasons.append(f"Capacity of {product['capacity']} is perfect for your family size")
+        if demographics.get('kids', 0) > 0:
+            if 'Anti-allergen' in product.get('features', []):
+                reasons.append("Anti-allergen feature is beneficial for families with children")
     
     elif appliance_type == 'chimney':
-        if 'auto clean' in str(product.get('features', '')).lower():
-            reasons.append("Auto-clean feature reduces maintenance effort")
-        if family_size >= 4:
-            reasons.append("Suction capacity suitable for regular family cooking")
-    
-    return "\n • " + "\n • ".join(reasons)
+        if 'auto-clean' in product.get('type', '').lower():
+            reasons.append("Auto-clean feature reduces maintenance effort, ideal for busy families")
+        if product.get('suction_power', '').lower().endswith('m³/hr'):
+            power = int(product.get('suction_power', '0 m³/hr').split()[0])
+            if power >= 1200:
+                reasons.append("Strong suction power effectively handles Indian cooking needs")
+
+    # Add a general note about warranty if available
+    if product.get('warranty'):
+        reasons.append(f"Comes with {product['warranty']} for peace of mind")
+
+    return " • " + "\n • ".join(reasons)
 
 # Function to generate PDF
 def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_filename: str) -> None:
     """Generate a beautiful PDF with user information and product recommendations"""
-    # Extract base name from Excel filename
-    base_name = os.path.splitext(os.path.basename(excel_filename))[0]
-    pdf_filename = f"uploads/{base_name}.pdf"
-    
-    doc = SimpleDocTemplate(pdf_filename, pagesize=letter)
+    doc = SimpleDocTemplate(f"{excel_filename.replace('.xlsx', '.pdf')}", pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
 
@@ -460,12 +666,12 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_fi
     # Cover page with user information
     story.append(Paragraph("BetterHome Product Recommendations", styles['Title']))
     story.append(Spacer(1, 20))
-    story.append(Paragraph(f"Name: {user_data['Name']}", styles['Normal']))
-    story.append(Paragraph(f"Mobile: {user_data['Mobile Number (Preferably on WhatsApp)']}", styles['Normal']))
-    story.append(Paragraph(f"Email: {user_data['E-mail']}", styles['Normal']))
-    story.append(Paragraph(f"Address: {user_data['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)']}", styles['Normal']))
-    story.append(Paragraph(f"Total Budget: ₹{float(user_data['What is your overall budget for home appliances?']):,.2f}", styles['Normal']))
-    story.append(Paragraph(f"Family Size: {int(user_data['Adults (between the age 18 to 50)']) + int(user_data['Elders (above the age 60)']) + int(user_data['Kids (below the age 18)'])} members", styles['Normal']))
+    story.append(Paragraph(f"Name: {user_data['name']}", styles['Normal']))
+    story.append(Paragraph(f"Mobile: {user_data['mobile']}", styles['Normal']))
+    story.append(Paragraph(f"Email: {user_data['email']}", styles['Normal']))
+    story.append(Paragraph(f"Address: {user_data['address']}", styles['Normal']))
+    story.append(Paragraph(f"Total Budget: ₹{user_data['total_budget']:,.2f}", styles['Normal']))
+    story.append(Paragraph(f"Family Size: {sum(user_data['demographics'].values())} members", styles['Normal']))
     story.append(PageBreak())
 
     total_cost = calculate_total_cost(final_list)
@@ -499,8 +705,8 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_fi
                                 item, 
                                 appliance_type, 
                                 room, 
-                                user_data,
-                                float(user_data['What is your overall budget for home appliances?'])
+                                user_data['demographics'],
+                                user_data['total_budget']
                             )
                             
                             details = f"""
@@ -517,10 +723,10 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_fi
             story.append(PageBreak())
     
     # Add budget summary
-    budget_utilization = (total_cost / float(user_data['What is your overall budget for home appliances?'])) * 100
+    budget_utilization = (total_cost / user_data['total_budget']) * 100
     summary = f"""
     Total Cost of Recommended Products: ₹{total_cost:,.2f}<br/>
-    Your Budget: ₹{float(user_data['What is your overall budget for home appliances?']):,.2f}<br/>
+    Your Budget: ₹{user_data['total_budget']:,.2f}<br/>
     Budget Utilization: {budget_utilization:.1f}%<br/>
     """
     if budget_utilization <= 100:
@@ -535,23 +741,19 @@ def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_fi
 
 def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_filename: str) -> None:
     """Generate a text file with user information and product recommendations"""
-    # Extract base name from Excel filename
-    base_name = os.path.splitext(os.path.basename(excel_filename))[0]
-    txt_filename = f"uploads/{base_name}.txt"
-    
-    with open(txt_filename, 'w') as f:
+    with open(f"{excel_filename.replace('.xlsx', '.txt')}", 'w') as f:
         # Write user information
         f.write("USER INFORMATION\n")
         f.write("================\n")
-        f.write(f"Name: {user_data['Name']}\n")
-        f.write(f"Mobile: {user_data['Mobile Number (Preferably on WhatsApp)']}\n")
-        f.write(f"Email: {user_data['E-mail']}\n")
-        f.write(f"Address: {user_data['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)']}\n\n")
+        f.write(f"Name: {user_data['name']}\n")
+        f.write(f"Mobile: {user_data['mobile']}\n")
+        f.write(f"Email: {user_data['email']}\n")
+        f.write(f"Address: {user_data['address']}\n\n")
         
         f.write("BUDGET AND FAMILY SIZE\n")
         f.write("=====================\n")
-        f.write(f"Total Budget: ₹{float(user_data['What is your overall budget for home appliances?']):,.2f}\n")
-        f.write(f"Family Size: {int(user_data['Adults (between the age 18 to 50)']) + int(user_data['Elders (above the age 60)']) + int(user_data['Kids (below the age 18)'])} members\n\n")
+        f.write(f"Total Budget: ₹{user_data['total_budget']:,.2f}\n")
+        f.write(f"Family Size: {sum(user_data['demographics'].values())} members\n\n")
         
         f.write("ROOM-WISE RECOMMENDATIONS\n")
         f.write("========================\n\n")
@@ -617,8 +819,8 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ex
         f.write("\nBUDGET SUMMARY\n")
         f.write("=============\n")
         f.write(f"Total Cost of Recommended Products: ₹{total_cost:,.2f}\n")
-        f.write(f"Your Budget: ₹{float(user_data['What is your overall budget for home appliances?']):,.2f}\n")
-        budget_utilization = (total_cost / float(user_data['What is your overall budget for home appliances?'])) * 100
+        f.write(f"Your Budget: ₹{user_data['total_budget']:,.2f}\n")
+        budget_utilization = (total_cost / user_data['total_budget']) * 100
         f.write(f"Budget Utilization: {budget_utilization:.1f}%\n")
         if budget_utilization <= 100:
             f.write("Your selected products fit within your budget!\n")
@@ -626,287 +828,25 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ex
             f.write("Note: The total cost exceeds your budget. You may want to consider alternative options.\n")
 
 # Main function
-def main():
-    """Main function to process user requirements and generate recommendations"""
-    # Get the Excel file path from command line arguments
+if __name__ == "__main__":
+    # Check if the Excel filename is provided as an argument
     if len(sys.argv) < 2:
-        print("Error: Please provide the Excel file path as an argument")
+        print("Error: Excel filename must be provided as an argument.")
         sys.exit(1)
-    
-    excel_file = sys.argv[1]
-    excel_filename = os.path.basename(excel_file)
-    base_name = os.path.splitext(excel_filename)[0]  # Define base_name here
-    
-    # Read the Excel file
-    df = pd.read_excel(excel_file)
-    
-    # Get the first row of data
-    user_data = df.iloc[0].to_dict()
+
+    # Get the Excel filename from the command line arguments
+    excel_filename = sys.argv[1]
+
+    # Get user information
+    user_data = analyze_user_requirements(excel_filename)
     
     # Generate initial recommendations
     final_list = generate_final_product_list(user_data)
     
-    # Process hall requirements
-    if user_data.get('Hall AC', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'ac')
-        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['Adults (between the age 18 to 50)'], user_data.get('Hall Colour Theme', ''), user_data)
-        final_list['hall']['ac'] = recommendations
-    
-    if user_data.get('Hall Fan', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'ceiling_fan')
-        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['Adults (between the age 18 to 50)'], user_data.get('Hall Colour Theme', ''), user_data)
-        final_list['hall']['ceiling_fans'] = recommendations
-    
-    # Process kitchen requirements
-    if user_data.get('Kitchen Chimney', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'chimney')
-        recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['Adults (between the age 18 to 50)'], None, user_data)
-        final_list['kitchen']['chimney'] = recommendations
-    
-    if user_data.get('Kitchen Hob', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'gas_stove')
-        recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['Adults (between the age 18 to 50)'], None, user_data)
-        final_list['kitchen']['gas_stove'] = recommendations
-    
-    # Process master bedroom requirements
-    if user_data.get('Master Bedroom AC', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'ac')
-        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['Adults (between the age 18 to 50)'], user_data.get('Master Bedroom Colour Theme', ''), user_data)
-        final_list['master_bedroom']['ac'] = recommendations
-    
-    if user_data.get('Master Bedroom Fan', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'ceiling_fan')
-        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['Adults (between the age 18 to 50)'], user_data.get('Master Bedroom Colour Theme', ''), user_data)
-        final_list['master_bedroom']['fans'] = recommendations
-    
-    # Process bedroom 2 requirements
-    if user_data.get('Bedroom 2 AC', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'ac')
-        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['Adults (between the age 18 to 50)'], user_data.get('Bedroom 2 Colour Theme', ''), user_data)
-        final_list['bedroom_2']['ac'] = recommendations
-    
-    if user_data.get('Bedroom 2 Fan', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'ceiling_fan')
-        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['Adults (between the age 18 to 50)'], user_data.get('Bedroom 2 Colour Theme', ''), user_data)
-        final_list['bedroom_2']['fans'] = recommendations
-    
-    # Process laundry requirements
-    if user_data.get('Laundry Washing Machine', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['What is your overall budget for home appliances?'], 'washing_machine')
-        recommendations = get_specific_product_recommendations('washing_machine', budget_category, user_data['Adults (between the age 18 to 50)'], None, user_data)
-        final_list['laundry']['washing_machine'] = recommendations
-    
-    # Generate output files
+    # Generate output files with the same base filename
     generate_pdf(user_data, final_list, excel_filename)
     generate_text_file(user_data, final_list, excel_filename)
     
     print("\nProduct recommendations have been generated!")
-    print(f"Check uploads/{base_name}.pdf and uploads/{base_name}.txt for details.")
+    print(f"Check {excel_filename.replace('.xlsx', '.pdf')} and {excel_filename.replace('.xlsx', '.txt')} for details.")
 
-def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
-    """Generate a description for each room based on user requirements"""
-    if room == 'hall':
-        return f"A welcoming space with {'a fan' if user_data.get('Hall Fan', '').lower() == 'yes' else 'no fan'} and {'an AC' if user_data.get('Hall AC', '').lower() == 'yes' else 'no AC'}, " \
-               f"complemented by a {user_data.get('Hall Colour Theme', 'neutral')} color theme."
-    
-    elif room == 'kitchen':
-        return f"A functional kitchen with {'a chimney' if user_data.get('Kitchen Chimney', '').lower() == 'yes' else 'no chimney'}, " \
-               f"{'a hob' if user_data.get('Kitchen Hob', '').lower() == 'yes' else 'no hob'}, " \
-               f"complemented by a {user_data.get('Kitchen Colour Theme', 'neutral')} color theme."
-    
-    elif room == 'master_bedroom':
-        return f"Master bedroom with {user_data.get('Master Bedroom Colour Theme', 'neutral')} theme, " \
-               f"{'an AC' if user_data.get('Master Bedroom AC', '').lower() == 'yes' else 'no AC'}, " \
-               f"and {'a fan' if user_data.get('Master Bedroom Fan', '').lower() == 'yes' else 'no fan'}."
-    
-    elif room == 'bedroom_2':
-        return f"Second bedroom with {user_data.get('Bedroom 2 Colour Theme', 'neutral')} theme, " \
-               f"{'an AC' if user_data.get('Bedroom 2 AC', '').lower() == 'yes' else 'no AC'}, " \
-               f"and {'a fan' if user_data.get('Bedroom 2 Fan', '').lower() == 'yes' else 'no fan'}."
-    
-    elif room == 'laundry':
-        return f"Laundry area equipped with a {user_data.get('Laundry Washing Machine', 'standard')} washing machine."
-    
-    return ""
-
-def get_user_information() -> Dict[str, Any]:
-    """Read user information from the Excel file"""
-    try:
-        # Read the Excel file
-        df = pd.read_excel('betterhome-order-form.xlsx')
-        
-        # Clean up column names by removing newlines and extra spaces
-        df.columns = [col.split('\n')[0].strip() for col in df.columns]
-        row = df.iloc[0]
-        
-        # Convert DataFrame to dictionary
-        user_data = {
-            'name': str(row['Name']),
-            'mobile': str(row['Mobile Number (Preferably on WhatsApp)']),
-            'email': str(row['E-mail']),
-            'address': str(row['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)']),
-            'total_budget': float(str(row['What is your overall budget for home appliances?']).replace(',', '')),
-            'demographics': {
-                'adults': int(row['Adults (between the age 18 to 50)']),
-                'children': int(row['Kids (below the age 18)']),
-                'seniors': int(row['Elders (above the age 60)'])
-            },
-            'hall': {
-                'fans': str(row['Hall: Fan(s)?']),
-                'ac': str(row['Hall: Air Conditioner (AC)?']),
-                'color_theme': str(row['Hall: Colour theme?'])
-            },
-            'kitchen': {
-                'chimney_width': str(row['Kitchen: Chimney width?']),
-                'chimney_type': None,  # Not in Excel
-                'refrigerator_type': str(row['Kitchen: Refrigerator type?']),
-                'refrigerator_capacity': str(row['Kitchen: Refrigerator capacity?']),
-                'gas_stove_type': str(row['Kitchen: Gas stove type?']),
-                'gas_stove_burners': str(row['Kitchen: Number of burners?']),
-                'small_fan': str(row['Kitchen: Do you need a small fan?']),
-                'color_theme': None  # Not in Excel
-            },
-            'master_bedroom': {
-                'ac': str(row['Master: Air Conditioner (AC)?']),
-                'ac_type': None,  # Not in Excel
-                'color_theme': str(row['Master: What is the colour theme?']),
-                'bathroom': {
-                    'water_heater_type': str(row['Master: How do you bath with the hot & cold water?']),
-                    'exhaust_fan_size': str(row['Master: Exhaust fan size?']),
-                    'shower_type': None  # Not in Excel
-                }
-            },
-            'bedroom_2': {
-                'ac': str(row['Bedroom 2: Air Conditioner (AC)?']),
-                'ac_type': None,  # Not in Excel
-                'color_theme': str(row['Bedroom 2: What is the colour theme?']),
-                'bathroom': {
-                    'water_heater_type': str(row['Bedroom 2: How do you bath with the hot & cold water?']),
-                    'exhaust_fan_size': str(row['Bedroom 2: Exhaust fan size?']),
-                    'shower_type': None  # Not in Excel
-                }
-            },
-            'laundry': {
-                'washing_machine_type': str(row['Laundry: Washing Machine?']),
-                'washing_machine_capacity': None,  # Not in Excel
-                'dryer_type': str(row['Laundry: Dryer?']),
-                'dryer_capacity': None,  # Not in Excel
-                'color_theme': None  # Not in Excel
-            }
-        }
-        
-        # Clean up NaN values
-        def clean_dict(d):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    clean_dict(v)
-                elif pd.isna(v):
-                    d[k] = None
-                elif isinstance(v, str) and v.lower() == 'nan':
-                    d[k] = None
-        
-        clean_dict(user_data)
-        
-        # Override budget for testing
-        user_data['total_budget'] = 100000.0
-        
-        return user_data
-    except Exception as e:
-        print(f"Error reading user information: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-def calculate_total_cost(recommendations):
-    """Calculate total cost of recommendations, taking only the highest-priced option for each product type"""
-    total_cost = 0
-    processed_types = set()  # Track which product types we've already counted
-    
-    for room, products in recommendations.items():
-        if not isinstance(products, dict):
-            continue
-            
-        for product_type, options in products.items():
-            if not options:  # Skip if no options available
-                continue
-                
-            # Only count the highest-priced option for each product type
-            if product_type not in processed_types:
-                try:
-                    if isinstance(options, list):
-                        prices = []
-                        for option in options:
-                            if isinstance(option, dict):
-                                price = float(option.get('price', 0))
-                            elif isinstance(option, str):
-                                # Try to extract price from string format
-                                try:
-                                    price = float(''.join(filter(str.isdigit, option)))
-                                except ValueError:
-                                    price = 0
-                            else:
-                                price = 0
-                            prices.append(price)
-                        max_price = max(prices) if prices else 0
-                    else:
-                        max_price = 0
-                    
-                    total_cost += max_price
-                    processed_types.add(product_type)
-                except Exception as e:
-                    print(f"Error processing {product_type} in {room}: {str(e)}")
-                    continue
-    
-    return total_cost
-
-def generate_recommendation_text(product, color_match=False):
-    """Generate formatted text for a product recommendation"""
-    text = []
-    
-    # Product name and price
-    text.append(f"{product['brand']} {product['model']}")
-    text.append(f"Price: {format_currency(product['price'])} (Retail: {format_currency(product['retail_price'])})")
-    
-    # Features
-    if product.get('features'):
-        text.append("Features: " + ", ".join(product['features']))
-    
-    # Color options
-    if product.get('color_options'):
-        color_text = f"Color Options: {', '.join(product['color_options'])}"
-        if color_match:
-            color_text += " - Matches your room's color theme!"
-        text.append(color_text)
-    
-    # Recommendation reasons
-    text.append("Why we recommend this:")
-    # Add price savings reason
-    savings = product['retail_price'] - product['price']
-    text.append(f" • Offers excellent value with savings of {format_currency(savings)} compared to retail price")
-    
-    # Add bestseller status if applicable
-    if product.get('is_bestseller', False):
-        text.append(" • One of our best-selling products with proven customer satisfaction")
-    
-    # Add color match reason if applicable
-    if color_match:
-        text.append(" • Color options complement your room's color theme")
-    
-    # Add specific reasons based on product type
-    if product.get('type') == 'refrigerator':
-        text.append(" • Energy-efficient design helps reduce electricity bills")
-    elif product.get('type') == 'washing_machine':
-        text.append(" • Advanced washing technology ensures thorough cleaning while being gentle on clothes")
-    elif product.get('type') == 'ac':
-        text.append(" • Energy-efficient cooling with advanced features for comfort")
-    
-    # Add warranty and delivery info
-    if product.get('warranty'):
-        text.append(f"Warranty: {product['warranty']}")
-    if product.get('delivery_time'):
-        text.append(f"Delivery: {product['delivery_time']}")
-    
-    return "\n".join(text)
-
-if __name__ == "__main__":
-    main() 
