@@ -7,6 +7,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import sys
+from reportlab.pdfgen import canvas
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -635,196 +636,37 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
 
     return " • " + "\n • ".join(reasons)
 
-# Function to generate PDF
-def generate_pdf(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_filename: str) -> None:
-    """Generate a beautiful PDF with user information and product recommendations"""
-    doc = SimpleDocTemplate(f"{excel_filename}", pagesize=letter)
+# Function to create a styled PDF
+def create_styled_pdf(filename, user_data, recommendations):
+    c = canvas.Canvas(filename, pagesize=letter)
+    width, height = letter
+    
+    # Set up styles
     styles = getSampleStyleSheet()
-    story = []
-
-    # Add custom styles
-    styles.add(ParagraphStyle(
-        name='RoomTitle',
-        parent=styles['Heading1'],
-        fontSize=16,
-        spaceAfter=20
-    ))
-    styles.add(ParagraphStyle(
-        name='ProductTitle',
-        parent=styles['Heading2'],
-        fontSize=14,
-        spaceAfter=10
-    ))
-    styles.add(ParagraphStyle(
-        name='Description',
-        parent=styles['Normal'],
-        fontSize=12,
-        spaceAfter=15
-    ))
-
-    # Cover page with user information
-    story.append(Paragraph("BetterHome Product Recommendations", styles['Title']))
-    story.append(Spacer(1, 20))
-    story.append(Paragraph(f"Name: {user_data['name']}", styles['Normal']))
-    story.append(Paragraph(f"Mobile: {user_data['mobile']}", styles['Normal']))
-    story.append(Paragraph(f"Email: {user_data['email']}", styles['Normal']))
-    story.append(Paragraph(f"Address: {user_data['address']}", styles['Normal']))
-    story.append(Paragraph(f"Total Budget: ₹{user_data['total_budget']:,.2f}", styles['Normal']))
-    story.append(Paragraph(f"Family Size: {sum(user_data['demographics'].values())} members", styles['Normal']))
-    story.append(PageBreak())
-
-    total_cost = calculate_total_cost(final_list)
+    title_style = styles['Title']
+    normal_style = styles['Normal']
     
-    # Process each room
-    for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
-        if room in final_list and final_list[room]:
-            story.append(Paragraph(room.replace('_', ' ').title(), styles['RoomTitle']))
-            
-            # Add room description
-            room_desc = get_room_description(room, user_data)
-            story.append(Paragraph(room_desc, styles['Description']))
-            
-            # Add products for the room
-            for appliance_type, items in final_list[room].items():
-                if isinstance(items, list) and items:  # Check if items is a non-empty list
-                    for item in items:
-                        if isinstance(item, dict):  # Check if item is a dictionary
-                            # Get product details
-                            brand = item.get('brand', 'Unknown Brand')
-                            model = item.get('model', 'Unknown Model')
-                            price = float(item.get('price', 0))
-                            features = item.get('features', [])
-                            retail_price = price * 1.2  # 20% markup for retail price
-                            savings = retail_price - price
-                            
-                            story.append(Paragraph(f"{brand} {model}", styles['ProductTitle']))
-                            
-                            # Get recommendation reason with total budget
-                            reason = get_product_recommendation_reason(
-                                item, 
-                                appliance_type, 
-                                room, 
-                                user_data['demographics'],
-                                user_data['total_budget']
-                            )
-                            
-                            details = f"""
-                            Price: ₹{price:,.2f}<br/>
-                            Retail Price: ₹{retail_price:,.2f}<br/>
-                            You Save: ₹{savings:,.2f}<br/>
-                            Features: {', '.join(features)}<br/>
-                            Reason: {reason}<br/>
-                            Purchase Link: <link href="{item.get('purchase_link', 'https://betterhome.co.in')}">Buy from BetterHome</link>
-                            """
-                            story.append(Paragraph(details, styles['Normal']))
-                            story.append(Spacer(1, 15))
-            
-            story.append(PageBreak())
+    # Title
+    c.setFont("Helvetica-Bold", 24)
+    c.drawString(100, height - 100, "BetterHome Recommendations")
     
-    # Add budget summary
-    budget_utilization = (total_cost / user_data['total_budget']) * 100
-    summary = f"""
-    Total Cost of Recommended Products: ₹{total_cost:,.2f}<br/>
-    Your Budget: ₹{user_data['total_budget']:,.2f}<br/>
-    Budget Utilization: {budget_utilization:.1f}%<br/>
-    """
-    if budget_utilization <= 100:
-        summary += "Your selected products fit within your budget!"
-    else:
-        summary += "Note: The total cost exceeds your budget. You may want to consider alternative options."
+    # User Information
+    c.setFont("Helvetica", 12)
+    c.drawString(100, height - 150, f"Name: {user_data['name']}")
+    c.drawString(100, height - 170, f"Email: {user_data['email']}")
     
-    story.append(Paragraph("Budget Summary", styles['RoomTitle']))
-    story.append(Paragraph(summary, styles['Normal']))
+    # Recommendations
+    y_position = height - 220
+    for room, items in recommendations.items():
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(100, y_position, f"{room.capitalize()}:")
+        y_position -= 20
+        for item in items:
+            c.setFont("Helvetica", 12)
+            c.drawString(120, y_position, f"- {item}")
+            y_position -= 20
     
-    doc.build(story)
-
-def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], excel_filename: str) -> None:
-    """Generate a text file with user information and product recommendations"""
-    with open(f"{excel_filename}", 'w') as f:
-        # Write user information
-        f.write("USER INFORMATION\n")
-        f.write("================\n")
-        f.write(f"Name: {user_data['name']}\n")
-        f.write(f"Mobile: {user_data['mobile']}\n")
-        f.write(f"Email: {user_data['email']}\n")
-        f.write(f"Address: {user_data['address']}\n\n")
-        
-        f.write("BUDGET AND FAMILY SIZE\n")
-        f.write("=====================\n")
-        f.write(f"Total Budget: ₹{user_data['total_budget']:,.2f}\n")
-        f.write(f"Family Size: {sum(user_data['demographics'].values())} members\n\n")
-        
-        f.write("ROOM-WISE RECOMMENDATIONS\n")
-        f.write("========================\n\n")
-        
-        total_cost = calculate_total_cost(final_list)
-        
-        # Process each room
-        for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
-            if room in final_list and final_list[room]:
-                f.write(f"{room.replace('_', ' ').upper()}\n")
-                f.write("-" * len(room) + "\n")
-                
-                # Add room description
-                room_desc = get_room_description(room, user_data)
-                f.write(f"{room_desc}\n\n")
-                
-                # Add products for the room
-                for appliance_type, items in final_list[room].items():
-                    if isinstance(items, list) and items:
-                        for item in items:
-                            if isinstance(item, dict):
-                                # Get product details
-                                brand = item.get('brand', 'Unknown Brand')
-                                model = item.get('model', 'Unknown Model')
-                                price = float(item.get('price', 0))
-                                features = item.get('features', [])
-                                retail_price = float(item.get('retail_price', price * 1.2))
-                                savings = retail_price - price
-                                warranty = item.get('warranty', 'Standard warranty applies')
-                                delivery_time = item.get('delivery_time', 'Contact store for details')
-                                
-                                f.write(f"{appliance_type.replace('_', ' ').title()}: {brand} {model}\n")
-                                f.write(f"Price: ₹{price:,.2f} (Retail: ₹{retail_price:,.2f})\n")
-                                f.write(f"Features: {', '.join(features)}\n")
-                                
-                                if item.get('color_options'):
-                                    f.write(f"Color Options: {', '.join(item['color_options'])}")
-                                    if item.get('color_match'):
-                                        f.write(" - Matches your room's color theme!")
-                                    f.write("\n")
-                                
-                                f.write("Why we recommend this:\n")
-                                if savings > 0:
-                                    f.write(f" • Offers excellent value with savings of ₹{savings:,.2f} compared to retail price\n")
-                                
-                                if item.get('color_match'):
-                                    f.write(" • Color options complement your room's color theme\n")
-                                
-                                # Add specific features based on appliance type
-                                if appliance_type == 'ceiling_fan':
-                                    f.write(" • BLDC motor technology ensures high energy efficiency and silent operation - perfect for Chennai's climate\n")
-                                elif appliance_type == 'bathroom_exhaust':
-                                    f.write(" • Essential for Chennai's humid climate to prevent mold and maintain bathroom freshness\n")
-                                elif appliance_type == 'refrigerator':
-                                    f.write(" • Energy-efficient design helps reduce electricity bills\n")
-                                elif appliance_type == 'washing_machine':
-                                    f.write(" • Advanced washing technology ensures thorough cleaning while being gentle on clothes\n")
-                                
-                                f.write(f"Warranty: {warranty}\n")
-                                f.write(f"Delivery: {delivery_time}\n\n")
-            
-        # Add budget summary
-        f.write("\nBUDGET SUMMARY\n")
-        f.write("=============\n")
-        f.write(f"Total Cost of Recommended Products: ₹{total_cost:,.2f}\n")
-        f.write(f"Your Budget: ₹{user_data['total_budget']:,.2f}\n")
-        budget_utilization = (total_cost / user_data['total_budget']) * 100
-        f.write(f"Budget Utilization: {budget_utilization:.1f}%\n")
-        if budget_utilization <= 100:
-            f.write("Your selected products fit within your budget!\n")
-        else:
-            f.write("Note: The total cost exceeds your budget. You may want to consider alternative options.\n")
+    c.save()
 
 # Main function
 if __name__ == "__main__":
@@ -846,7 +688,7 @@ if __name__ == "__main__":
     output_base_path = excel_filename.replace('.xlsx', '')
     pdf_filename = f"{output_base_path}.pdf"
     txt_filename = f"{output_base_path}.txt"
-    generate_pdf(user_data, final_list, pdf_filename)
+    create_styled_pdf(pdf_filename, user_data, final_list)
     generate_text_file(user_data, final_list, txt_filename)
     
     print("\nProduct recommendations have been generated!")
