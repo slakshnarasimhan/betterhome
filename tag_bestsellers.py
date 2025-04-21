@@ -89,15 +89,31 @@ def tag_bestsellers():
     with open('product_catalog.json', 'r') as f:
         catalog = json.load(f)
     
+    # Clean bestseller URLs by removing variant parameters
+    cleaned_bestsellers = []
+    for bs in bestsellers:
+        url = bs.get('url', '').lower()
+        # Remove variant parameter if present
+        base_url = url.split('?variant=')[0].split('?')[0]
+        cleaned_bestsellers.append({
+            "title": bs.get('title', ''),
+            "url": base_url,
+            "original_url": url
+        })
+    
+    print(f"Cleaned {len(cleaned_bestsellers)} bestseller URLs")
+    
     # Tag products in catalog
     matches = 0
     matched_urls = set()
     
     for category, products in catalog.items():
         for product in products:
-            # Check if product URL matches any bestseller URL
-            product_url = product.get('url', '').lower()
-            is_bestseller = any(bs.get('url', '').lower() == product_url for bs in bestsellers)
+            # Get product URL without any parameters
+            product_url = product.get('url', '').lower().split('?')[0]
+            
+            # Check if product URL matches any cleaned bestseller URL
+            is_bestseller = any(bs['url'] == product_url for bs in cleaned_bestsellers)
             
             if is_bestseller:
                 product['is_bestseller'] = True
@@ -110,14 +126,21 @@ def tag_bestsellers():
     
     # Print unmatched bestsellers
     print("\nBestseller products not found in catalog:")
-    for bs in bestsellers:
-        if bs['url'].lower() not in matched_urls:
+    unmatched_count = 0
+    for bs in cleaned_bestsellers:
+        if bs['url'] not in matched_urls:
             print(f"- {bs['title']}")
-            print(f"  URL: {bs['url']}")
+            print(f"  Cleaned URL: {bs['url']}")
+            print(f"  Original URL: {bs['original_url']}")
+            unmatched_count += 1
+    
+    print(f"\nTotal unmatched bestsellers: {unmatched_count}")
     
     # Save updated catalog
     with open('product_catalog.json', 'w') as f:
         json.dump(catalog, f, indent=4)
+    
+    print(f"Updated catalog saved to product_catalog.json")
 
 if __name__ == "__main__":
     tag_bestsellers() 

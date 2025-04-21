@@ -1300,7 +1300,7 @@
             "url": "https://betterhomeapp.com/products/venus-celo-10-litre-storage-water-heater",
             "type": "Storage",
             "capacity": null,
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Venus",
@@ -1320,7 +1320,7 @@
             "url": "https://betterhomeapp.com/products/venus-celo-10-litre-storage-water-heater",
             "type": "Storage",
             "capacity": null,
-            "is_bestseller": false
+            "is_bestseller": true
         }
     ],
     "ceiling_fan": [
@@ -3132,7 +3132,7 @@
             "url": "https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan",
             "type": "Standard",
             "sweep_size": "120mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Superfan",
@@ -3150,7 +3150,7 @@
             "url": "https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan",
             "type": "Standard",
             "sweep_size": "120mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Superfan",
@@ -3168,7 +3168,7 @@
             "url": "https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan",
             "type": "Standard",
             "sweep_size": "120mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Superfan",
@@ -3186,7 +3186,7 @@
             "url": "https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan",
             "type": "Standard",
             "sweep_size": "120mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Havells",
@@ -3337,7 +3337,7 @@
             "url": "https://betterhomeapp.com/products/atomberg-renesa-energy-efficient-1200mm-ceiling-fan-with-bldc-motor-and-remote",
             "type": "Standard",
             "sweep_size": "1200mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Atomberg",
@@ -3357,7 +3357,7 @@
             "url": "https://betterhomeapp.com/products/atomberg-renesa-energy-efficient-1200mm-ceiling-fan-with-bldc-motor-and-remote",
             "type": "Standard",
             "sweep_size": "1200mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Atomberg",
@@ -3376,7 +3376,7 @@
             "url": "https://betterhomeapp.com/products/atomberg-renesa-energy-efficient-1200mm-ceiling-fan-with-bldc-motor-and-remote",
             "type": "Standard",
             "sweep_size": "1200mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Atomberg",
@@ -3395,7 +3395,7 @@
             "url": "https://betterhomeapp.com/products/atomberg-renesa-energy-efficient-1200mm-ceiling-fan-with-bldc-motor-and-remote",
             "type": "Standard",
             "sweep_size": "1200mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Atomberg",
@@ -3415,7 +3415,7 @@
             "url": "https://betterhomeapp.com/products/atomberg-renesa-energy-efficient-1200mm-ceiling-fan-with-bldc-motor-and-remote",
             "type": "Standard",
             "sweep_size": "1200mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Atomberg",
@@ -3434,7 +3434,7 @@
             "url": "https://betterhomeapp.com/products/atomberg-renesa-energy-efficient-1200mm-ceiling-fan-with-bldc-motor-and-remote",
             "type": "Standard",
             "sweep_size": "1200mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Atomberg",
@@ -3454,7 +3454,7 @@
             "url": "https://betterhomeapp.com/products/atomberg-renesa-energy-efficient-1200mm-ceiling-fan-with-bldc-motor-and-remote",
             "type": "Standard",
             "sweep_size": "1200mm",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Atomberg",
@@ -3678,7 +3678,7 @@
             "url": "https://betterhomeapp.com/products/crompton-high-speed-ceiling-fan",
             "type": "Standard",
             "sweep_size": null,
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Crompton",
@@ -3696,7 +3696,7 @@
             "url": "https://betterhomeapp.com/products/crompton-high-speed-ceiling-fan",
             "type": "Standard",
             "sweep_size": null,
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Crompton",
@@ -3714,7 +3714,7 @@
             "url": "https://betterhomeapp.com/products/crompton-high-speed-ceiling-fan",
             "type": "Standard",
             "sweep_size": null,
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Crompton",
@@ -3732,7 +3732,7 @@
             "url": "https://betterhomeapp.com/products/crompton-high-speed-ceiling-fan",
             "type": "Standard",
             "sweep_size": null,
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Crompton",
@@ -3750,7 +3750,7 @@
             "url": "https://betterhomeapp.com/products/crompton-high-speed-ceiling-fan",
             "type": "Standard",
             "sweep_size": null,
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Crompton",
@@ -8376,7 +8376,7 @@
             "in_stock": true,
             "delivery_time": "2-4 days",
             "url": "https://betterhomeapp.com/products/somany-grande-imp-pertinax-600x1200mm-tile",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Somany",
@@ -8390,7 +8390,7 @@
             "in_stock": true,
             "delivery_time": "2-4 days",
             "url": "https://betterhomeapp.com/products/somany-grande-imp-pertinax-600x1200mm-tile",
-            "is_bestseller": false
+            "is_bestseller": true
         },
         {
             "brand": "Somany",
