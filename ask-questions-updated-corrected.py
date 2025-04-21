@@ -12,6 +12,7 @@ import re
 import yaml  # Add yaml import
 import sys  # Add sys import for path debugging
 from typing import Dict, Any, List, Optional, Tuple  # Add missing imports
+import networkx as nx
 
 # Print Python path for debugging
 print("Python path:")
@@ -88,6 +89,14 @@ df = pd.read_csv(CSV_FILE_PATH)
 embedding_data = load_embeddings(EMBEDDINGS_FILE_PATH)
 product_terms = load_product_terms(PRODUCT_TERMS_FILE)
 home_config = load_home_config(HOME_CONFIG_FILE)
+
+# Load the product graph
+try:
+    product_graph = nx.read_gpickle('product_graph.gpickle')
+    print("Successfully loaded product graph")
+except Exception as e:
+    print(f"Error loading product graph: {str(e)}")
+    product_graph = None
 
 # ==========================
 # Step 1: Load Product Terms Dictionary
@@ -718,7 +727,7 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
         search_k = min(k * 2, len(blog_embeddings_dict['metadata']))
         try:
             query_embedding = query_embedding.reshape(1, -1).astype('float32')
-        D, I = blog_index.search(query_embedding, search_k)
+            D, I = blog_index.search(query_embedding, search_k)
         except Exception as e:
             traceback.print_exc()
             return []
@@ -816,7 +825,7 @@ def format_blog_response(blog_results, query=None):
             response += "• Basic (₹5,000-10,000) - Standard suction power, mesh filters\n"
             response += "• Mid-Range (₹10,000-20,000) - Better suction, baffle filters, auto-clean\n"
             response += "• Premium (₹20,000+) - High suction power, advanced features, premium finish\n\n"
-            else:
+        else:
             # For other queries, extract a brief summary
             summary = content.split('\n\n')[0]  # Get first paragraph
             if len(summary) > 50:
@@ -1203,6 +1212,37 @@ def get_personalized_recommendations(query, df, user_profile=None):
         print(f"Error getting personalized recommendations: {str(e)}")
         return None
 
+# Function to find related products using the graph
+def find_related_products(product_title, graph, max_related=5):
+    if not graph:
+        return []
+    
+    # Find the node in the graph
+    product_node = None
+    for node, data in graph.nodes(data=True):
+        if data.get('title', '').lower() == product_title.lower():
+            product_node = node
+            break
+    
+    if not product_node:
+        return []
+    
+    # Get related products
+    related_products = list(graph.neighbors(product_node))[:max_related]
+    return related_products
+
+# Example usage in a recommendation function
+def recommend_products_based_on_graph(query, df, graph):
+    # Find related products using the graph
+    related_products = find_related_products(query, graph)
+    
+    # Filter the DataFrame for these products
+    recommended_df = df[df['title'].isin(related_products)]
+    
+    # Format the response
+    response = format_product_response(recommended_df)
+    return response
+
 # ==========================
 # Main Function
 # ==========================
@@ -1298,6 +1338,12 @@ def main():
                 # Append to conversation history without displaying
                 st.session_state['conversation_history'].append(("user", user_input))
                 st.session_state['conversation_history'].append(("assistant", response))
+
+            # Use the graph for recommendations
+            if product_graph:
+                response = recommend_products_based_on_graph(query, df, product_graph)
+                st.write(response)
+                return
         except Exception as e:
             st.error(f"I apologize, but I encountered an error: {str(e)}")
             # Append error to conversation history without displaying
