@@ -21,9 +21,18 @@ def create_knowledge_graph(csv_file):
     unique_features = set()
     unique_price_ranges = set()
     
+    # Pre-compute price ranges and feature keywords for performance
+    feature_keywords = get_feature_keywords()
+    
+    # Pre-group products by category for faster processing
+    category_products = defaultdict(list)
+    for idx, row in df.iterrows():
+        product_type = row.get('Product Type', 'Unknown Category')
+        category_products[product_type].append(idx)
+    
     print(f"Processing {len(df)} products...")
     
-    # Process each product
+    # Process all products first without creating related_to edges
     for idx, row in df.iterrows():
         if idx % 100 == 0:
             print(f"Processed {idx} products...")
@@ -45,7 +54,7 @@ def create_knowledge_graph(csv_file):
             price_range = 'Premium'
             
         # Extract features from description or other fields
-        features = extract_features(description)
+        features = extract_features_fast(description, feature_keywords)
         
         # Add product node
         G.add_node(f"product_{product_id}", 
@@ -75,11 +84,31 @@ def create_knowledge_graph(csv_file):
             unique_features.add(feature)
             G.add_node(f"feature_{feature}", type='feature', name=feature)
             G.add_edge(f"product_{product_id}", f"feature_{feature}", relation='has_feature')
-        
-        # Add related products (same category)
-        for other_idx, other_row in df.iterrows():
-            if idx != other_idx and other_row.get('Product Type') == product_type:
-                G.add_edge(f"product_{product_id}", f"product_{other_idx}", relation='related_to')
+    
+    # Instead of creating all possible related_to edges, create a limited number
+    # Only connect products to a representative sample of their category
+    # This significantly reduces the number of edges
+    print("Creating category-based relationships (limited set)...")
+    
+    for category, product_indices in category_products.items():
+        if len(product_indices) <= 20:
+            # For small categories, we can create all connections
+            for i, idx1 in enumerate(product_indices):
+                for idx2 in product_indices[i+1:min(i+6, len(product_indices))]:
+                    G.add_edge(f"product_{idx1}", f"product_{idx2}", relation='related_to')
+                    G.add_edge(f"product_{idx2}", f"product_{idx1}", relation='related_to')
+        else:
+            # For large categories, create a random sample of connections
+            # Each product gets connected to at most 5 other products
+            import random
+            for idx in product_indices:
+                # Sample up to 5 other products from the same category
+                others = random.sample(
+                    [p for p in product_indices if p != idx],
+                    min(5, len(product_indices) - 1)
+                )
+                for other_idx in others:
+                    G.add_edge(f"product_{idx}", f"product_{other_idx}", relation='related_to')
     
     print(f"Knowledge graph created with {len(G.nodes())} nodes and {len(G.edges())} edges")
     print(f"Unique categories: {len(unique_categories)}")
@@ -94,14 +123,11 @@ def create_knowledge_graph(csv_file):
         'price_ranges': unique_price_ranges
     }
 
-def extract_features(description):
+def get_feature_keywords():
     """
-    Extract product features from description
+    Return a list of common feature keywords
     """
-    features = set()
-    
-    # Common appliance features to look for
-    feature_keywords = [
+    return [
         'energy efficient', 'energy saving', 'power saving',
         'high performance', 'quiet', 'silent', 'noise reduction',
         'durable', 'warranty', 'smart', 'automatic', 'digital',
@@ -115,18 +141,27 @@ def extract_features(description):
         'heat resistant', 'cold resistant', 'temperature control',
         'child lock', 'safety', 'anti-bacterial', 'hygienic'
     ]
+
+def extract_features_fast(description, feature_keywords):
+    """
+    Extract product features from description - faster version
+    """
+    features = set()
+    
+    # Convert description to lowercase once
+    description_lower = description.lower()
     
     # Check for each feature keyword in the description
     for keyword in feature_keywords:
-        if keyword in description.lower():
+        if keyword in description_lower:
             features.add(keyword)
     
     # Look for specific patterns like X litres, Y watts, etc.
-    capacity_match = re.search(r'(\d+)\s*litres?', description.lower())
+    capacity_match = re.search(r'(\d+)\s*litres?', description_lower)
     if capacity_match:
         features.add(f"{capacity_match.group(1)}_litres")
     
-    power_match = re.search(r'(\d+)\s*watts?', description.lower())
+    power_match = re.search(r'(\d+)\s*watts?', description_lower)
     if power_match:
         features.add(f"{power_match.group(1)}_watts")
     

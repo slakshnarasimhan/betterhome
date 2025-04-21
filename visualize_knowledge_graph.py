@@ -5,10 +5,19 @@ from collections import defaultdict
 
 def visualize_knowledge_graph(graph_file='product_knowledge_graph.gpickle', output_file='knowledge_graph_visualization.png'):
     """
-    Visualize the knowledge graph
+    Visualize the knowledge graph - optimized for speed with large graphs
     """
+    import pickle
     print(f"Loading knowledge graph from {graph_file}")
-    G = nx.read_gpickle(graph_file)
+    
+    # Load graph with pickle instead of NetworkX for speed
+    try:
+        with open(graph_file, 'rb') as f:
+            G = pickle.load(f)
+        print(f"Graph loaded with pickle")
+    except:
+        G = nx.read_gpickle(graph_file)
+        print(f"Graph loaded with NetworkX")
     
     print(f"Graph has {len(G.nodes())} nodes and {len(G.edges())} edges")
     
@@ -23,32 +32,75 @@ def visualize_knowledge_graph(graph_file='product_knowledge_graph.gpickle', outp
         print(f"  - {node_type}: {count}")
     
     # Count edge relations
+    print("Counting edge types (sampled)...")
     edge_relation_counts = defaultdict(int)
-    for u, v, data in G.edges(data=True):
+    # Only sample a subset of edges for speed
+    edge_sample = list(G.edges(data=True))[:min(1000, len(G.edges()))]
+    for u, v, data in edge_sample:
         relation = data.get('relation', 'unknown')
         edge_relation_counts[relation] += 1
     
-    print("Edge relations:")
+    print("Edge relations (from sample):")
     for relation, count in edge_relation_counts.items():
         print(f"  - {relation}: {count}")
     
-    # Limit graph size for visualization
-    if len(G) > 1000:
-        print("Graph is too large for full visualization, sampling nodes...")
+    # Create a more manageable subgraph for visualization
+    print("Creating visualization subgraph...")
+    max_nodes = 500  # Maximum number of nodes for visualization
+    
+    if len(G) > max_nodes:
         # Extract representative nodes for each type
         sampled_nodes = []
         
+        # Calculate how many nodes to include of each type
+        total_nodes_to_include = max_nodes
+        type_allocation = {}
+        
+        # Allocate nodes by type with minimum guarantees
+        # At least 20 of each type, rest proportional
+        min_per_type = 20
+        remaining_allocation = total_nodes_to_include - min_per_type * len(node_type_counts)
+        
+        if remaining_allocation < 0:
+            # If we can't guarantee minimums, just do equal distribution
+            for node_type in node_type_counts:
+                type_allocation[node_type] = total_nodes_to_include // len(node_type_counts)
+        else:
+            # Allocate minimum, then distribute remaining proportionally
+            for node_type, count in node_type_counts.items():
+                type_allocation[node_type] = min_per_type
+                
+                # Calculate proportional allocation of remaining nodes
+                proportion = count / sum(node_type_counts.values())
+                additional = int(remaining_allocation * proportion)
+                type_allocation[node_type] += additional
+        
+        # Make sure we don't exceed actual counts
+        for node_type, count in node_type_counts.items():
+            type_allocation[node_type] = min(type_allocation[node_type], count)
+            
+        print("Node allocation for visualization:")
+        for node_type, allocation in type_allocation.items():
+            print(f"  - {node_type}: {allocation}")
+            
         # Take samples of each node type
-        for node_type in node_type_counts.keys():
+        for node_type, allocation in type_allocation.items():
+            # Get all nodes of this type
             nodes_of_type = [n for n, d in G.nodes(data=True) if d.get('type') == node_type]
             
-            # Take up to 100 nodes of each type, or all if fewer
-            sample_size = min(100, len(nodes_of_type))
-            sampled_nodes.extend(nodes_of_type[:sample_size])
+            # If we need categories, brands or features, prefer ones with more connections
+            if node_type in ['category', 'brand', 'feature', 'price_range']:
+                # Sort by number of connections
+                nodes_of_type.sort(key=lambda n: len(list(G.neighbors(n))), reverse=True)
+                
+            # Take the allocated number
+            sampled_nodes.extend(nodes_of_type[:allocation])
         
         # Create a subgraph with the sampled nodes
-        G = G.subgraph(sampled_nodes)
-        print(f"Created subgraph with {len(G.nodes())} nodes and {len(G.edges())} edges")
+        viz_graph = G.subgraph(sampled_nodes)
+        print(f"Created visualization subgraph with {len(viz_graph.nodes())} nodes and {len(viz_graph.edges())} edges")
+    else:
+        viz_graph = G
     
     plt.figure(figsize=(20, 20))
     
@@ -61,12 +113,12 @@ def visualize_knowledge_graph(graph_file='product_knowledge_graph.gpickle', outp
         'price_range': 'lightpink'
     }
     
-    # Assign colors and sizes to nodes
+    # Assign colors and sizes to nodes - do this more efficiently
     node_colors = []
     node_sizes = []
     
-    for node in G.nodes():
-        node_type = G.nodes[node].get('type', 'unknown')
+    for node in viz_graph.nodes():
+        node_type = viz_graph.nodes[node].get('type', 'unknown')
         node_colors.append(color_map.get(node_type, 'gray'))
         
         # Make non-product nodes larger for better visibility
@@ -75,13 +127,18 @@ def visualize_knowledge_graph(graph_file='product_knowledge_graph.gpickle', outp
         else:
             node_sizes.append(50)
     
-    # Improve layout
+    # Use faster layout algorithm for large graphs
     print("Computing layout...")
-    pos = nx.spring_layout(G, k=0.15, iterations=50)
+    if len(viz_graph) > 200:
+        # For larger graphs, use faster layout algorithms
+        pos = nx.kamada_kawai_layout(viz_graph)
+    else:
+        # For smaller graphs, spring layout works well
+        pos = nx.spring_layout(viz_graph, k=0.15, iterations=30)
     
     # Draw the graph
     print("Drawing graph...")
-    nx.draw(G, pos, 
+    nx.draw(viz_graph, pos, 
             node_color=node_colors,
             node_size=node_sizes,
             with_labels=False,
@@ -90,25 +147,36 @@ def visualize_knowledge_graph(graph_file='product_knowledge_graph.gpickle', outp
             edge_color='gray')
     
     # Draw labels for important nodes only
-    category_labels = {node: G.nodes[node].get('name', '') 
-                      for node in G.nodes() 
-                      if G.nodes[node].get('type') == 'category'}
+    category_labels = {node: viz_graph.nodes[node].get('name', '') 
+                      for node in viz_graph.nodes() 
+                      if viz_graph.nodes[node].get('type') == 'category'}
     
-    brand_labels = {node: G.nodes[node].get('name', '')
-                   for node in G.nodes() 
-                   if G.nodes[node].get('type') == 'brand' and node in pos}
+    brand_labels = {node: viz_graph.nodes[node].get('name', '')
+                   for node in viz_graph.nodes() 
+                   if viz_graph.nodes[node].get('type') == 'brand' and node in pos}
     
-    price_labels = {node: G.nodes[node].get('name', '')
-                   for node in G.nodes() 
-                   if G.nodes[node].get('type') == 'price_range' and node in pos}
+    price_labels = {node: viz_graph.nodes[node].get('name', '')
+                   for node in viz_graph.nodes() 
+                   if viz_graph.nodes[node].get('type') == 'price_range' and node in pos}
     
-    # Filter to show only some important brand labels if there are too many
-    if len(brand_labels) > 20:
-        brand_labels = dict(list(brand_labels.items())[:20])
+    # Limit label count for readability and performance
+    if len(category_labels) > 20:
+        # Sort by importance (number of connections)
+        sorted_categories = sorted(category_labels.keys(), 
+                                  key=lambda n: len(list(viz_graph.neighbors(n))),
+                                  reverse=True)
+        category_labels = {k: category_labels[k] for k in sorted_categories[:20]}
     
-    nx.draw_networkx_labels(G, pos, labels=category_labels, font_size=12, font_color='darkgreen')
-    nx.draw_networkx_labels(G, pos, labels=brand_labels, font_size=10, font_color='darkred')
-    nx.draw_networkx_labels(G, pos, labels=price_labels, font_size=12, font_color='purple')
+    if len(brand_labels) > 15:
+        sorted_brands = sorted(brand_labels.keys(),
+                              key=lambda n: len(list(viz_graph.neighbors(n))),
+                              reverse=True)
+        brand_labels = {k: brand_labels[k] for k in sorted_brands[:15]}
+    
+    print("Adding labels...")
+    nx.draw_networkx_labels(viz_graph, pos, labels=category_labels, font_size=12, font_color='darkgreen')
+    nx.draw_networkx_labels(viz_graph, pos, labels=brand_labels, font_size=10, font_color='darkred')
+    nx.draw_networkx_labels(viz_graph, pos, labels=price_labels, font_size=12, font_color='purple')
     
     print(f"Creating legend...")
     # Create a legend
