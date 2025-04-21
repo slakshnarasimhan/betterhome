@@ -7,6 +7,7 @@ This module contains functions for handling product-related operations.
 import re
 import pandas as pd
 from typing import Dict, Any, List, Optional, Tuple
+import numpy as np
 
 def find_product_type(query: str, product_terms: Dict[str, Any]) -> Optional[str]:
     """
@@ -276,7 +277,7 @@ def format_brand_response(products_df: pd.DataFrame, product_type: str, is_warra
 
 def format_product_response(products_df: pd.DataFrame) -> str:
     """
-    Format product response.
+    Format product response for display.
     
     Args:
         products_df: DataFrame containing products
@@ -299,6 +300,8 @@ def format_product_response(products_df: pd.DataFrame) -> str:
         price = product['Better Home Price']
         retail_price = product.get('Retail Price', 0)
         url = product.get('url', '#')
+        # Check if product is a bestseller
+        is_bestseller = product.get('is_bestseller', False)
         
         # Calculate discount percentage if retail price is available
         if retail_price > 0:
@@ -311,8 +314,11 @@ def format_product_response(products_df: pd.DataFrame) -> str:
         is_bldc = 'BLDC' in title or 'Brushless' in title
         energy_label = "💚 " if is_bldc else ""
         
+        # Add bestseller badge if applicable
+        bestseller_badge = "🔥 BESTSELLER - " if is_bestseller else ""
+        
         # More concise product listing
-        response += f"**{energy_label}{title}**\n"
+        response += f"**{energy_label}{bestseller_badge}{title}**\n"
         response += f"₹{price:,.2f} {discount_text}\n"
         
         # Add energy saving information for BLDC fans
@@ -359,7 +365,8 @@ def search_catalog(query: str, df: pd.DataFrame, index: Any, top_k: int = 5) -> 
                 q_emb = np.hstack((q_emb, padding))
         
         # Perform the search with a safe top_k value
-        safe_top_k = min(top_k, index.ntotal)
+        # Retrieve more results initially to allow for reranking bestsellers
+        safe_top_k = min(top_k * 2, index.ntotal)
         if safe_top_k == 0:
             print("[Search Error] No vectors in the index")
             return []
@@ -393,7 +400,17 @@ def search_catalog(query: str, df: pd.DataFrame, index: Any, top_k: int = 5) -> 
                 print(f"[Search Error] Error accessing product at index {idx}: {str(e)}")
                 continue
         
-        return results
+        # Prioritize bestseller products
+        if results:
+            # First check if 'is_bestseller' attribute exists in any of the results
+            has_bestseller_attr = any('is_bestseller' in product for product in results)
+            
+            if has_bestseller_attr:
+                # Sort results - bestsellers first, then by original ranking
+                results.sort(key=lambda p: (not p.get('is_bestseller', False), results.index(p)))
+        
+        # Limit to top_k results after reranking
+        return results[:top_k]
         
     except Exception as e:
         print(f"[Search Error] {str(e)}")
@@ -427,14 +444,25 @@ def format_answer(products: List[Dict[str, Any]], query: str) -> str:
                 description = p.get('Description', 'N/A')
                 sku = p.get('SKU', 'N/A')
                 url = p.get('url', '#')
+                is_bestseller = p.get('is_bestseller', False)
                 
-                response += f"### {title}\n"
+                # Add bestseller badge to title if applicable
+                if is_bestseller:
+                    response += f"### {title} 🔥 BESTSELLER\n"
+                else:
+                    response += f"### {title}\n"
+                
                 response += f"- SKU: {sku}\n"
                 response += f"- Brand: {brand}\n"
                 response += f"- Product Type: {product_type}\n"
                 response += f"- Category: {category}\n"
                 response += f"- Better Home Price: ₹{price}\n"
                 response += f"- Retail Price: ₹{retail}\n"
+                
+                # Add bestseller note if applicable
+                if is_bestseller:
+                    response += f"- **This product is a bestseller!**\n"
+                    
                 response += f"- Description: {description}\n"
                 response += f"[Click here to buy]({url})\n\n"
             except Exception as e:
