@@ -270,9 +270,13 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
             # Determine if product matches budget category and type requirements
             product_matches = False
             if appliance_type == 'washing_machine':
-                product_type = product.get('type', '').lower()
-                user_type = user_data['laundry'].get('washing_machine_type', '').lower().replace('-', ' ')
-                type_matches = (product_type == user_type)
+                user_type = user_data['laundry'].get('washing_machine_type', '').lower()
+                if user_type in ['yes', '']:
+                    type_matches = True  # Accept all
+                else:
+                    product_type = product.get('type', '').lower()
+                    type_matches = (product_type == user_type)
+
                 
                 if type_matches:
                     if target_budget_category == 'premium':
@@ -474,7 +478,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Process laundry requirements
     print("\nDebug: Laundry data:", user_data['laundry'])
-    if user_data['laundry'].get('washing_machine_type'):
+    if str(user_data['laundry'].get('washing_machine_type', '')).strip().lower() == 'yes':
         print("\nDebug: Found washing machine type:", user_data['laundry']['washing_machine_type'])
         budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
         print("\nDebug: Budget category:", budget_category)
