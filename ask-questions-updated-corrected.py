@@ -127,10 +127,11 @@ def find_product_type(query, product_terms):
         if product_type.lower() in query_lower:
             return product_type
             
-        # Check categories
-        for category in info['categories']:
-            if category.lower() in query_lower:
-                return product_type
+        # Check categories if they exist
+        if 'categories' in info:
+            for category in info['categories']:
+                if category.lower() in query_lower:
+                    return product_type
                 
     # If no exact match found, try partial matches
     for product_type, info in product_terms.items():
@@ -139,11 +140,24 @@ def find_product_type(query, product_terms):
         if any(word in query_lower for word in product_type_words):
             return product_type
             
-        # Check categories
-        for category in info['categories']:
-            category_words = category.lower().split()
-            if any(word in query_lower for word in category_words):
-                return product_type
+        # Check categories if they exist
+        if 'categories' in info:
+            for category in info['categories']:
+                category_words = category.lower().split()
+                if any(word in query_lower for word in category_words):
+                    return product_type
+    
+    # Special cases for common terms not in categories
+    if 'geyser' in query_lower or 'water heater' in query_lower:
+        return 'Water Heater'
+    elif 'fan' in query_lower or 'ceiling fan' in query_lower:
+        return 'Ceiling Fan'
+    elif 'ac' in query_lower or 'air conditioner' in query_lower:
+        return 'Air Conditioner'
+    elif 'fridge' in query_lower or 'refrigerator' in query_lower:
+        return 'Refrigerator'
+    elif 'washing machine' in query_lower or 'washer' in query_lower:
+        return 'Washing Machine'
     
     return None
 
