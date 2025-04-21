@@ -13,6 +13,7 @@ import yaml  # Add yaml import
 import sys  # Add sys import for path debugging
 from typing import Dict, Any, List, Optional, Tuple  # Add missing imports
 import networkx as nx
+from collections import defaultdict
 
 # Print Python path for debugging
 print("Python path:")
@@ -97,6 +98,14 @@ try:
 except Exception as e:
     print(f"Error loading product graph: {str(e)}")
     product_graph = None
+
+# Load the knowledge graph if available
+try:
+    knowledge_graph = nx.read_gpickle('product_knowledge_graph.gpickle')
+    print("Successfully loaded product knowledge graph")
+except Exception as e:
+    print(f"Error loading product knowledge graph: {str(e)}")
+    knowledge_graph = None
 
 # ==========================
 # Step 1: Load Product Terms Dictionary
@@ -1243,6 +1252,157 @@ def recommend_products_based_on_graph(query, df, graph):
     response = format_product_response(recommended_df)
     return response
 
+# Function to get recommendations using the knowledge graph
+def get_recommendations_from_graph(product_title, knowledge_graph, df, max_recommendations=5):
+    """
+    Get product recommendations based on the knowledge graph
+    """
+    if knowledge_graph is None:
+        return None
+    
+    # Find the product node in the graph based on title
+    product_node = None
+    for node, data in knowledge_graph.nodes(data=True):
+        if data.get('type') == 'product' and data.get('title', '').lower() == product_title.lower():
+            product_node = node
+            break
+    
+    if not product_node:
+        return None
+    
+    product_id = product_node.replace('product_', '')
+    
+    # Get product category
+    category_nodes = [n for u, n in knowledge_graph.out_edges(product_node) 
+                    if knowledge_graph.nodes[n].get('type') == 'category']
+    
+    # Get product features
+    feature_nodes = [n for u, n in knowledge_graph.out_edges(product_node) 
+                    if knowledge_graph.nodes[n].get('type') == 'feature']
+    
+    # Get product brand
+    brand_nodes = [n for u, n in knowledge_graph.out_edges(product_node) 
+                  if knowledge_graph.nodes[n].get('type') == 'brand']
+    
+    # Get price range
+    price_nodes = [n for u, n in knowledge_graph.out_edges(product_node) 
+                  if knowledge_graph.nodes[n].get('type') == 'price_range']
+    
+    # Find similar products based on shared category, features, brand, and price range
+    similarity_scores = defaultdict(float)
+    
+    # Get all product nodes
+    product_nodes = [n for n in knowledge_graph.nodes() if knowledge_graph.nodes[n].get('type') == 'product' and n != product_node]
+    
+    for other_product in product_nodes:
+        # Check if same category
+        other_categories = [n for u, n in knowledge_graph.out_edges(other_product) 
+                          if knowledge_graph.nodes[n].get('type') == 'category']
+        
+        category_match = len(set(category_nodes).intersection(set(other_categories)))
+        if category_match > 0:
+            similarity_scores[other_product] += 1.0  # Base similarity for same category
+            
+            # Check feature overlap
+            other_features = [n for u, n in knowledge_graph.out_edges(other_product) 
+                            if knowledge_graph.nodes[n].get('type') == 'feature']
+            
+            feature_overlap = len(set(feature_nodes).intersection(set(other_features)))
+            similarity_scores[other_product] += 0.2 * feature_overlap  # Add score for each shared feature
+            
+            # Check if same brand
+            other_brands = [n for u, n in knowledge_graph.out_edges(other_product) 
+                          if knowledge_graph.nodes[n].get('type') == 'brand']
+            
+            brand_match = len(set(brand_nodes).intersection(set(other_brands)))
+            similarity_scores[other_product] += 0.5 * brand_match  # Add score for brand match
+            
+            # Check if same price range
+            other_price = [n for u, n in knowledge_graph.out_edges(other_product) 
+                          if knowledge_graph.nodes[n].get('type') == 'price_range']
+            
+            price_match = len(set(price_nodes).intersection(set(other_price)))
+            similarity_scores[other_product] += 0.3 * price_match  # Add score for price range match
+    
+    # Sort products by similarity score
+    sorted_products = sorted(similarity_scores.items(), key=lambda x: x[1], reverse=True)
+    
+    # Get top recommendations
+    recommendations = []
+    for product_node, score in sorted_products[:max_recommendations]:
+        product_title = knowledge_graph.nodes[product_node].get('title', 'Unknown Product')
+        product_id = product_node.replace('product_', '')
+        
+        # Find this product in the dataframe
+        product_row = None
+        for idx, row in df.iterrows():
+            if row.get('title', '') == product_title:
+                product_row = row
+                break
+        
+        if product_row is not None:
+            recommendations.append(product_row)
+    
+    if recommendations:
+        return pd.DataFrame(recommendations)
+    
+    return None
+
+# Integrate the knowledge graph into the search_products function
+def search_products_with_graph(query, df, embeddings_dict, knowledge_graph=None, k=5):
+    """
+    Search for products using embeddings and enhance with knowledge graph
+    """
+    # First search products using existing embedding-based method
+    product_indices = search_products(query, df, embeddings_dict, k)
+    
+    # If no knowledge graph, return the embedding-based results
+    if knowledge_graph is None:
+        return product_indices
+    
+    # Get the first product from embedding-based search
+    if len(product_indices) > 0:
+        first_product_idx = product_indices[0]
+        first_product = df.iloc[first_product_idx]
+        first_product_title = first_product.get('title', '')
+        
+        # Get recommendations from knowledge graph
+        graph_recommendations = get_recommendations_from_graph(
+            first_product_title, 
+            knowledge_graph, 
+            df, 
+            max_recommendations=k
+        )
+        
+        if graph_recommendations is not None:
+            # Convert DataFrame back to list of indices
+            graph_indices = []
+            for idx, row in graph_recommendations.iterrows():
+                original_idx = df[df['title'] == row['title']].index
+                if len(original_idx) > 0:
+                    graph_indices.append(original_idx[0])
+            
+            # Combine embedding-based and graph-based recommendations
+            combined_indices = []
+            # Start with first product from embedding search
+            combined_indices.append(product_indices[0])
+            
+            # Add graph-based recommendations not already included
+            for idx in graph_indices:
+                if idx not in combined_indices:
+                    combined_indices.append(idx)
+            
+            # Add remaining embedding-based recommendations not already included
+            for idx in product_indices[1:]:
+                if idx not in combined_indices:
+                    combined_indices.append(idx)
+            
+            # Limit to k recommendations
+            return combined_indices[:k]
+    
+    # If no recommendations from graph, return original embedding-based results
+    return product_indices
+
 # ==========================
 # Main Function
 # ==========================
@@ -1303,7 +1463,6 @@ def main():
                     st.write(response)
                     return
 
-            # Temporarily disable product search
             # Handle price queries
             if any(word in query for word in ['price', 'cost', 'expensive', 'cheap', 'budget']):
                 products = handle_price_query(query, df, product_terms)
@@ -1325,10 +1484,62 @@ def main():
                 response = retrieve_and_generate_openai(query, "")
                 st.write(response)
                 return
+                
+            # Handle similar product queries with knowledge graph
+            if any(term in query for term in ['similar', 'related', 'like']) and knowledge_graph is not None:
+                # Try to extract a product name from the query
+                product_words = query.replace('similar to', '').replace('related to', '')
+                product_words = product_words.replace('like', '').strip()
+                
+                # Try to find a match in our catalog
+                potential_matches = []
+                for _, row in df.iterrows():
+                    title = str(row.get('title', '')).lower()
+                    match_score = 0
+                    for word in product_words.split():
+                        if len(word) > 3 and word in title:  # Only consider words longer than 3 chars
+                            match_score += 1
+                    
+                    if match_score > 0:
+                        potential_matches.append((row, match_score))
+                
+                # Sort by match score
+                potential_matches.sort(key=lambda x: x[1], reverse=True)
+                
+                if potential_matches:
+                    # Get the best matching product
+                    best_match = potential_matches[0][0]
+                    product_title = best_match.get('title', '')
+                    
+                    print(f"Found potential product match: {product_title}")
+                    
+                    # Get recommendations from knowledge graph
+                    graph_recommendations = get_recommendations_from_graph(
+                        product_title, 
+                        knowledge_graph, 
+                        df, 
+                        max_recommendations=5
+                    )
+                    
+                    if graph_recommendations is not None:
+                        print(f"Found {len(graph_recommendations)} recommendations from knowledge graph")
+                        response = format_product_response(graph_recommendations)
+                        st.write(response)
+                        
+                        # Append to conversation history without displaying
+                        st.session_state['conversation_history'].append(("user", user_input))
+                        st.session_state['conversation_history'].append(("assistant", response))
+                        return
 
             # Handle general product search
             if index is not None:
-                products = search_catalog(query, df, index)
+                # First try to use the knowledge graph if appropriate
+                if knowledge_graph is not None and any(term in query for term in ['recommend', 'similar', 'related', 'like']):
+                    indices = search_products_with_graph(query, df, embedding_data, knowledge_graph)
+                    products = [df.iloc[idx] for idx in indices]
+                else:
+                    products = search_catalog(query, df, index)
+                
                 response = format_answer(products, query)
                 st.write(response)
                 if products:  # Check if the list is not empty
@@ -1338,12 +1549,6 @@ def main():
                 # Append to conversation history without displaying
                 st.session_state['conversation_history'].append(("user", user_input))
                 st.session_state['conversation_history'].append(("assistant", response))
-
-            # Use the graph for recommendations
-            if product_graph:
-                response = recommend_products_based_on_graph(query, df, product_graph)
-                st.write(response)
-                return
         except Exception as e:
             st.error(f"I apologize, but I encountered an error: {str(e)}")
             # Append error to conversation history without displaying

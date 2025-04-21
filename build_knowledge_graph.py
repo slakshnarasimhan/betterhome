@@ -3,6 +3,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import re
 from collections import defaultdict
+import pickle
 
 def create_knowledge_graph(csv_file):
     """
@@ -250,14 +251,16 @@ def save_graph(G, filename='product_knowledge_graph.gpickle'):
     """
     Save the knowledge graph to a file
     """
-    nx.write_gpickle(G, filename)
+    with open(filename, 'wb') as f:
+        pickle.dump(G, f)
     print(f"Knowledge graph saved as {filename}")
 
 def load_graph(filename='product_knowledge_graph.gpickle'):
     """
     Load the knowledge graph from a file
     """
-    G = nx.read_gpickle(filename)
+    with open(filename, 'rb') as f:
+        G = pickle.load(f)
     print(f"Knowledge graph loaded from {filename}")
     return G
 

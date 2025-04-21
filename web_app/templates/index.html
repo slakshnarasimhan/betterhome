@@ -120,12 +120,34 @@
             <div class="form-section">
                 <h3>Kitchen Requirements</h3>
                 <div class="mb-3">
-                    <label for="kitchen_chimney" class="form-label required">Kitchen: Chimney width?</label>
-                    <input type="text" class="form-control" id="kitchen_chimney" name="kitchen_chimney" required>
+                    <label class="form-label required">Kitchen: Chimney width?</label>
+                    <div>
+                        <input type="radio" id="chimney_60" name="kitchen_chimney" value="60 cm" required>
+                        <label for="chimney_60">60 cm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="chimney_75" name="kitchen_chimney" value="75 cm">
+                        <label for="chimney_75">75 cm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="chimney_90" name="kitchen_chimney" value="90 cm">
+                        <label for="chimney_90">90 cm</label>
+                    </div>
                 </div>
                 <div class="mb-3">
-                    <label for="kitchen_stove" class="form-label required">Kitchen: Gas stove type?</label>
-                    <input type="text" class="form-control" id="kitchen_stove" name="kitchen_stove" required>
+                    <label class="form-label required">Kitchen: Gas stove type?</label>
+                    <div>
+                        <input type="radio" id="stove_cooktop" name="kitchen_stove" value="Cooktop" required>
+                        <label for="stove_cooktop">Cooktop</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="stove_hob" name="kitchen_stove" value="Hob (built-in) - placed inside">
+                        <label for="stove_hob">Hob (built-in) - placed inside</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="stove_not_needed" name="kitchen_stove" value="Not needed">
+                        <label for="stove_not_needed">Not needed</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="kitchen_burners" class="form-label required">Kitchen: Number of burners?</label>
@@ -143,16 +165,49 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="kitchen_dishwasher_capacity" class="form-label">Kitchen: Dishwasher capacity?</label>
-                    <input type="text" class="form-control" id="kitchen_dishwasher_capacity" name="kitchen_dishwasher_capacity">
+                    <label class="form-label">Kitchen: Dishwasher capacity?</label>
+                    <div>
+                        <input type="radio" id="dishwasher_13" name="kitchen_dishwasher_capacity" value="13 place sittings">
+                        <label for="dishwasher_13">13 place sittings</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="dishwasher_14" name="kitchen_dishwasher_capacity" value="14 place sittings">
+                        <label for="dishwasher_14">14 place sittings</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="dishwasher_15" name="kitchen_dishwasher_capacity" value="15 place sittings">
+                        <label for="dishwasher_15">15 place sittings</label>
+                    </div>
                 </div>
                 <div class="mb-3">
-                    <label for="kitchen_refrigerator_type" class="form-label">Kitchen: Refrigerator type?</label>
-                    <input type="text" class="form-control" id="kitchen_refrigerator_type" name="kitchen_refrigerator_type">
+                    <label class="form-label">Kitchen: Refrigerator type?</label>
+                    <div>
+                        <input type="radio" id="fridge_double_top" name="kitchen_refrigerator_type" value="Double door - top freezer">
+                        <label for="fridge_double_top">Double door - top freezer</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="fridge_double_bottom" name="kitchen_refrigerator_type" value="Double door - bottom freezer">
+                        <label for="fridge_double_bottom">Double door - bottom freezer</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="fridge_side_by_side" name="kitchen_refrigerator_type" value="Side by Side">
+                        <label for="fridge_side_by_side">Side by Side</label>
+                    </div>
                 </div>
                 <div class="mb-3">
-                    <label for="kitchen_refrigerator_capacity" class="form-label">Kitchen: Refrigerator capacity?</label>
-                    <input type="text" class="form-control" id="kitchen_refrigerator_capacity" name="kitchen_refrigerator_capacity">
+                    <label class="form-label">Kitchen: Refrigerator capacity?</label>
+                    <div>
+                        <input type="radio" id="fridge_capacity_250_300" name="kitchen_refrigerator_capacity" value="250 to 300 litres">
+                        <label for="fridge_capacity_250_300">250 to 300 litres</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="fridge_capacity_300_400" name="kitchen_refrigerator_capacity" value="300 to 400 litres">
+                        <label for="fridge_capacity_300_400">300 to 400 litres</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="fridge_capacity_400_600" name="kitchen_refrigerator_capacity" value="400 to 600 litres">
+                        <label for="fridge_capacity_400_600">400 to 600 litres</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="kitchen_other_info" class="form-label">Kitchen: Do you need any other appliances or do you have any other information?</label>
@@ -175,8 +230,38 @@
                     <input type="text" class="form-control" id="master_water" name="master_water" required>
                 </div>
                 <div class="mb-3">
-                    <label for="master_exhaust" class="form-label required">Master: Exhaust fan size?</label>
-                    <input type="text" class="form-control" id="master_exhaust" name="master_exhaust" required>
+                    <label class="form-label required">Master: Exhaust fan size?</label>
+                    <div>
+                        <input type="radio" id="master_exhaust_150" name="master_exhaust_size" value="150mm" required>
+                        <label for="master_exhaust_150">150mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_exhaust_200" name="master_exhaust_size" value="200mm">
+                        <label for="master_exhaust_200">200mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_exhaust_250" name="master_exhaust_size" value="250mm">
+                        <label for="master_exhaust_250">250mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_exhaust_unknown" name="master_exhaust_size" value="I Don't Know">
+                        <label for="master_exhaust_unknown">I Don't Know</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Master: Exhaust fan colour?</label>
+                    <div>
+                        <input type="radio" id="master_exhaust_white" name="master_exhaust_color" value="White">
+                        <label for="master_exhaust_white">White</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_exhaust_black" name="master_exhaust_color" value="Black">
+                        <label for="master_exhaust_black">Black</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_exhaust_brown" name="master_exhaust_color" value="Brown">
+                        <label for="master_exhaust_brown">Brown</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="master_color" class="form-label required">Master: What is the colour theme?</label>
@@ -199,10 +284,6 @@
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
                     </select>
-                </div>
-                <div class="mb-3">
-                    <label for="master_exhaust_color" class="form-label">Master: Exhaust fan colour?</label>
-                    <input type="text" class="form-control" id="master_exhaust_color" name="master_exhaust_color">
                 </div>
                 <div class="mb-3">
                     <label for="master_led_mirror" class="form-label">Master: Would you like to have a LED Mirror?</label>
@@ -232,8 +313,38 @@
                     <input type="text" class="form-control" id="bedroom2_water" name="bedroom2_water" required>
                 </div>
                 <div class="mb-3">
-                    <label for="bedroom2_exhaust" class="form-label required">Bedroom 2: Exhaust fan size?</label>
-                    <input type="text" class="form-control" id="bedroom2_exhaust" name="bedroom2_exhaust" required>
+                    <label class="form-label required">Bedroom 2: Exhaust fan size?</label>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_150" name="bedroom2_exhaust_size" value="150mm" required>
+                        <label for="bedroom2_exhaust_150">150mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_200" name="bedroom2_exhaust_size" value="200mm">
+                        <label for="bedroom2_exhaust_200">200mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_250" name="bedroom2_exhaust_size" value="250mm">
+                        <label for="bedroom2_exhaust_250">250mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_unknown" name="bedroom2_exhaust_size" value="I Don't Know">
+                        <label for="bedroom2_exhaust_unknown">I Don't Know</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bedroom 2: Exhaust fan colour?</label>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_white" name="bedroom2_exhaust_color" value="White">
+                        <label for="bedroom2_exhaust_white">White</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_black" name="bedroom2_exhaust_color" value="Black">
+                        <label for="bedroom2_exhaust_black">Black</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_brown" name="bedroom2_exhaust_color" value="Brown">
+                        <label for="bedroom2_exhaust_brown">Brown</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom2_color" class="form-label required">Bedroom 2: What is the colour theme?</label>
@@ -256,10 +367,6 @@
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
                     </select>
-                </div>
-                <div class="mb-3">
-                    <label for="bedroom2_exhaust_color" class="form-label">Bedroom 2: Exhaust fan colour?</label>
-                    <input type="text" class="form-control" id="bedroom2_exhaust_color" name="bedroom2_exhaust_color">
                 </div>
                 <div class="mb-3">
                     <label for="bedroom2_led_mirror" class="form-label">Bedroom 2: Would you like to have a LED Mirror?</label>
