@@ -2,6 +2,20 @@
 
 A comprehensive question-answering system for home appliances and products, featuring blog content analysis, WhatsApp integration, and a Streamlit test interface.
 
+## New Features and Updates
+
+### PDF Generation
+- The `create_styled_pdf` function generates a PDF document with product recommendations.
+- Features include clickable product links and proper currency formatting using the DejaVuSans font.
+
+### Product Recommendations
+- The system generates specific product recommendations based on user data.
+- Includes logic for handling washing machine recommendations and other appliances.
+
+### Debugging and Logging
+- Added debug statements to trace the flow of data and identify issues in the recommendation logic.
+- Useful for diagnosing problems with product recommendations and PDF generation.
+
 ## Project Structure
 
 ### Core Components
