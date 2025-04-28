@@ -93,7 +93,15 @@ home_config = load_home_config(HOME_CONFIG_FILE)
 
 # Load the product graph
 try:
-    product_graph = nx.read_gpickle('product_graph.gpickle')
+    # Handle different NetworkX versions 
+    if hasattr(nx, 'read_gpickle'):
+        # For older versions of NetworkX
+        product_graph = nx.read_gpickle('product_graph.gpickle')
+    else:
+        # For newer versions of NetworkX, try the current API
+        import pickle
+        with open('product_graph.gpickle', 'rb') as f:
+            product_graph = pickle.load(f)
     print("Successfully loaded product graph")
 except Exception as e:
     print(f"Error loading product graph: {str(e)}")
@@ -101,7 +109,15 @@ except Exception as e:
 
 # Load the knowledge graph if available
 try:
-    knowledge_graph = nx.read_gpickle('product_knowledge_graph.gpickle')
+    # Handle different NetworkX versions
+    if hasattr(nx, 'read_gpickle'):
+        # For older versions of NetworkX
+        knowledge_graph = nx.read_gpickle('product_graph.gpickle')
+    else:
+        # For newer versions of NetworkX, try the current API
+        import pickle
+        with open('product_graph.gpickle', 'rb') as f:
+            knowledge_graph = pickle.load(f)
     print("Successfully loaded product knowledge graph")
 except Exception as e:
     print(f"Error loading product knowledge graph: {str(e)}")
@@ -326,9 +342,14 @@ def search_products(query, df, embeddings_dict, k=5):
         PRODUCT_INDEX_FILE_PATH
     )
     
-    # Search
-    D, I = index.search(query_embedding, k)
-    return I[0]  # Return indices of top k matches
+    # Search with more results to account for potential invalid indices
+    D, I = index.search(query_embedding, min(k*3, index.ntotal))
+    
+    # Filter out indices that would be out of bounds
+    valid_indices = [idx for idx in I[0] if 0 <= idx < len(df)]
+    
+    # Return top k valid indices or all valid ones if fewer than k
+    return valid_indices[:k]
 
 
 # ==========================
@@ -680,29 +701,59 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
     blog_embeddings = blog_embeddings_dict['blog_embeddings']
     query_lower = query.lower()
     
+    # Extract product type from query
+    product_type = None
+    for pt in ['ceiling fan', 'fan', 'washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave']:
+        if pt in query_lower:
+            product_type = pt
+            break
+    
+    print(f"Detected product type in query: {product_type if product_type else 'None'}")
+    
+    # Preprocess blog contents to filter out metadata
+    for metadata in blog_embeddings_dict['metadata']:
+        if 'content' in metadata:
+            # Filter out date patterns
+            content = metadata['content']
+            content = re.sub(r'\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}', '', content)
+            # Filter out blog metadata terms
+            content = re.sub(r'\b(?:recent post|post|blog|comment|author|published|updated)\b', '', content, flags=re.IGNORECASE)
+            metadata['filtered_content'] = content
+    
     # First, try to find exact matches for specific appliance types
-    if any(appliance in query_lower for appliance in ['washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave']):
+    if any(appliance in query_lower for appliance in ['washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave', 'ceiling fan', 'fan']):
         exact_matches = []
-        search_appliance = None
+        search_appliance = product_type  # Use the detected product type
         
-        # Determine which appliance we're searching for
-        if 'washing machine' in query_lower:
-            search_appliance = 'washing machine'
-        elif 'chimney' in query_lower:
-            search_appliance = 'chimney'
-        elif 'refrigerator' in query_lower:
-            search_appliance = 'refrigerator'
-        elif 'air conditioner' in query_lower:
-            search_appliance = 'air conditioner'
-        elif 'microwave' in query_lower:
-            search_appliance = 'microwave'
+        # If no product type was detected, try again with more specific matching
+        if not search_appliance:
+            if 'washing machine' in query_lower:
+                search_appliance = 'washing machine'
+            elif 'chimney' in query_lower:
+                search_appliance = 'chimney'
+            elif 'refrigerator' in query_lower:
+                search_appliance = 'refrigerator'
+            elif 'air conditioner' in query_lower:
+                search_appliance = 'air conditioner'
+            elif 'microwave' in query_lower:
+                search_appliance = 'microwave'
+            elif 'ceiling fan' in query_lower:
+                search_appliance = 'ceiling fan'
+            elif 'fan' in query_lower:
+                search_appliance = 'fan'
         
         for metadata in blog_embeddings_dict['metadata']:
             title = metadata.get('title', '').lower()
-            content = metadata.get('content', '').lower()
+            content = metadata.get('filtered_content', '').lower()
             
             # Skip irrelevant articles
-            if any(irrelevant in title for irrelevant in ['roti', 'toaster', 'cooker', 'mixer', 'dishwasher']) and search_appliance != 'dishwasher':
+            if search_appliance and search_appliance not in title and search_appliance not in content:
+                continue
+                
+            # Skip articles that don't match the appliance type but match other appliances
+            if any(other_appliance in title 
+                   for other_appliance in ['washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave', 'ceiling fan', 'fan', 'roti', 'toaster', 'cooker', 'mixer', 'dishwasher'] 
+                   if other_appliance != search_appliance):
                 continue
                 
             # Check for appliance type in title with relevant keywords
@@ -722,9 +773,17 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
             exact_matches.sort(key=lambda x: x.get('_similarity_score', 0), reverse=True)
             return exact_matches[:k]
     
-    # If no exact matches or not a washing machine query, proceed with regular search
+    # If no exact matches or not a specific appliance query, proceed with regular search
     try:
-        query_embedding = get_openai_embedding(query)
+        # Enhance query with product type for more accurate embedding
+        enhanced_query = query
+        if product_type:
+            # Emphasize product type in query for embedding
+            enhanced_query = f"{product_type} {query} {product_type}"
+            print(f"Enhanced query for embedding: {enhanced_query}")
+            query_embedding = get_openai_embedding(enhanced_query)
+        else:
+            query_embedding = get_openai_embedding(query)
     except Exception as e:
         traceback.print_exc()
         return []
@@ -761,16 +820,32 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
             if i < len(blog_embeddings_dict['metadata']):
                 metadata = blog_embeddings_dict['metadata'][i]
                 title = metadata.get('title', '').lower()
+                content = metadata.get('filtered_content', '').lower()
+                
+                # Filter by product type if specified
+                if product_type and not (product_type in title or product_type in content):
+                    # For fan queries, also check for ceiling fan
+                    if not (product_type == 'fan' and ('ceiling fan' in title or 'ceiling fan' in content)):
+                        continue
                 
                 # Skip dishwasher articles when searching for washing machines
                 if 'washing machine' in query_lower and 'dishwasher' in title:
                     continue
+                
+                # Skip kitchen appliance articles unless specifically asked for
+                if not any(term in query_lower for term in ['kitchen', 'chimney', 'roti', 'toaster', 'cooker', 'mixer']):
+                    if any(term in title.lower() for term in ['roti', 'toaster', 'cooker', 'mixer', 'kitchen']):
+                        continue
                     
                 similarity_score = 1.0 / (1.0 + distance)
                 
                 # Boost score if title matches query intent
                 if any(word in title for word in query_lower.split()):
                     similarity_score *= 2.0
+                
+                # Boost score if product type is in title
+                if product_type and product_type in title:
+                    similarity_score *= 3.0
                 
                 # Only include if similarity score is above threshold
                 if similarity_score > similarity_threshold:
@@ -792,10 +867,45 @@ def format_blog_response(blog_results, query=None):
     if not blog_results or len(blog_results) == 0:
         return None
     
+    # Extract product type from query
+    product_type = None
+    query_lower = query.lower() if query else ""
+    
+    # Look for product types in query
+    for pt in ['ceiling fan', 'fan', 'washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave']:
+        if pt in query_lower:
+            product_type = pt
+            break
+    
+    # Filter blog results to only include relevant product types
+    filtered_results = []
+    if product_type:
+        print(f"Filtering blog results for product type: {product_type}")
+        for blog in blog_results:
+            title = blog.get('title', '').lower()
+            # Use filtered_content if available, otherwise fallback to content
+            content = blog.get('filtered_content', blog.get('content', '')).lower()
+            
+            # Include if product type is mentioned in title or content
+            if product_type in title or product_type in content:
+                filtered_results.append(blog)
+            # For "fan" also match "ceiling fan"
+            elif product_type == 'fan' and ('ceiling fan' in title or 'ceiling fan' in content):
+                filtered_results.append(blog)
+        
+        # If we have filtered results, use them
+        if filtered_results:
+            blog_results = filtered_results
+            print(f"Found {len(blog_results)} relevant articles for {product_type}")
+        else:
+            print(f"No relevant articles found for {product_type}")
+    
     # Extract query topic for header
     topic_header = ""
-    if query:
-        query_words = query.lower().split()
+    if product_type:
+        topic_header = f" About {product_type.title()}"
+    elif query:
+        query_words = query_lower.split()
         stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 
                       'about', 'like', 'of', 'do', 'does', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 
                       'those', 'list', 'show', 'tell', 'me', 'get', 'can', 'could', 'would', 'should', 'how'}
@@ -813,7 +923,8 @@ def format_blog_response(blog_results, query=None):
             
         title = blog.get('title', '')
         url = blog.get('url', '#')
-        content = blog.get('content', '')
+        # Use filtered_content if available, otherwise fallback to content
+        content = blog.get('filtered_content', blog.get('content', ''))
         
         # Skip if no title or content
         if not title or not content:
@@ -822,42 +933,77 @@ def format_blog_response(blog_results, query=None):
         # Format the article entry
         response += f"**{title}**\n\n"
         
-        # Provide structured information based on appliance type
-        query_lower = query.lower()
-        if 'washing machine' in query_lower:
-            # Existing washing machine content...
-            pass
-        elif 'chimney' in query_lower:
-            # Add key factors for chimneys
-            response += "**Key Factors to Consider:**\n"
-            response += "• Suction Power - 700-1000 m³/hr for small kitchens, 1000-1500 m³/hr for larger ones\n"
-            response += "• Type - Wall-mounted, Island, Built-in, Corner based on kitchen layout\n"
-            response += "• Filter Type - Baffle (best), Mesh (budget), Charcoal (odor control)\n"
-            response += "• Size - Match with your cooktop width (usually 2-3 inches wider)\n"
-            response += "• Auto-Clean Feature - Reduces maintenance effort but costs more\n\n"
-            
-            # Add types of chimneys
-            response += "**Types of Chimneys:**\n"
-            response += "• Wall-Mounted - Most common, suitable for kitchens with cooktop against wall\n"
-            response += "• Island - For kitchen islands, hangs from ceiling\n"
-            response += "• Built-in - Integrated into cabinet, saves space\n"
-            response += "• Angular/Corner - Specifically designed for corner installations\n\n"
-            
-            # Add budget considerations
-            response += "**Budget Guide:**\n"
-            response += "• Basic (₹5,000-10,000) - Standard suction power, mesh filters\n"
-            response += "• Mid-Range (₹10,000-20,000) - Better suction, baffle filters, auto-clean\n"
-            response += "• Premium (₹20,000+) - High suction power, advanced features, premium finish\n\n"
-        else:
-            # For other queries, extract a brief summary
-            summary = content.split('\n\n')[0]  # Get first paragraph
-            if len(summary) > 50:
-                response += f"{summary[:200]}...\n\n"
+        # Extract relevant sections based on query
+        key_points = extract_key_points(content, query)
         
+        # If we have key points, show them
+        if key_points:
+            response += "**Key Points:**\n"
+            for i, point in enumerate(key_points):
+                response += f"• {point}\n"
+            response += "\n"
+        # Otherwise try to extract a summary
+        else:
+            summary = extract_summary(content, query)
+            if summary:
+                response += f"{summary[:250]}...\n\n"
+            # Complete fallback for ceiling fan/fan queries when no points or summary could be extracted
+            elif product_type in ['ceiling fan', 'fan'] and ('how to choose' in query_lower or 'how to buy' in query_lower):
+                response += "**Key Factors for Choosing a Ceiling Fan:**\n"
+                response += "• **Warranty**: Look for fans with at least 2-year warranty for peace of mind and reliability.\n"
+                response += "• **Energy Efficiency**: BLDC motors can save up to 70% on electricity compared to regular fans.\n"
+                response += "• **Air Delivery**: Higher air delivery (measured in CMM) means better cooling performance.\n"
+                response += "• **Noise Level**: Lower RPM fans with balanced blades operate more quietly.\n"
+                response += "• **Value**: Consider long-term benefits like energy savings rather than just upfront cost.\n\n"
+        
+        # Add link to full article
         response += f"📖 [Read Full Article]({url})\n\n"
+        
         blog_count += 1
     
-    response += "*Click on 'Read Full Article' to view the complete article.*\n"
+    # If nothing was found or extracted, provide a generic response for the product type
+    if blog_count == 0 and product_type:
+        response += f"I couldn't find specific articles about {product_type}s, but here are some general buying tips:\n\n"
+        
+        if product_type in ['ceiling fan', 'fan']:
+            response += "**Key Factors for Choosing a Ceiling Fan:**\n"
+            response += "• **Warranty**: Look for fans with at least 2-year warranty for peace of mind and reliability.\n"
+            response += "• **Energy Efficiency**: BLDC motors can save up to 70% on electricity compared to regular fans.\n"
+            response += "• **Air Delivery**: Higher air delivery (measured in CMM) means better cooling performance.\n"
+            response += "• **Noise Level**: Lower RPM fans with balanced blades operate more quietly.\n"
+            response += "• **Value**: Consider long-term benefits like energy savings rather than just upfront cost.\n\n"
+        elif product_type == 'washing machine':
+            response += "**Key Factors for Choosing a Washing Machine:**\n"
+            response += "• **Capacity**: 6-7kg for a family of 3-4 people, 8-9kg for larger families.\n"
+            response += "• **Type**: Front load (more efficient, gentler) vs top load (more convenient, less expensive).\n"
+            response += "• **Energy Efficiency**: Look for star ratings to save on utility bills.\n"
+            response += "• **Features**: Consider wash programs, quick wash, spin speed based on your needs.\n\n"
+    
+    # Add personalized product recommendations based on query type
+    query_intent = ""
+    if 'how to choose' in query_lower or 'how to buy' in query_lower or 'buying guide' in query_lower:
+        query_intent = "buying"
+    elif 'price' in query_lower or 'cost' in query_lower or 'budget' in query_lower:
+        query_intent = "price"
+    elif 'best' in query_lower or 'top' in query_lower or 'recommend' in query_lower:
+        query_intent = "best"
+    
+    # Different prompts based on product type and query intent
+    if product_type:
+        if query_intent == "buying":
+            response += f"Based on these buying tips, I can recommend some {product_type}s that match these criteria.\n"
+        elif query_intent == "price":
+            response += f"I can show you {product_type}s at different price points to help you find one within your budget.\n"
+        elif query_intent == "best":
+            response += f"I can show you some of our top-rated {product_type}s based on customer feedback.\n"
+        else:
+            response += f"Would you like to see some recommended {product_type}s available for purchase?\n"
+    else:
+        response += f"Would you like to see some recommended products based on this information?\n"
+    
+    # Common call-to-action
+    response += "Just say 'yes' or let me know if you're looking for specific features."
+    
     return response
 
 def extract_key_points(content, query):
@@ -880,118 +1026,152 @@ def extract_key_points(content, query):
     # Identify the type of query to extract relevant information
     query_lower = query.lower()
     
+    # Identify product type in query
+    product_type = None
+    for pt in ['ceiling fan', 'fan', 'washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave']:
+        if pt in query_lower:
+            product_type = pt
+            break
+    
     # Extract key points based on query type
     key_points = []
     
-    # For "how to choose" queries
-    if 'how to choose' in query_lower or 'how to select' in query_lower or 'how to buy' in query_lower:
+    # For "how to choose" or "buying guide" queries
+    is_buying_guide = any(term in query_lower for term in [
+        'how to choose', 'how to select', 'how to buy', 'buying guide', 
+        'purchase guide', 'buying tips', 'selection guide', 'best', 'recommend'
+    ])
+    
+    # Key criteria that are relevant for product selection (especially for ceiling fans)
+    key_criteria = [
+        'warranty', 'guarantee', 'energy', 'efficiency', 'power consumption', 'electricity',
+        'value', 'price', 'cost', 'budget', 'quality', 'durability', 'life', 'lifespan',
+        'features', 'performance', 'noise', 'silent', 'quiet', 'airflow', 'air delivery',
+        'speed', 'rpm', 'bldc', 'brushless', 'star rating', 'expert', 'endorsed', 'recommended',
+        'brand', 'size', 'design'
+    ]
+    
+    # If it's a buying guide question
+    if is_buying_guide and product_type:
+        # Look for sentences containing key criteria related to the product
+        for criterion in key_criteria:
+            pattern = f"[^.!?]*{criterion}[^.!?]*[.!?]"
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            
+            for match in matches:
+                # Filter out sentences that are likely to be metadata or dates
+                if re.search(r'\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}', match):
+                    continue
+                    
+                # Filter out sentences that contain "post" or "blog" which are likely metadata
+                if re.search(r'\b(?:post|blog|comment|author|published|updated)\b', match.lower()):
+                    continue
+                
+                # Skip extremely short sentences
+                if len(match.strip()) < 30:
+                    continue
+                    
+                # Skip sentences that don't mention the product type or aren't about selection criteria
+                if product_type not in match.lower() and not any(word in match.lower() for word in ['choose', 'select', 'buy', 'consider', 'important', 'look for']):
+                    continue
+                
+                # Add clean sentence to key points if it's not already included
+                clean_match = match.strip()
+                if clean_match not in key_points and len(clean_match) > 30 and len(clean_match) < 200:
+                    key_points.append(clean_match)
+        
         # Look for sections with headings like "Factors to consider", "What to look for", etc.
-        factor_sections = re.findall(r'(?:Factors to consider|What to look for|Key factors|Important considerations|Tips for choosing|How to choose|Buying guide|Selection criteria|Summary).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+        buying_patterns = [
+            r'(?:factors|things|points|what|features) to (?:consider|look for|check|know)',
+            r'(?:key|important) (?:factors|considerations|features|aspects|points)',
+            r'(?:buying|purchase) (?:guide|tips|considerations|advice)',
+            r'how to (?:choose|select|buy|pick)',
+            r'before (?:buying|purchasing)',
+            r'(?:choosing|selecting) the (?:right|best|perfect)'
+        ]
         
-        if factor_sections:
-            for section in factor_sections:
+        # Look for these patterns in the content
+        for pattern in buying_patterns:
+            matches = re.finditer(pattern, content, re.IGNORECASE)
+            for match in matches:
+                # Extract the paragraph or section containing this match
+                start_pos = max(0, match.start() - 100)
+                end_pos = min(len(content), match.end() + 500)
+                section = content[start_pos:end_pos]
+                
                 # Extract bullet points or numbered lists
-                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                points = re.findall(r'(?:•|\d+\.|\*)\s*(.*?)(?=(?:•|\d+\.|\*|$))', section)
                 if points:
-                    key_points.extend(points)
-            else:
-                    # If no bullet points, extract sentences
-                    sentences = re.split(r'(?<=[.!?])\s+', section)
-                    key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
-        
-        # For washing machine specific queries, look for comparison sections
-        if 'washing machine' in query_lower:
-            comparison_sections = re.findall(r'(?:Fully automatic vs Semi-automatic|Top load vs front load|Comparison).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
-            
-            if comparison_sections:
-                for section in comparison_sections:
-                    # Extract comparison points
-                    points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
-                    if points:
-                        key_points.extend(points)
-                    else:
-                        # If no bullet points, extract sentences with comparison keywords
-                        sentences = re.split(r'(?<=[.!?])\s+', section)
-                        comparison_sentences = [s.strip() for s in sentences if any(word in s.lower() for word in ['better', 'more', 'less', 'versus', 'vs', 'compared', 'difference'])]
-                        key_points.extend(comparison_sentences)
-    
-    # For "types of" queries
-    elif 'types of' in query_lower or 'kinds of' in query_lower or 'varieties of' in query_lower:
-        # Look for sections about types or categories
-        type_sections = re.findall(r'(?:Types of|Categories of|Different types|Varieties of|Fully automatic vs Semi-automatic|Top load vs front load).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
-        
-        if type_sections:
-            for section in type_sections:
-                # Extract bullet points or numbered lists
-                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
-                if points:
-                    key_points.extend(points)
+                    for p in points:
+                        clean_point = p.strip()
+                        # Filter out points that are likely to be metadata
+                        if re.search(r'\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}', clean_point):
+                            continue
+                            
+                        # Filter out points about posts or blogs
+                        if re.search(r'\b(?:post|blog|comment|author|published|updated)\b', clean_point.lower()):
+                            continue
+                            
+                        if len(clean_point) > 30 and len(clean_point) < 200 and clean_point not in key_points:
+                            key_points.append(clean_point)
                 else:
-                    # If no bullet points, extract sentences
+                    # If no bullet points, extract sentences with important keywords
                     sentences = re.split(r'(?<=[.!?])\s+', section)
-                    key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+                    important_words = ['consider', 'important', 'factor', 'key', 'check', 'ensure', 'look for', 'choose']
+                    for sentence in sentences:
+                        # Skip sentences with metadata
+                        if re.search(r'\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}', sentence):
+                            continue
+                            
+                        if re.search(r'\b(?:post|blog|comment|author|published|updated)\b', sentence.lower()):
+                            continue
+                            
+                        if any(word in sentence.lower() for word in important_words):
+                            clean_sentence = sentence.strip()
+                            if len(clean_sentence) > 30 and len(clean_sentence) < 200 and clean_sentence not in key_points:
+                                key_points.append(clean_sentence)
+        
+        # For ceiling fans, specifically look for sentences about the key criteria
+        if product_type in ['ceiling fan', 'fan']:
+            fan_factors = [
+                'warranty', 'energy efficiency', 'electricity bill', 'power consumption',
+                'bldc', 'brushless', 'noise', 'silent', 'quiet', 'air delivery', 'airflow',
+                'rpm', 'speed', 'sweep size', 'blade size', 'remote', 'value', 'price'
+            ]
+            for factor in fan_factors:
+                pattern = f"[^.!?]*{factor}[^.!?]*[.!?]"
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    # Filter out metadata and short sentences
+                    if re.search(r'\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}', match):
+                        continue
+                        
+                    if re.search(r'\b(?:post|blog|comment|author|published|updated)\b', match.lower()):
+                        continue
+                        
+                    clean_match = match.strip()
+                    if len(clean_match) > 30 and len(clean_match) < 200 and clean_match not in key_points:
+                        key_points.append(clean_match)
     
-    # For "best" queries
-    elif 'best' in query_lower or 'recommend' in query_lower or 'top' in query_lower:
-        # Look for recommendations or conclusions
-        recommendation_sections = re.findall(r'(?:Recommendation|Conclusion|Summary|Best choice|Top pick).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+    # If we still don't have enough key points, try extracting structured information
+    if len(key_points) < 3 and product_type:
+        # Look for sections with structured information (headings followed by content)
+        heading_patterns = [
+            r'(?:Warranty|Guarantee).*?[:.]\s*(.*?)(?=\n|$)',
+            r'(?:Energy Efficiency|Power Consumption|Electricity).*?[:.]\s*(.*?)(?=\n|$)',
+            r'(?:Value|Price|Cost|Budget).*?[:.]\s*(.*?)(?=\n|$)',
+            r'(?:Expert|Professional|Industry).*?[:.]\s*(.*?)(?=\n|$)',
+            r'(?:Features|Benefits|Advantages).*?[:.]\s*(.*?)(?=\n|$)'
+        ]
         
-        if recommendation_sections:
-            for section in recommendation_sections:
-                # Extract bullet points or numbered lists
-                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
-                if points:
-                    key_points.extend(points)
-                else:
-                    # If no bullet points, extract sentences
-                    sentences = re.split(r'(?<=[.!?])\s+', section)
-                    key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
-        
-        # For washing machine specific queries, look for pros and cons
-        if 'washing machine' in query_lower:
-            pros_cons_sections = re.findall(r'(?:Pros and cons|Advantages and disadvantages|Benefits and drawbacks).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
-            
-            if pros_cons_sections:
-                for section in pros_cons_sections:
-                    # Extract pros and cons points
-                    points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
-                    if points:
-                        key_points.extend(points)
-    
-    # For general queries, extract the introduction and any summary sections
-    else:
-        # Extract introduction
-        intro_match = re.search(r'(?:Introduction|Overview).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
-        if intro_match:
-            intro = intro_match.group(0)
-            sentences = re.split(r'(?<=[.!?])\s+', intro)
-            key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
-        
-        # Extract summary
-        summary_match = re.search(r'(?:Summary|Conclusion).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
-        if summary_match:
-            summary = summary_match.group(0)
-            sentences = re.split(r'(?<=[.!?])\s+', summary)
-            key_points.extend([s.strip() for s in sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
-    
-    # If we still don't have enough key points, extract general information
-    if len(key_points) < 3:
-        # Look for bullet points or numbered lists throughout the content
-        points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', content)
-        if points:
-            key_points.extend(points)
-        
-        # If still not enough, extract sentences with important keywords
-        if len(key_points) < 3:
-            # Extract product type from query
-            product_type = None
-            if product_terms:
-                product_type = find_product_type(query, product_terms)
-            
-            if product_type:
-                # Look for sentences containing the product type
-                product_sentences = re.findall(f'[^.!?]*{product_type}[^.!?]*[.!?]', content, re.IGNORECASE)
-                key_points.extend([s.strip() for s in product_sentences if len(s.strip()) > 20 and len(s.strip()) < 200])
+        for pattern in heading_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            for match in matches:
+                if isinstance(match, tuple):  # Handle groups in regex
+                    match = match[0]
+                clean_match = match.strip()
+                if len(clean_match) > 30 and len(clean_match) < 200 and clean_match not in key_points:
+                    key_points.append(clean_match)
     
     # Clean up and format key points
     cleaned_points = []
@@ -1000,16 +1180,42 @@ def extract_key_points(content, query):
         point = re.sub(r'\s+', ' ', point).strip()
         
         # Skip points that are too short or too long
-        if len(point) < 20 or len(point) > 200:
+        if len(point) < 30 or len(point) > 200:
             continue
         
         # Skip points that are just numbers or symbols
         if re.match(r'^[\d\s\.\-\*]+$', point):
             continue
+            
+        # Skip points that are likely dates or metadata
+        if re.search(r'^\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}', point):
+            continue
+            
+        # Skip points that mention "post", "blog", etc.
+        if re.search(r'\b(?:post|blog|comment|author|published|updated)\b', point.lower()):
+            continue
         
         # Skip duplicate points
         if point not in cleaned_points:
             cleaned_points.append(point)
+    
+    # If we still don't have enough key points, generate generic advice for the product type
+    if len(cleaned_points) < 2 and product_type:
+        if product_type == 'ceiling fan' or product_type == 'fan':
+            cleaned_points = [
+                "Look for energy-efficient ceiling fans with BLDC motors that can save up to 70% on electricity bills.",
+                "Consider the warranty period - quality ceiling fans typically come with 2-5 year warranties.",
+                "Check the air delivery (measured in CMM) which indicates how effectively the fan circulates air.",
+                "Consider the sweep size (blade diameter) - larger rooms need fans with 1200mm or more sweep.",
+                "Look for fans with low noise levels, especially for bedrooms and study areas."
+            ]
+        elif product_type == 'washing machine':
+            cleaned_points = [
+                "Consider the capacity based on your family size - typically 6-7kg for a family of four.",
+                "Choose between front load (more efficient, gentler) and top load (more convenient, less expensive).",
+                "Check for energy and water efficiency ratings to save on utility bills.",
+                "Look for key features like multiple wash programs, quick wash option, and spin speed."
+            ]
     
     # Limit to 5 key points maximum
     return cleaned_points[:5]
@@ -1031,6 +1237,53 @@ def extract_summary(content, query):
     # Clean up the content
     content = content.replace('\n', ' ').replace('\r', ' ')
     
+    # Identify product type in query
+    product_type = None
+    query_lower = query.lower()
+    for pt in ['ceiling fan', 'fan', 'washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave']:
+        if pt in query_lower:
+            product_type = pt
+            break
+    
+    # Try to find paragraphs containing query keywords
+    if product_type:
+        # First look for paragraphs with both the product type and query intent
+        intent_words = ['choose', 'select', 'buy', 'types', 'best', 'guide', 'how', 'what']
+        intent_matches = []
+        
+        for word in intent_words:
+            if word in query_lower:
+                # Try to find paragraphs containing both product type and this intent word
+                pattern = f"[^.!?]*{product_type}[^.!?]*{word}[^.!?]*[.!?]|[^.!?]*{word}[^.!?]*{product_type}[^.!?]*[.!?]"
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                
+                if matches:
+                    for match in matches:
+                        if len(match.strip()) > 50 and len(match.strip()) < 500:
+                            intent_matches.append(match.strip())
+        
+        if intent_matches:
+            # Return the first match or concatenate multiple short ones
+            if len(intent_matches[0]) > 150:
+                return intent_matches[0]
+            else:
+                combined = " ".join(intent_matches[:3])
+                return combined if len(combined) < 500 else combined[:500]
+        
+        # If no intent matches, just look for paragraphs with the product type
+        product_paragraphs = []
+        paragraphs = re.split(r'\n\n|\r\n\r\n', content)
+        
+        for paragraph in paragraphs:
+            if product_type in paragraph.lower():
+                clean_paragraph = paragraph.strip()
+                if len(clean_paragraph) > 50 and len(clean_paragraph) < 500:
+                    product_paragraphs.append(clean_paragraph)
+        
+        if product_paragraphs:
+            # Return the first good paragraph
+            return product_paragraphs[0]
+    
     # Try to find a summary section
     summary_match = re.search(r'(?:Summary|Conclusion|Overview).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
     if summary_match:
@@ -1041,7 +1294,16 @@ def extract_summary(content, query):
         if len(summary) > 50 and len(summary) < 500:
             return summary
     
-    # If no summary section found, try to extract the first paragraph
+    # If no summary section found, try to extract the introduction or first paragraph
+    intro_match = re.search(r'(?:Introduction|Overview).*?(?=\n\n|\Z)', content, re.IGNORECASE | re.DOTALL)
+    if intro_match:
+        intro = intro_match.group(0)
+        intro = re.sub(r'(?:Introduction|Overview):\s*', '', intro, flags=re.IGNORECASE)
+        intro = intro.strip()
+        if len(intro) > 50 and len(intro) < 500:
+            return intro
+            
+    # If still nothing, extract the first substantive paragraph (at least 50 characters)
     paragraphs = re.split(r'\n\n', content)
     for paragraph in paragraphs:
         paragraph = paragraph.strip()
@@ -1427,15 +1689,22 @@ def main():
     if 'conversation_history' not in st.session_state:
         st.session_state['conversation_history'] = []
     
+    # Add a session state variable to track the last query product type
+    if 'last_product_type' not in st.session_state:
+        st.session_state['last_product_type'] = None
+    
+    # Add a session state variable to track if we're awaiting a response to view products
+    if 'awaiting_product_view' not in st.session_state:
+        st.session_state['awaiting_product_view'] = False
+    
     # Build or load FAISS index for product search
     try:
-        index = build_or_load_faiss_index(
-            embedding_data['product_embeddings'],
-            embedding_data['product_embeddings'].shape[1] if len(embedding_data['product_embeddings']) > 0 else 1536,
-            PRODUCT_INDEX_FILE_PATH
-        )
+        # Rebuild FAISS index to match current DataFrame
+        new_index = faiss.IndexFlatL2(embedding_data['product_embeddings'].shape[1])
+        new_index.add(embedding_data['product_embeddings'][:len(df)])
+        faiss.write_index(new_index, PRODUCT_INDEX_FILE_PATH)
     except Exception as e:
-        st.error(f"Error building product index: {str(e)}")
+        st.error(f"Error rebuilding product index: {str(e)}")
         index = None
     
     # User input
@@ -1445,6 +1714,33 @@ def main():
         query = user_input.lower().strip()
         
         try:
+            # Check if this is a response to view products
+            if st.session_state['awaiting_product_view']:
+                if any(term in query for term in ['yes', 'show', 'sure', 'products', 'view', 'see', 'okay', 'ok']):
+                    # User wants to see product recommendations based on the last query
+                    product_type = st.session_state['last_product_type']
+                    
+                    if product_type:
+                        # Filter dataframe for the specific product type
+                        filtered_df = df[df['Product Type'].astype(str) == product_type]
+                        
+                        if len(filtered_df) > 0:
+                            # Get top products
+                            top_products = filtered_df.sort_values('Better Home Price', ascending=True).head(5)
+                            response = format_product_response(top_products)
+                            st.write(response)
+                            
+                            # Reset the awaiting_product_view flag
+                            st.session_state['awaiting_product_view'] = False
+                            return
+                    
+                    # If we couldn't find products or product_type is None
+                    # Fall back to regular search
+                    st.session_state['awaiting_product_view'] = False
+                else:
+                    # User asked something else, reset the flag
+                    st.session_state['awaiting_product_view'] = False
+            
             # Check if it's a how-to question
             if is_how_to_query(query):
                 # Load blog embeddings
@@ -1459,6 +1755,15 @@ def main():
                             print(f"Found {len(blog_results)} relevant blog articles")
                             response = format_blog_response(blog_results, query)
                             st.write(response)
+                            
+                            # Save the product type for follow-up
+                            for pt in ['ceiling fan', 'fan', 'washing machine', 'chimney', 'refrigerator', 'air conditioner', 'microwave']:
+                                if pt in query.lower():
+                                    st.session_state['last_product_type'] = pt
+                                    break
+                            
+                            # Set flag to indicate we're awaiting a response to view products
+                            st.session_state['awaiting_product_view'] = True
                             return
                         else:
                             print("No relevant blog articles found")
@@ -1476,6 +1781,16 @@ def main():
                     response = "I encountered an error while searching for information. Please try again later or ask about a specific product."
                     st.write(response)
                     return
+
+            # Handle bestseller queries
+            bestseller_results = handle_bestseller_query(query, df)
+            if bestseller_results is not None:
+                response = format_product_response(bestseller_results)
+                st.write(response)
+                # Append to conversation history without displaying
+                st.session_state['conversation_history'].append(("user", user_input))
+                st.session_state['conversation_history'].append(("assistant", response))
+                return
 
             # Handle price queries
             if any(word in query for word in ['price', 'cost', 'expensive', 'cheap', 'budget']):
@@ -1568,6 +1883,88 @@ def main():
             # Append error to conversation history without displaying
             st.session_state['conversation_history'].append(("user", user_input))
             st.session_state['conversation_history'].append(("assistant", f"I apologize, but I encountered an error: {str(e)}"))
+
+def handle_bestseller_query(query, df):
+    """
+    Handle bestseller queries and return bestselling products.
+    
+    Args:
+        query: User query
+        df: DataFrame containing product data
+        
+    Returns:
+        DataFrame containing bestselling products or None if not a bestseller query
+    """
+    # Check if it's a bestseller-related query
+    query_lower = query.lower()
+    
+    is_bestseller_query = any(term in query_lower for term in [
+        'bestseller', 'best seller', 'best selling', 'most popular', 'popular', 'top selling',
+        'trending', 'most sold', 'most purchased', 'best performing'
+    ])
+    
+    if not is_bestseller_query:
+        return None
+    
+    # Try to find if there's a specific product type in the query
+    product_type = None
+    
+    # Common product type keywords 
+    product_types = {
+        'fan': 'Ceiling Fan',
+        'water heater': 'Water Heater',
+        'geyser': 'Water Heater',
+        'ac': 'Air Conditioner',
+        'air conditioner': 'Air Conditioner',
+        'refrigerator': 'Refrigerator',
+        'fridge': 'Refrigerator',
+        'washing machine': 'Washing Machine',
+        'washer': 'Washing Machine',
+        'chimney': 'Chimney'
+    }
+    
+    # Check if query contains any specific product type
+    for keyword, pt in product_types.items():
+        if keyword in query_lower:
+            product_type = pt
+            break
+    
+    try:
+        # Check if dataframe has is_bestseller column
+        if 'is_bestseller' not in df.columns:
+            print("No is_bestseller column found in dataframe")
+            return None
+            
+        # Filter for bestseller products
+        bestsellers = df[df['is_bestseller'] == True]
+        
+        if len(bestsellers) == 0:
+            # Try case-insensitive boolean matching
+            bestsellers = df[df['is_bestseller'].astype(str).str.lower() == 'true']
+            
+        # If no bestsellers found, try matching on string "true"
+        if len(bestsellers) == 0:
+            bestsellers = df[df['is_bestseller'] == "true"]
+        
+        print(f"Found {len(bestsellers)} bestseller products")
+        
+        # Further filter by product type if specified
+        if product_type:
+            filtered_bestsellers = bestsellers[bestsellers['Product Type'].astype(str) == product_type]
+            if len(filtered_bestsellers) > 0:
+                bestsellers = filtered_bestsellers
+                print(f"Filtered to {len(bestsellers)} {product_type} bestsellers")
+        
+        # If still empty, return None
+        if len(bestsellers) == 0:
+            return None
+            
+        # Return the top bestselling products
+        return bestsellers.head(5)
+    
+    except Exception as e:
+        print(f"Error in handle_bestseller_query: {str(e)}")
+        return None
 
 if __name__ == "__main__":
     main()
