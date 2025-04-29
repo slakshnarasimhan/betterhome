@@ -14,6 +14,9 @@ import sys  # Add sys import for path debugging
 from typing import Dict, Any, List, Optional, Tuple  # Add missing imports
 import networkx as nx
 from collections import defaultdict
+import time
+import random
+import threading
 
 # Print Python path for debugging
 print("Python path:")
@@ -106,6 +109,96 @@ try:
 except Exception as e:
     print(f"Error loading product knowledge graph: {str(e)}")
     knowledge_graph = None
+
+# ==========================
+# Animation Utilities
+# ==========================
+def animate_typing(text, container, speed=0.03, variance=0.01):
+    """
+    Display text with a typing animation effect
+    
+    Args:
+        text: The text to display
+        container: The Streamlit container to update
+        speed: Base delay between characters in seconds
+        variance: Random variance to add to the typing speed
+    """
+    displayed_text = ""
+    # Split by markdown formatting so we don't break it
+    segments = []
+    current_segment = ""
+    in_formatting = False
+    
+    for char in text:
+        if char == '*' or char == '#' or char == '[' or char == '`' or char == '_':
+            in_formatting = True
+            current_segment += char
+        elif in_formatting and (char == ' ' or char == '\n' or char == ']'):
+            in_formatting = False
+            current_segment += char
+            segments.append(current_segment)
+            current_segment = ""
+        else:
+            current_segment += char
+            
+    if current_segment:
+        segments.append(current_segment)
+    
+    # Display text with typing animation effect
+    for segment in segments:
+        # Add segment all at once if it's a formatting element
+        if segment.startswith('*') or segment.startswith('#') or segment.startswith('[') or segment.startswith('`') or segment.startswith('_'):
+            displayed_text += segment
+            container.markdown(displayed_text)
+            time.sleep(speed)
+        else:
+            # Type out regular text character by character
+            for char in segment:
+                displayed_text += char
+                container.markdown(displayed_text)
+                
+                # Add natural variation to typing speed
+                delay = speed + random.uniform(-variance, variance)
+                if char in '.!?':  # Pause a bit longer after end of sentences
+                    delay *= 3
+                elif char == ',':  # Slight pause after commas
+                    delay *= 2
+                elif char == '\n':  # Pause after line breaks
+                    delay *= 1.5
+                    
+                time.sleep(max(0.01, delay))  # Ensure delay is at least 10ms
+
+def show_thinking_animation(container, duration=0.5):
+    """
+    Display a thinking animation while processing
+    
+    Args:
+        container: The Streamlit container to update
+        duration: Time between animation frames in seconds
+    """
+    thinking_dots = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    thinking_messages = [
+        "Searching for relevant products",
+        "Analyzing your question",
+        "Retrieving information",
+        "Finding the best matches",
+        "Checking product details",
+        "Preparing your response"
+    ]
+    
+    # Pick a random message
+    message = random.choice(thinking_messages)
+    
+    # Show animation until stopped externally
+    i = 0
+    while True:
+        container.markdown(f"**{message}** {thinking_dots[i % len(thinking_dots)]}")
+        time.sleep(duration)
+        i += 1
+        
+        # Check if we should stop
+        if not getattr(st.session_state, 'thinking', True):
+            break
 
 # ==========================
 # Step 1: Load Product Terms Dictionary
@@ -389,54 +482,45 @@ def format_brand_response(products_df, product_type, is_warranty_query=False):
     # Limit to 3 brands maximum for brevity
     products_df = products_df.head(3)
     
-    # Create a concise title
     if is_warranty_query:
-        response = f"### {product_type} Brands with Warranty:\n\n"
+        response = f"### Warranty Information for {product_type.title()} Brands:\n\n"
     else:
-        response = f"### {product_type} Brands:\n\n"
+        response = f"### Top {product_type.title()} Brands:\n\n"
     
-    # Get total count
-    brand_count = len(products_df)
-    response += f"{brand_count} brand{'s' if brand_count > 1 else ''} available:\n\n"
-    
-    for _, product in products_df.iterrows():
-        title = product['title']
-        brand = product['Brand']
-        price = product['Better Home Price']
-        retail_price = product.get('Retail Price', 0)
-        url = product.get('url', '#')
+    for brand_name, group in products_df.groupby('Brand'):
+        response += f"**{brand_name}**\n"
         
-        # Calculate discount percentage if retail price is available
-        if retail_price > 0:
-            discount = ((retail_price - price) / retail_price) * 100
-            discount_text = f"({discount:.1f}% off)"
+        # Warranty info
+        warranty_info = group.iloc[0].get('Warranty', 'Not specified')
+        if warranty_info and warranty_info != 'Not specified' and is_warranty_query:
+            response += f"- Warranty: {warranty_info}\n"
+        
+        # Sample products with price range
+        min_price = group['Better Home Price'].min()
+        max_price = group['Better Home Price'].max()
+        
+        if min_price == max_price:
+            response += f"- Price: ₹{min_price:,.2f}\n"
         else:
-            discount_text = ""
+            response += f"- Price Range: ₹{min_price:,.2f} - ₹{max_price:,.2f}\n"
         
-        # Highlight warranty information if present in the title
-        warranty_text = ""
-        if is_warranty_query:
-            # Extract warranty info from title using regex
-            warranty_match = re.search(r'with\s+(\d+)\s+years?\s+warranty', title, re.IGNORECASE)
-            if warranty_match:
-                warranty_years = warranty_match.group(1)
-                warranty_text = f"⭐ {warranty_years} Year Warranty\n"
-            elif 'warranty' in title.lower():
-                warranty_text = "⭐ Includes Warranty\n"
-            elif 'year' in title.lower() and re.search(r'(\d+)\s+years?', title, re.IGNORECASE):
-                warranty_years = re.search(r'(\d+)\s+years?', title, re.IGNORECASE).group(1)
-                warranty_text = f"⭐ {warranty_years} Year Guarantee\n"
+        # Key features or benefits (if available)
+        features = group.iloc[0].get('Key Features', '').split(', ')
+        if features and features[0]:  # Check if there are actual features
+            response += "- Key Features: "
+            response += ", ".join(features[:3])  # Limit to 3 features
+            response += "\n"
         
-        # More concise brand listing
-        response += f"**{brand}** {discount_text}\n"
-        response += f"₹{price:,.2f}\n"
-        if warranty_text:
-            response += warranty_text
-        # Make the buy link more prominent
-        response += f"🛒 [Buy Now]({url})\n\n"
+        # Sample product
+        sample_product = group.iloc[0]
+        sample_url = sample_product.get('url', '#')
+        response += f"- [Browse {brand_name} Products]({sample_url})\n\n"
     
-    # Add a note about clicking the links
-    response += "*Click on 'Buy Now' to purchase the product.*\n"
+    # Add follow-up prompt
+    response += "\n**Would you like to:**\n"
+    response += f"- Learn more about a specific {product_type} brand?\n"
+    response += f"- Compare prices across {product_type} brands?\n"
+    response += f"- See the top-rated {product_type} products?\n"
     
     return response
 
@@ -610,6 +694,12 @@ def format_product_response(products_df):
     
     # Add a note about clicking the links
     response += "*Click on 'Buy Now' to purchase the product.*\n"
+    
+    # Add follow-up prompt
+    response += "\n**Would you like to:**\n"
+    response += "- See more details about these products?\n"
+    response += "- Compare features across these products?\n"
+    response += "- Find similar alternatives?\n"
     
     return response
 
@@ -786,78 +876,28 @@ def search_relevant_blogs(query, blog_embeddings_dict, k=3, similarity_threshold
 
 
 def format_blog_response(blog_results, query=None):
-    """
-    Format blog search results for display in a concise, WhatsApp-friendly format
-    """
-    if not blog_results or len(blog_results) == 0:
-        return None
+    response = "### Article Recommendations:\n\n"
     
-    # Extract query topic for header
-    topic_header = ""
-    if query:
-        query_words = query.lower().split()
-        stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 
-                      'about', 'like', 'of', 'do', 'does', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 
-                      'those', 'list', 'show', 'tell', 'me', 'get', 'can', 'could', 'would', 'should', 'how'}
-        topic_words = [word for word in query_words if word not in stop_words and len(word) > 3]
-        if topic_words:
-            topic_header = f" About {' '.join(topic_words[:3]).title()}"
+    for result in blog_results:
+        # Extract metadata
+        title = result.get('title', 'No Title')
+        url = result.get('url', '#')
+        content = result.get('content', '')
+        
+        # Add article title and link
+        response += f"#### [{title}]({url})\n\n"
+        
+        # Extract important information from content based on query
+        if query and content:
+            important_info = extract_key_points(content, query)
+            response += f"{important_info}\n\n"
     
-    response = f"### 📚 Articles{topic_header}\n\n"
+    # Add follow-up prompt
+    response += "\n**Would you like to:**\n"
+    response += "- Get more details on these articles?\n"
+    response += "- Ask a more specific question about this topic?\n"
+    response += "- See related products instead?\n"
     
-    # Limit to 2 blog articles maximum
-    blog_count = 0
-    for blog in blog_results:
-        if blog_count >= 2:
-            break
-            
-        title = blog.get('title', '')
-        url = blog.get('url', '#')
-        content = blog.get('content', '')
-        
-        # Skip if no title or content
-        if not title or not content:
-            continue
-        
-        # Format the article entry
-        response += f"**{title}**\n\n"
-        
-        # Provide structured information based on appliance type
-        query_lower = query.lower()
-        if 'washing machine' in query_lower:
-            # Existing washing machine content...
-            pass
-        elif 'chimney' in query_lower:
-            # Add key factors for chimneys
-            response += "**Key Factors to Consider:**\n"
-            response += "• Suction Power - 700-1000 m³/hr for small kitchens, 1000-1500 m³/hr for larger ones\n"
-            response += "• Type - Wall-mounted, Island, Built-in, Corner based on kitchen layout\n"
-            response += "• Filter Type - Baffle (best), Mesh (budget), Charcoal (odor control)\n"
-            response += "• Size - Match with your cooktop width (usually 2-3 inches wider)\n"
-            response += "• Auto-Clean Feature - Reduces maintenance effort but costs more\n\n"
-            
-            # Add types of chimneys
-            response += "**Types of Chimneys:**\n"
-            response += "• Wall-Mounted - Most common, suitable for kitchens with cooktop against wall\n"
-            response += "• Island - For kitchen islands, hangs from ceiling\n"
-            response += "• Built-in - Integrated into cabinet, saves space\n"
-            response += "• Angular/Corner - Specifically designed for corner installations\n\n"
-            
-            # Add budget considerations
-            response += "**Budget Guide:**\n"
-            response += "• Basic (₹5,000-10,000) - Standard suction power, mesh filters\n"
-            response += "• Mid-Range (₹10,000-20,000) - Better suction, baffle filters, auto-clean\n"
-            response += "• Premium (₹20,000+) - High suction power, advanced features, premium finish\n\n"
-        else:
-            # For other queries, extract a brief summary
-            summary = content.split('\n\n')[0]  # Get first paragraph
-            if len(summary) > 50:
-                response += f"{summary[:200]}...\n\n"
-        
-        response += f"📖 [Read Full Article]({url})\n\n"
-        blog_count += 1
-    
-    response += "*Click on 'Read Full Article' to view the complete article.*\n"
     return response
 
 def extract_key_points(content, query):
@@ -1421,153 +1461,804 @@ def search_products_with_graph(query, df, embeddings_dict, knowledge_graph=None,
 # Main Function
 # ==========================
 def main():
+    # Set page title and configuration
     st.title("Better Home Assistant")
     
-    # Initialize session state
+    # Initialize session state variables if they don't exist
     if 'conversation_history' not in st.session_state:
         st.session_state['conversation_history'] = []
+    if 'follow_up_state' not in st.session_state:
+        st.session_state['follow_up_state'] = False
+    if 'current_context' not in st.session_state:
+        st.session_state['current_context'] = None
+    if 'last_products' not in st.session_state:
+        st.session_state['last_products'] = None
+    if 'product_type' not in st.session_state:
+        st.session_state['product_type'] = None
+    if 'thinking' not in st.session_state:
+        st.session_state['thinking'] = False
     
-    # Build or load FAISS index for product search
+    # Create containers for dynamic content
+    if 'response_container' not in st.session_state:
+        st.session_state.response_container = st.container()
+    if 'follow_up_container' not in st.session_state:
+        st.session_state.follow_up_container = st.container()
+    if 'thinking_container' not in st.session_state:
+        st.session_state.thinking_container = st.container()
+    
+    # Reset button in sidebar
+    with st.sidebar:
+        st.title("Options")
+        if st.button("Clear History"):
+            # Reset all conversation state
+            st.session_state['conversation_history'] = []
+            st.session_state['follow_up_state'] = False
+            st.session_state['last_products'] = None
+            st.session_state['current_context'] = None
+            st.session_state['product_type'] = None
+            st.session_state['thinking'] = False
+            st.session_state.response_container.empty()
+            st.session_state.follow_up_container.empty() 
+            st.session_state.thinking_container.empty()
+            st.success("Conversation history cleared!")
+            time.sleep(1)  # Show success message briefly
+            st.rerun()
+    
+    # Load product terms for identifying product types
+    product_terms = load_product_terms(PRODUCT_TERMS_FILE_PATH)
+    
+    # Show conversation history
+    for speaker, text in st.session_state['conversation_history']:
+        if speaker == "user":
+            st.chat_message("user").write(text)
+        else:
+            st.chat_message("assistant").write(text)
+    
+    # Load embeddings and create index
     try:
-        index = build_or_load_faiss_index(
-            embedding_data['product_embeddings'],
-            embedding_data['product_embeddings'].shape[1] if len(embedding_data['product_embeddings']) > 0 else 1536,
-            PRODUCT_INDEX_FILE_PATH
-        )
+        embedding_data = load_embeddings(EMBEDDINGS_FILE_PATH)
+        df = load_product_catalog(PRODUCT_CATALOG_FILE_PATH)
+        
+        # Build or load the FAISS index
+        if embedding_data['product_embeddings'].shape[0] > 0:
+            dimension = embedding_data['product_embeddings'].shape[1]
+            index = build_or_load_faiss_index(embedding_data['product_embeddings'], dimension, INDEX_PATH)
+            print(f"Successfully loaded FAISS index with {embedding_data['metadata'].get('total_products', 0)} products")
+        else:
+            print("No embeddings found, cannot build index")
+            index = None
     except Exception as e:
-        st.error(f"Error building product index: {str(e)}")
+        print(f"Error loading embeddings or building index: {str(e)}")
+        traceback.print_exc()
+        embedding_data = None
+        df = None
         index = None
     
-    # User input
-    user_input = st.text_input("Ask me anything about home products:", key="user_input")
-    
-    if user_input:
-        query = user_input.lower().strip()
+    # Handle follow-up queries
+    if st.session_state['follow_up_state']:
+        product_type = st.session_state.get('product_type', '')
         
-        try:
-            # Check if it's a how-to question
-            if is_how_to_query(query):
-                # Load blog embeddings
-                try:
-                    print(f"Loading blog embeddings from {BLOG_EMBEDDINGS_FILE_PATH}")
-                    blog_embeddings_dict = load_blog_embeddings(BLOG_EMBEDDINGS_FILE_PATH)
-                    if blog_embeddings_dict and blog_embeddings_dict['blog_embeddings'].shape[0] > 0:
-                        print(f"Successfully loaded {blog_embeddings_dict['blog_embeddings'].shape[0]} blog embeddings")
-                        # Search for relevant blogs
-                        blog_results = search_relevant_blogs(query, blog_embeddings_dict, k=3)
-                        if blog_results:
-                            print(f"Found {len(blog_results)} relevant blog articles")
-                            response = format_blog_response(blog_results, query)
-                            st.write(response)
-                            return
-                        else:
-                            print("No relevant blog articles found")
-                            response = "I couldn't find any articles that directly answer your how-to question. Please try rephrasing your question or ask about a specific product."
-                            st.write(response)
-                            return
-                    else:
-                        print("Failed to load blog embeddings or no embeddings found")
-                        response = "I'm having trouble accessing our knowledge base right now. Please try again later or ask about a specific product."
-                        st.write(response)
-                        return
-                except Exception as e:
-                    print(f"Error searching blogs: {str(e)}")
-                    traceback.print_exc()
-                    response = "I encountered an error while searching for information. Please try again later or ask about a specific product."
-                    st.write(response)
-                    return
+        st.markdown(f"### I'm currently showing information about {product_type or 'products'}. What would you like to know?")
+        
+        # Display follow-up options based on context
+        if st.session_state['current_context'] == 'product':
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("More details"):
+                    process_follow_up("Tell me more about these products", df, index, "product_details")
+            with col2:
+                if st.button("Compare products"):
+                    process_follow_up("Compare these products", df, index, "product_comparison")
+            with col3:
+                if st.button("Similar products"):
+                    process_follow_up("Show me similar products", df, index, "product_alternatives")
+        
+        elif st.session_state['current_context'] == 'brand':
+            product_type = st.session_state.get('product_type', '')
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("Compare features"):
+                    process_follow_up(f"Compare features across {product_type} brands", df, index, "brand_features")
+            with col2:
+                if st.button("Compare prices"):
+                    process_follow_up(f"Compare prices across {product_type} brands", df, index, "brand_price_comparison")
+            with col3:
+                if st.button("Top-rated products"):
+                    process_follow_up(f"Show me top-rated {product_type} products", df, index, "top_rated_products")
+        
+        # User input - only show if not in follow-up mode or explicitly reset
+        if not st.session_state['follow_up_state']:
+            user_input = st.text_input("Ask me anything about home products:", key="user_input")
+            
+            if user_input:
+                process_query(user_input, df, index)
 
-            # Handle price queries
-            if any(word in query for word in ['price', 'cost', 'expensive', 'cheap', 'budget']):
-                products = handle_price_query(query, df, product_terms)
-                if products is not None:
-                    response = format_product_response(products)
-                    st.write(response)
-                    return
-
-            # Handle brand queries
-            if any(word in query for word in ['brand', 'warranty', 'company', 'manufacturer']):
-                brand_result = handle_brand_query(query, df, product_terms)
-                if brand_result is not None:
-                    response = format_brand_response(brand_result['dataframe'], brand_result['product_type'], brand_result['is_warranty_query'])
-                    st.write(response)
-                    return
-
-            # Handle general "best" product queries
-            if any(term in query for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect']):
-                response = retrieve_and_generate_openai(query, "")
-                st.write(response)
-                return
+def process_follow_up(follow_up_query, df, index, follow_up_type):
+    """Handle follow-up queries based on previous context"""
+    # Get the last products context
+    last_products = st.session_state['last_products']
+    context_type = st.session_state['current_context']
+    
+    # Safety check - if last_products is None, respond with a message
+    if last_products is None:
+        # Add follow-up to conversation history
+        st.session_state['conversation_history'].append(("user", follow_up_query))
+        
+        response = "I'm sorry, but I don't have any product information to follow up on. Please ask a new question."
+        st.session_state['conversation_history'].append(("assistant", response))
+        
+        # Show response with typing animation
+        animate_typing(response, st.session_state.follow_up_container)
+        
+        # Reset follow-up state to allow for new input
+        st.session_state['follow_up_state'] = False
+        
+        st.rerun()
+        return
+    
+    # Add follow-up to conversation history
+    st.session_state['conversation_history'].append(("user", follow_up_query))
+    
+    # Start thinking animation
+    st.session_state.thinking = True
+    thinking_thread = threading.Thread(target=show_thinking_animation, args=(st.session_state.thinking_container, 0.3))
+    thinking_thread.daemon = True
+    thinking_thread.start()
+    
+    response = ""
+    
+    # Handle different follow-up types
+    if follow_up_type == "product_details":
+        # Show more detailed information about the last products
+        if isinstance(last_products, pd.DataFrame) and not last_products.empty:
+            response = "### Detailed Product Information:\n\n"
+            for _, product in last_products.iterrows():
+                title = product['title']
+                specs = product.get('Specifications', 'No detailed specifications available')
+                features = product.get('Key Features', 'No features listed')
                 
-            # Handle similar product queries with knowledge graph
-            if any(term in query for term in ['similar', 'related', 'like']) and knowledge_graph is not None:
-                # Try to extract a product name from the query
-                product_words = query.replace('similar to', '').replace('related to', '')
-                product_words = product_words.replace('like', '').strip()
+                response += f"**{title}**\n"
+                response += f"- **Key Features:** {features}\n"
+                response += f"- **Specifications:** {specs}\n\n"
+        else:
+            response = "I don't have detailed product information available. Please try searching for products first."
+    
+    elif follow_up_type == "product_comparison":
+        # Compare features across the last shown products
+        if isinstance(last_products, pd.DataFrame) and not last_products.empty and len(last_products) >= 2:
+            response = "### Product Comparison:\n\n"
+            comparison_table = "| Feature | " + " | ".join([p['title'] for _, p in last_products.iterrows()]) + " |\n"
+            comparison_table += "| --- | " + " | ".join(["---" for _ in range(len(last_products))]) + " |\n"
+            
+            # Compare key features
+            comparison_table += "| Price | " + " | ".join([f"₹{p['Better Home Price']:,.2f}" for _, p in last_products.iterrows()]) + " |\n"
+            
+            # Add other common features if available
+            for feature in ['Energy Rating', 'Warranty', 'Brand']:
+                if any(feature in p for _, p in last_products.iterrows()):
+                    comparison_table += f"| {feature} | " + " | ".join([str(p.get(feature, 'N/A')) for _, p in last_products.iterrows()]) + " |\n"
+            
+            response += comparison_table
+        else:
+            response = "I need at least two products to compare. Please search for more products first."
+    
+    elif follow_up_type == "product_alternatives":
+        # Find similar products based on the last shown products
+        if isinstance(last_products, pd.DataFrame) and not last_products.empty:
+            try:
+                # Take the first product title and find alternatives
+                first_product = last_products.iloc[0]
+                product_title = first_product['title']
                 
-                # Try to find a match in our catalog
-                potential_matches = []
-                for _, row in df.iterrows():
-                    title = str(row.get('title', '')).lower()
-                    match_score = 0
-                    for word in product_words.split():
-                        if len(word) > 3 and word in title:  # Only consider words longer than 3 chars
-                            match_score += 1
-                    
-                    if match_score > 0:
-                        potential_matches.append((row, match_score))
-                
-                # Sort by match score
-                potential_matches.sort(key=lambda x: x[1], reverse=True)
-                
-                if potential_matches:
-                    # Get the best matching product
-                    best_match = potential_matches[0][0]
-                    product_title = best_match.get('title', '')
-                    
-                    print(f"Found potential product match: {product_title}")
-                    
-                    # Get recommendations from knowledge graph
-                    graph_recommendations = get_recommendations_from_graph(
-                        product_title, 
-                        knowledge_graph, 
-                        df, 
-                        max_recommendations=5
-                    )
-                    
-                    if graph_recommendations is not None:
-                        print(f"Found {len(graph_recommendations)} recommendations from knowledge graph")
-                        response = format_product_response(graph_recommendations)
-                        st.write(response)
+                # Get recommendations from knowledge graph if available
+                if knowledge_graph is not None:
+                    alternatives = get_recommendations_from_graph(product_title, knowledge_graph, df, max_recommendations=3)
+                    if alternatives is not None and len(alternatives) > 0:
+                        response = "### Similar Products You Might Like:\n\n"
+                        response += format_product_response(alternatives)
+                        # Update the last products to these alternatives
+                        st.session_state['last_products'] = alternatives
+                        st.session_state['follow_up_state'] = True
+                        st.session_state['current_context'] = 'product'
                         
-                        # Append to conversation history without displaying
-                        st.session_state['conversation_history'].append(("user", user_input))
+                        # Update conversation history
                         st.session_state['conversation_history'].append(("assistant", response))
+                        
+                        # Stop thinking animation
+                        st.session_state.thinking = False
+                        st.session_state.thinking_container.empty()
+                        
+                        # Show response with typing animation
+                        animate_typing(response, st.session_state.follow_up_container)
+                        
+                        st.rerun()
                         return
-
-            # Handle general product search
-            if index is not None:
-                # First try to use the knowledge graph if appropriate
-                if knowledge_graph is not None and any(term in query for term in ['recommend', 'similar', 'related', 'like']):
-                    indices = search_products_with_graph(query, df, embedding_data, knowledge_graph)
-                    products = [df.iloc[idx] for idx in indices]
+                    else:
+                        response = "I couldn't find similar products. Would you like to see other recommended products instead?"
                 else:
-                    products = search_catalog(query, df, index)
-                
-                response = format_answer(products, query)
-                st.write(response)
-                if products:  # Check if the list is not empty
-                    # Convert the list of dictionaries to a DataFrame for display
-                    products_df = pd.DataFrame(products)
-                    st.dataframe(products_df)
-                # Append to conversation history without displaying
-                st.session_state['conversation_history'].append(("user", user_input))
+                    response = "I'm sorry, but I don't have the knowledge graph available to find similar products."
+            except Exception as e:
+                print(f"Error finding alternatives: {str(e)}")
+                response = "I had trouble finding alternatives for this product. Please try a different query."
+        else:
+            response = "I don't have any products to find alternatives for. Please search for products first."
+    
+    # Format response based on follow-up type
+    if not response:
+        response = "I'm sorry, I couldn't find the information you requested. Please try asking a different question."
+    
+    # Add response to conversation history
+    st.session_state['conversation_history'].append(("assistant", response))
+    
+    # Stop thinking animation
+    st.session_state.thinking = False
+    st.session_state.thinking_container.empty()
+    
+    # Show response with typing animation
+    animate_typing(response, st.session_state.follow_up_container)
+    
+    # Keep follow-up state active
+    st.session_state['follow_up_state'] = True
+    
+    # Rerun to update the UI
+    st.rerun()
+
+
+def process_query(user_input, df, index):
+    """Process a new user query"""
+    query = user_input.lower().strip()
+    
+    # Reset follow-up state for new queries
+    st.session_state['follow_up_state'] = False
+    
+    # Add user input to conversation history
+    st.session_state['conversation_history'].append(("user", user_input))
+    
+    # Start thinking animation
+    st.session_state.thinking = True
+    thinking_thread = threading.Thread(target=show_thinking_animation, args=(st.session_state.thinking_container, 0.3))
+    thinking_thread.daemon = True
+    thinking_thread.start()
+    
+    try:
+        # Check if it's a how-to question
+        if is_how_to_query(query):
+            # Load blog embeddings
+            try:
+                print(f"Loading blog embeddings from {BLOG_EMBEDDINGS_FILE_PATH}")
+                blog_embeddings_dict = load_blog_embeddings(BLOG_EMBEDDINGS_FILE_PATH)
+                if blog_embeddings_dict and blog_embeddings_dict['blog_embeddings'].shape[0] > 0:
+                    print(f"Successfully loaded {blog_embeddings_dict['blog_embeddings'].shape[0]} blog embeddings")
+                    # Search for relevant blogs
+                    blog_results = search_relevant_blogs(query, blog_embeddings_dict, k=3)
+                    if blog_results:
+                        print(f"Found {len(blog_results)} relevant blog articles")
+                        response = format_blog_response(blog_results, query)
+                        
+                        # Save context and enable follow-up state
+                        st.session_state['last_products'] = blog_results
+                        st.session_state['current_context'] = 'blog'
+                        st.session_state['follow_up_state'] = True
+                        
+                        # Update conversation history
+                        st.session_state['conversation_history'].append(("assistant", response))
+                        
+                        # Stop thinking animation
+                        st.session_state.thinking = False
+                        st.session_state.thinking_container.empty()
+                        
+                        # Show response with typing animation
+                        animate_typing(response, st.session_state.response_container)
+                        
+                        st.rerun()
+                        return
+                    else:
+                        print("No relevant blog articles found")
+                        response = "I couldn't find any articles that directly answer your how-to question. Please try rephrasing your question or ask about a specific product."
+                        st.session_state['conversation_history'].append(("assistant", response))
+                        
+                        # Stop thinking animation
+                        st.session_state.thinking = False
+                        st.session_state.thinking_container.empty()
+                        
+                        # Show response with typing animation
+                        animate_typing(response, st.session_state.response_container)
+                        
+                        st.rerun()
+                        return
+                else:
+                    print("Failed to load blog embeddings or no embeddings found")
+                    response = "I'm having trouble accessing our knowledge base right now. Please try again later or ask about a specific product."
+                    st.session_state['conversation_history'].append(("assistant", response))
+                    
+                    # Stop thinking animation
+                    st.session_state.thinking = False
+                    st.session_state.thinking_container.empty()
+                    
+                    # Show response with typing animation
+                    animate_typing(response, st.session_state.response_container)
+                    
+                    st.rerun()
+                    return
+            except Exception as e:
+                print(f"Error searching blogs: {str(e)}")
+                traceback.print_exc()
+                response = "I encountered an error while searching for information. Please try again later or ask about a specific product."
                 st.session_state['conversation_history'].append(("assistant", response))
+                
+                # Stop thinking animation
+                st.session_state.thinking = False
+                st.session_state.thinking_container.empty()
+                
+                # Show response with typing animation
+                animate_typing(response, st.session_state.response_container)
+                
+                st.rerun()
+                return
+
+        # Handle price queries
+        if any(word in query for word in ['price', 'cost', 'expensive', 'cheap', 'budget']):
+            products = handle_price_query(query, df, product_terms)
+            if products is not None:
+                response = format_product_response(products)
+                
+                # Save context and enable follow-up state
+                st.session_state['last_products'] = products
+                st.session_state['current_context'] = 'product'
+                st.session_state['follow_up_state'] = True
+                
+                # Update conversation history
+                st.session_state['conversation_history'].append(("assistant", response))
+                
+                # Stop thinking animation
+                st.session_state.thinking = False
+                st.session_state.thinking_container.empty()
+                
+                # Show response with typing animation
+                animate_typing(response, st.session_state.response_container)
+                
+                st.rerun()
+                return
+
+        # Handle brand queries
+        if any(word in query for word in ['brand', 'warranty', 'company', 'manufacturer']):
+            brand_result = handle_brand_query(query, df, product_terms)
+            if brand_result is not None:
+                response = format_brand_response(brand_result['dataframe'], brand_result['product_type'], brand_result['is_warranty_query'])
+                
+                # Save context and enable follow-up state
+                st.session_state['last_products'] = brand_result['dataframe']
+                st.session_state['current_context'] = 'brand'
+                st.session_state['product_type'] = brand_result['product_type']
+                st.session_state['follow_up_state'] = True
+                
+                # Update conversation history
+                st.session_state['conversation_history'].append(("assistant", response))
+                
+                # Stop thinking animation
+                st.session_state.thinking = False
+                st.session_state.thinking_container.empty()
+                
+                # Show response with typing animation
+                animate_typing(response, st.session_state.response_container)
+                
+                st.rerun()
+                return
+
+        # Handle general "best" product queries
+        if any(term in query for term in ['best', 'recommend', 'suggest', 'top', 'ideal', 'perfect']):
+            # If we have a valid index
+            if index is not None:
+                # Try to find the product type
+                product_type = find_product_type(query, product_terms)
+                
+                if knowledge_graph is not None:
+                    # Get recommendations from knowledge graph
+                    recommendations = recommend_products_based_on_graph(query, df, knowledge_graph)
+                    if recommendations is not None and not recommendations.empty:
+                        response = "### Based on what others are buying:\n\n"
+                        response += format_product_response(recommendations)
+                        
+                        # Save context
+                        st.session_state['last_products'] = recommendations
+                        st.session_state['current_context'] = 'product'
+                        st.session_state['follow_up_state'] = True
+                        
+                        # Update conversation history
+                        st.session_state['conversation_history'].append(("assistant", response))
+                        
+                        # Stop thinking animation
+                        st.session_state.thinking = False
+                        st.session_state.thinking_container.empty()
+                        
+                        # Show response with typing animation
+                        animate_typing(response, st.session_state.response_container)
+                        
+                        st.rerun()
+                        return
+                
+                # If graph recommendations failed, do regular search
+                result = search_catalog(query, df, embedding_data, index, k=5, product_type=product_type)
+                if result and not result.empty:
+                    products_df = result.head(3)  # Limit to top 3
+                    response = "### Top Recommended Products:\n\n"
+                    response += format_product_response(products_df)
+                    
+                    # Save context
+                    st.session_state['last_products'] = products_df
+                    st.session_state['current_context'] = 'product'
+                    st.session_state['follow_up_state'] = True
+                    
+                    # Update conversation history
+                    st.session_state['conversation_history'].append(("assistant", response))
+                    
+                    # Stop thinking animation
+                    st.session_state.thinking = False
+                    st.session_state.thinking_container.empty()
+                    
+                    # Show response with typing animation
+                    animate_typing(response, st.session_state.response_container)
+                    
+                    st.rerun()
+                    return
+                else:
+                    # Fallback response
+                    response = "I couldn't find specific recommendations for that query. Could you please be more specific about what type of product you're looking for?"
+                    
+                    # Update conversation history
+                    st.session_state['conversation_history'].append(("assistant", response))
+                    
+                    # Stop thinking animation
+                    st.session_state.thinking = False
+                    st.session_state.thinking_container.empty()
+                    
+                    # Show response with typing animation
+                    animate_typing(response, st.session_state.response_container)
+                    
+                    st.rerun()
+                    return
+        
+        # Otherwise, do a general search
+        try:
+            # First see if we can identify the product type
+            product_type = find_product_type(query, product_terms)
+            
+            # If index is valid, search the catalog
+            if index is not None:
+                result = search_catalog(query, df, embedding_data, index, k=5, product_type=product_type)
+                if result is not None and not result.empty:
+                    products_df = result.head(3)  # Limit to top 3
+                    response = "### Here's what I found:\n\n"
+                    response += format_product_response(products_df)
+                    
+                    # Set context for follow up
+                    st.session_state['last_products'] = products_df
+                    st.session_state['current_context'] = 'product'
+                    st.session_state['follow_up_state'] = True
+                    
+                    # Update conversation history
+                    st.session_state['conversation_history'].append(("assistant", response))
+                    
+                    # Stop thinking animation
+                    st.session_state.thinking = False
+                    st.session_state.thinking_container.empty()
+                    
+                    # Show response with typing animation
+                    animate_typing(response, st.session_state.response_container)
+                    
+                    st.rerun()
+                    return
+            
+            # If we get here, we couldn't provide a helpful response
+            response = "I don't have specific information about that, but I can help you find ceiling fans, air conditioners, water heaters, and other home appliances. Could you please clarify what you're looking for?"
+            
+            # Update conversation history
+            st.session_state['conversation_history'].append(("assistant", response))
+            
+            # Stop thinking animation
+            st.session_state.thinking = False
+            st.session_state.thinking_container.empty()
+            
+            # Show response with typing animation
+            animate_typing(response, st.session_state.response_container)
+            
+            st.rerun()
+            
         except Exception as e:
-            st.error(f"I apologize, but I encountered an error: {str(e)}")
-            # Append error to conversation history without displaying
-            st.session_state['conversation_history'].append(("user", user_input))
-            st.session_state['conversation_history'].append(("assistant", f"I apologize, but I encountered an error: {str(e)}"))
+            # Handle errors
+            error_msg = str(e)
+            print(f"Error in query processing: {error_msg}")
+            traceback.print_exc()
+            
+            response = f"I apologize, but I encountered an error: {error_msg}"
+            
+            # Update conversation history
+            st.session_state['conversation_history'].append(("assistant", response))
+            
+            # Stop thinking animation
+            st.session_state.thinking = False
+            st.session_state.thinking_container.empty()
+            
+            # Show response with typing animation
+            animate_typing(response, st.session_state.response_container)
+            
+            st.rerun()
+            
+    except Exception as e:
+        # Handle errors at the outermost level
+        error_msg = str(e)
+        print(f"Outer error in query processing: {error_msg}")
+        traceback.print_exc()
+        
+        response = f"I apologize, but I encountered an error: {error_msg}"
+        
+        # Update conversation history
+        st.session_state['conversation_history'].append(("assistant", response))
+        
+        # Stop thinking animation
+        st.session_state.thinking = False
+        st.session_state.thinking_container.empty()
+        
+        # Show response with typing animation
+        animate_typing(response, st.session_state.response_container)
+        
+        st.rerun()
+
+def is_comparison_query(query):
+    """
+    Detect if a query is asking to compare products.
+    
+    Parameters:
+    - query: The user's query
+    
+    Returns:
+    - Boolean indicating if this is a comparison query
+    """
+    query_lower = query.lower()
+    
+    # Check for direct comparison phrases
+    comparison_phrases = [
+        "vs", "versus", "compare", "better than", "difference between",
+        "which is better", "compare", "or", "over", "against"
+    ]
+    
+    # Check if any of the comparison phrases are in the query
+    for phrase in comparison_phrases:
+        if phrase in query_lower:
+            return True
+    
+    return False
+
+def extract_products_to_compare(query, df):
+    """
+    Extract product names from a comparison query.
+    
+    Parameters:
+    - query: The user's query
+    - df: Product dataframe
+    
+    Returns:
+    - A tuple of (product_a, product_b) names to compare
+    """
+    query_lower = query.lower()
+    
+    # Try to extract product names based on comparison keywords
+    for keyword in ["vs", "versus", "or", "compare", "better than", "difference between"]:
+        if keyword in query_lower:
+            parts = query_lower.split(keyword, 1)
+            if len(parts) == 2:
+                product_a_text = parts[0].strip()
+                product_b_text = parts[1].strip()
+                
+                # Clean up the extracted product names
+                for term in ["which is better", "what is better", "?", "the"]:
+                    product_a_text = product_a_text.replace(term, "").strip()
+                    product_b_text = product_b_text.replace(term, "").strip()
+                
+                # Search for these products in the catalog
+                product_a_matches = search_products(product_a_text, df, embeddings_dict, k=1)
+                product_b_matches = search_products(product_b_text, df, embeddings_dict, k=1)
+                
+                if not product_a_matches.empty and not product_b_matches.empty:
+                    return (product_a_matches.iloc[0], product_b_matches.iloc[0])
+    
+    return None
+    
+def generate_product_comparison(product_a, product_b):
+    """
+    Generate a detailed comparison between two products.
+    
+    Parameters:
+    - product_a: First product dictionary/Series
+    - product_b: Second product dictionary/Series
+    
+    Returns:
+    - Formatted string with the comparison
+    """
+    if product_a is None or product_b is None:
+        return "I couldn't find enough information about these products to compare them."
+    
+    # Get product titles
+    title_a = product_a.get('title', 'Product A')
+    title_b = product_b.get('title', 'Product B')
+    
+    # Start building the comparison
+    comparison = f"## Comparing {title_a} vs {title_b}\n\n"
+    
+    # Add a comparison table
+    comparison += "| Feature | " + title_a + " | " + title_b + " | Winner |\n"
+    comparison += "| --- | --- | --- | --- |\n"
+    
+    # Compare prices
+    price_a = product_a.get('Better Home Price', 0)
+    price_b = product_b.get('Better Home Price', 0)
+    price_winner = "🏆 " + title_a if price_a < price_b else "🏆 " + title_b if price_b < price_a else "Tie"
+    comparison += f"| Price | ₹{price_a:,.2f} | ₹{price_b:,.2f} | {price_winner} |\n"
+    
+    # Compare ratings if available
+    if 'rating' in product_a and 'rating' in product_b:
+        rating_a = product_a.get('rating', 0)
+        rating_b = product_b.get('rating', 0)
+        rating_winner = "🏆 " + title_a if rating_a > rating_b else "🏆 " + title_b if rating_b > rating_a else "Tie"
+        comparison += f"| Rating | {rating_a} | {rating_b} | {rating_winner} |\n"
+    
+    # Compare energy ratings if available
+    if 'Energy Rating' in product_a or 'Energy Rating' in product_b:
+        energy_a = product_a.get('Energy Rating', 'N/A')
+        energy_b = product_b.get('Energy Rating', 'N/A')
+        
+        # Determine winner based on star rating
+        # Higher star rating is better
+        energy_winner = "Tie"
+        if energy_a != 'N/A' and energy_b != 'N/A':
+            # Extract star numbers if possible
+            try:
+                stars_a = int(energy_a.split()[0])
+                stars_b = int(energy_b.split()[0])
+                energy_winner = "🏆 " + title_a if stars_a > stars_b else "🏆 " + title_b if stars_b > stars_a else "Tie"
+            except:
+                # If we can't parse the stars, just use string comparison
+                energy_winner = "🏆 " + title_a if energy_a > energy_b else "🏆 " + title_b if energy_b > energy_a else "Tie"
+        
+        comparison += f"| Energy Efficiency | {energy_a} | {energy_b} | {energy_winner} |\n"
+    
+    # Compare warranty
+    warranty_a = product_a.get('Warranty', 'N/A')
+    warranty_b = product_b.get('Warranty', 'N/A')
+    
+    # Try to determine which warranty is better
+    warranty_winner = "Tie"
+    if warranty_a != 'N/A' and warranty_b != 'N/A':
+        # Extract years if possible 
+        try:
+            years_a = int(re.search(r'(\d+)', warranty_a).group(1))
+            years_b = int(re.search(r'(\d+)', warranty_b).group(1))
+            warranty_winner = "🏆 " + title_a if years_a > years_b else "🏆 " + title_b if years_b > years_a else "Tie"
+        except:
+            # If we can't extract years, just compare strings
+            warranty_winner = "Tie"
+    
+    comparison += f"| Warranty | {warranty_a} | {warranty_b} | {warranty_winner} |\n"
+    
+    # Compare brand reputation if available
+    brand_a = product_a.get('Brand', 'N/A')
+    brand_b = product_b.get('Brand', 'N/A')
+    comparison += f"| Brand | {brand_a} | {brand_b} | - |\n"
+    
+    # Extract and compare key features
+    features_a = extract_features_from_title(title_a)
+    features_b = extract_features_from_title(title_b)
+    
+    # Add a detailed feature analysis section
+    comparison += "\n### 🔍 Key Features Analysis\n\n"
+    
+    # Product A features
+    comparison += f"**{title_a} highlights:**\n"
+    for feature in features_a:
+        comparison += f"- {feature}\n"
+    
+    # Product B features
+    comparison += f"\n**{title_b} highlights:**\n"
+    for feature in features_b:
+        comparison += f"- {feature}\n"
+    
+    # Add recommendation section
+    comparison += "\n### 💡 Recommendation\n\n"
+    
+    # Count the winners
+    a_wins = comparison.count("🏆 " + title_a)
+    b_wins = comparison.count("🏆 " + title_b)
+    
+    if a_wins > b_wins:
+        comparison += f"**{title_a}** appears to be the better choice overall. "
+    elif b_wins > a_wins:
+        comparison += f"**{title_b}** appears to be the better choice overall. "
+    else:
+        comparison += f"Both products have their strengths. "
+    
+    # Add budget vs premium recommendation
+    if price_a < price_b * 0.8:  # Product A is at least 20% cheaper
+        comparison += f"If you're on a budget, **{title_a}** offers better value for money. "
+    elif price_b < price_a * 0.8:  # Product B is at least 20% cheaper
+        comparison += f"If you're on a budget, **{title_b}** offers better value for money. "
+    
+    if price_a > price_b * 1.2:  # Product A is at least 20% more expensive
+        comparison += f"If you're looking for premium features, **{title_a}** might be worth the extra investment."
+    elif price_b > price_a * 1.2:  # Product B is at least 20% more expensive
+        comparison += f"If you're looking for premium features, **{title_b}** might be worth the extra investment."
+    
+    # Add call to action
+    comparison += "\n\n### 🔥 Limited Time Offers\n\n"
+    comparison += f"**Buy {title_a}:** [View Deal](https://betterhome.co.in/product/{product_a.get('id', '')})\n\n"
+    comparison += f"**Buy {title_b}:** [View Deal](https://betterhome.co.in/product/{product_b.get('id', '')})\n\n"
+    comparison += "🎁 Use code **COMPARE10** for an extra 10% off your purchase!"
+    
+    return comparison
+
+def extract_features_from_title(title):
+    """
+    Extract key features from a product title.
+    
+    Parameters:
+    - title: Product title string
+    
+    Returns:
+    - List of feature strings
+    """
+    features = []
+    
+    # Look for specific patterns in the title
+    # Capacity (for appliances)
+    capacity_match = re.search(r'(\d+\.?\d*)\s*(L|liters?|litres?|kg|tons?|cu\.?\s*ft)', title, re.IGNORECASE)
+    if capacity_match:
+        features.append(f"Capacity: {capacity_match.group(1)} {capacity_match.group(2)}")
+    
+    # Power consumption
+    power_match = re.search(r'(\d+)\s*(W|watts?|kW|kilowatts?)', title, re.IGNORECASE)
+    if power_match:
+        features.append(f"Power: {power_match.group(1)} {power_match.group(2)}")
+    
+    # Dimensions
+    dimension_match = re.search(r'(\d+\.?\d*)\s*x\s*(\d+\.?\d*)\s*x\s*(\d+\.?\d*)', title)
+    if dimension_match:
+        features.append(f"Dimensions: {dimension_match.group(0)}")
+    
+    # Color
+    color_match = re.search(r'(White|Black|Silver|Blue|Red|Grey|Gray|Brown|Green|Gold|Rose Gold)', title, re.IGNORECASE)
+    if color_match:
+        features.append(f"Color: {color_match.group(1)}")
+    
+    # Smart features
+    if re.search(r'smart|wifi|alexa|google assistant|voice control|app', title, re.IGNORECASE):
+        features.append("Smart features with app/voice control")
+    
+    # Energy efficiency
+    if re.search(r'energy\s+efficient|energy\s+saving|inverter|BLDC', title, re.IGNORECASE):
+        features.append("Energy efficient design")
+    
+    # Advanced technology
+    if re.search(r'AI|ML|digital|inverter|advanced|smart', title, re.IGNORECASE):
+        features.append("Advanced technology features")
+    
+    # If we couldn't extract specific features, add generic ones based on the product type
+    if not features:
+        if re.search(r'refrigerator|fridge', title, re.IGNORECASE):
+            features.append("Cooling technology")
+            features.append("Storage capacity")
+        elif re.search(r'washing machine|washer', title, re.IGNORECASE):
+            features.append("Washing capacity")
+            features.append("Multiple wash programs")
+        elif re.search(r'ac|air condition', title, re.IGNORECASE):
+            features.append("Cooling capacity")
+            features.append("Temperature control")
+        elif re.search(r'fan|ceiling fan', title, re.IGNORECASE):
+            features.append("Air circulation")
+            features.append("Speed control")
+        else:
+            features.append("Premium build quality")
+            features.append("Reliable performance")
+    
+    return features
 
 if __name__ == "__main__":
     main()
