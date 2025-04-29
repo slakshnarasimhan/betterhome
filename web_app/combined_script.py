@@ -8,6 +8,12 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import sys
 from reportlab.pdfgen import canvas
+import requests
+from bs4 import BeautifulSoup
+import re
+from urllib.parse import urlparse
+import os
+from datetime import datetime
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -751,93 +757,282 @@ def create_styled_pdf(filename, user_data, recommendations):
     
     doc.build(story)
 
-def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], txt_filename: str) -> None:
-    """Generate a text file with user information and product recommendations"""
-    with open(txt_filename, 'w') as f:
-        # Write user information
-        f.write("USER INFORMATION\n")
-        f.write("================\n")
-        f.write(f"Name: {user_data['name']}\n")
-        f.write(f"Mobile: {user_data['mobile']}\n")
-        f.write(f"Email: {user_data['email']}\n")
-        f.write(f"Address: {user_data['address']}\n\n")
+def get_product_image(url: str) -> str:
+    """Extract product image URL from the product page"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
         
-        f.write("BUDGET AND FAMILY SIZE\n")
-        f.write("=====================\n")
-        f.write(f"Total Budget: ₹{user_data['total_budget']:,.2f}\n")
-        f.write(f"Family Size: {sum(user_data['demographics'].values())} members\n\n")
+        # Try different selectors for product image
+        image_selectors = [
+            '#landingImage',  # Amazon main product image
+            '#imgTagWrapperId img',  # Alternative Amazon selector
+            '.product-image img',  # Generic product image
+            'img[src*="product"]'  # Generic product image
+        ]
         
-        f.write("ROOM-WISE RECOMMENDATIONS\n")
-        f.write("========================\n\n")
+        for selector in image_selectors:
+            img = soup.select_one(selector)
+            if img and img.get('src'):
+                return img['src']
         
-        total_cost = calculate_total_cost(final_list)
+        return "https://via.placeholder.com/300x300?text=No+Image+Available"
+    except Exception as e:
+        print(f"Error getting product image: {str(e)}")
+        return "https://via.placeholder.com/300x300?text=No+Image+Available"
+
+def get_amazon_rating(url: str) -> Dict[str, Any]:
+    """Extract Amazon rating and review count from the product page"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Process each room
-        for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
-            if room in final_list and final_list[room]:
-                f.write(f"{room.replace('_', ' ').upper()}\n")
-                f.write("-" * len(room) + "\n")
-                
-                # Add room description
-                room_desc = get_room_description(room, user_data)
-                f.write(f"{room_desc}\n\n")
-                
-                # Add products for the room
-                for appliance_type, items in final_list[room].items():
-                    if isinstance(items, list) and items:
-                        for item in items:
-                            if isinstance(item, dict):
-                                # Get product details
-                                brand = item.get('brand', 'Unknown Brand')
-                                model = item.get('model', 'Unknown Model')
-                                price = float(item.get('price', 0))
-                                features = item.get('features', [])
-                                retail_price = float(item.get('retail_price', price * 1.2))
-                                savings = retail_price - price
-                                warranty = item.get('warranty', 'Standard warranty applies')
-                                delivery_time = item.get('delivery_time', 'Contact store for details')
-                                
-                                f.write(f"{appliance_type.replace('_', ' ').title()}: {brand} {model}\n")
-                                f.write(f"Price: ₹{price:,.2f} (Retail: ₹{retail_price:,.2f})\n")
-                                f.write(f"Features: {', '.join(features)}\n")
-                                
-                                if item.get('color_options'):
-                                    f.write(f"Color Options: {', '.join(item['color_options'])}")
-                                    if item.get('color_match'):
-                                        f.write(" - Matches your room's color theme!")
-                                    f.write("\n")
-                                
-                                f.write("Why we recommend this:\n")
-                                if savings > 0:
-                                    f.write(f" • Offers excellent value with savings of ₹{savings:,.2f} compared to retail price\n")
-                                
-                                if item.get('color_match'):
-                                    f.write(" • Color options complement your room's color theme\n")
-                                
-                                # Add specific features based on appliance type
-                                if appliance_type == 'ceiling_fan':
-                                    f.write(" • BLDC motor technology ensures high energy efficiency and silent operation - perfect for Chennai's climate\n")
-                                elif appliance_type == 'bathroom_exhaust':
-                                    f.write(" • Essential for Chennai's humid climate to prevent mold and maintain bathroom freshness\n")
-                                elif appliance_type == 'refrigerator':
-                                    f.write(" • Energy-efficient design helps reduce electricity bills\n")
-                                elif appliance_type == 'washing_machine':
-                                    f.write(" • Advanced washing technology ensures thorough cleaning while being gentle on clothes\n")
-                                
-                                f.write(f"Warranty: {warranty}\n")
-                                f.write(f"Delivery: {delivery_time}\n\n")
+        rating = None
+        review_count = None
+        
+        # Try to get rating
+        rating_element = soup.select_one('#acrPopover')
+        if rating_element:
+            rating = rating_element.get('title', '').split()[0]
+        
+        # Try to get review count
+        review_element = soup.select_one('#acrCustomerReviewText')
+        if review_element:
+            review_text = review_element.text
+            review_count = re.search(r'(\d+,?\d*)', review_text)
+            if review_count:
+                review_count = review_count.group(1)
+        
+        return {
+            'rating': rating or 'Not available',
+            'review_count': review_count or 'Not available'
+        }
+    except Exception as e:
+        print(f"Error getting Amazon rating: {str(e)}")
+        return {'rating': 'Not available', 'review_count': 'Not available'}
+
+def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
+    """Generate an HTML file with user information and product recommendations"""
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BetterHome Product Recommendations</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+                color: #333;
+            }}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+            }}
+            .header {{
+                background-color: #f8f9fa;
+                padding: 20px;
+                border-radius: 5px;
+                margin-bottom: 20px;
+            }}
+            .room-section {{
+                margin-bottom: 30px;
+                padding: 20px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+            }}
+            .room-title {{
+                color: #2c3e50;
+                border-bottom: 2px solid #3498db;
+                padding-bottom: 10px;
+            }}
+            .product-card {{
+                display: flex;
+                margin: 20px 0;
+                padding: 20px;
+                border: 1px solid #eee;
+                border-radius: 5px;
+                background-color: #fff;
+            }}
+            .product-image {{
+                flex: 0 0 300px;
+                margin-right: 20px;
+            }}
+            .product-image img {{
+                width: 100%;
+                height: auto;
+                border-radius: 5px;
+            }}
+            .product-details {{
+                flex: 1;
+            }}
+            .product-title {{
+                font-size: 1.2em;
+                margin-bottom: 10px;
+            }}
+            .product-price {{
+                color: #e74c3c;
+                font-size: 1.1em;
+                margin: 10px 0;
+            }}
+            .amazon-rating {{
+                display: flex;
+                align-items: center;
+                margin: 10px 0;
+            }}
+            .rating-stars {{
+                color: #f39c12;
+                margin-right: 10px;
+            }}
+            .features-list {{
+                list-style-type: none;
+                padding: 0;
+            }}
+            .features-list li {{
+                margin: 5px 0;
+                padding-left: 20px;
+                position: relative;
+            }}
+            .features-list li:before {{
+                content: "•";
+                color: #3498db;
+                position: absolute;
+                left: 0;
+            }}
+            .budget-summary {{
+                background-color: #f8f9fa;
+                padding: 20px;
+                border-radius: 5px;
+                margin-top: 20px;
+            }}
+            .purchase-link {{
+                display: inline-block;
+                background-color: #3498db;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 5px;
+                margin-top: 10px;
+            }}
+            .purchase-link:hover {{
+                background-color: #2980b9;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>BetterHome Product Recommendations</h1>
+                <p><strong>Generated on:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                <p><strong>Name:</strong> {user_data['name']}</p>
+                <p><strong>Mobile:</strong> {user_data['mobile']}</p>
+                <p><strong>Email:</strong> {user_data['email']}</p>
+                <p><strong>Address:</strong> {user_data['address']}</p>
+                <p><strong>Total Budget:</strong> ₹{user_data['total_budget']:,.2f}</p>
+                <p><strong>Family Size:</strong> {sum(user_data['demographics'].values())} members</p>
+            </div>
+    """
+    
+    total_cost = calculate_total_cost(final_list)
+    
+    # Process each room
+    for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
+        if room in final_list and final_list[room]:
+            room_title = room.replace('_', ' ').title()
+            room_desc = get_room_description(room, user_data)
             
-        # Add budget summary
-        f.write("\nBUDGET SUMMARY\n")
-        f.write("=============\n")
-        f.write(f"Total Cost of Recommended Products: ₹{total_cost:,.2f}\n")
-        f.write(f"Your Budget: ₹{user_data['total_budget']:,.2f}\n")
-        budget_utilization = (total_cost / user_data['total_budget']) * 100
-        f.write(f"Budget Utilization: {budget_utilization:.1f}%\n")
-        if budget_utilization <= 100:
-            f.write("Your selected products fit within your budget!\n")
-        else:
-            f.write("Note: The total cost exceeds your budget. You may want to consider alternative options.\n")
+            html_content += f"""
+            <div class="room-section">
+                <h2 class="room-title">{room_title}</h2>
+                <p>{room_desc}</p>
+            """
+            
+            # Add products for the room
+            for appliance_type, items in final_list[room].items():
+                if isinstance(items, list) and items:
+                    for item in items:
+                        if isinstance(item, dict):
+                            # Get product details
+                            brand = item.get('brand', 'Unknown Brand')
+                            model = item.get('model', 'Unknown Model')
+                            price = float(item.get('price', 0))
+                            features = item.get('features', [])
+                            retail_price = float(item.get('retail_price', price * 1.2))
+                            savings = retail_price - price
+                            warranty = item.get('warranty', 'Standard warranty applies')
+                            delivery_time = item.get('delivery_time', 'Contact store for details')
+                            purchase_link = item.get('url', 'https://betterhomeapp.com')
+                            
+                            # Get product image and Amazon rating
+                            image_url = get_product_image(purchase_link)
+                            amazon_data = get_amazon_rating(purchase_link)
+                            
+                            html_content += f"""
+                            <div class="product-card">
+                                <div class="product-image">
+                                    <img src="{image_url}" alt="{brand} {model}">
+                                </div>
+                                <div class="product-details">
+                                    <h3 class="product-title">{brand} {model}</h3>
+                                    <div class="product-price">
+                                        Price: ₹{price:,.2f} (Retail: ₹{retail_price:,.2f})
+                                        <br>You Save: ₹{savings:,.2f}
+                                    </div>
+                                    <div class="amazon-rating">
+                                        <span class="rating-stars">{"★" * int(float(amazon_data['rating']) if amazon_data['rating'].replace('.', '').isdigit() else 0)}</span>
+                                        <span>{amazon_data['rating']} ({amazon_data['review_count']} reviews)</span>
+                                    </div>
+                                    <ul class="features-list">
+                            """
+                            
+                            # Add features
+                            for feature in features:
+                                html_content += f"<li>{feature}</li>"
+                            
+                            # Add color options if available
+                            if item.get('color_options'):
+                                color_text = f"Color Options: {', '.join(item['color_options'])}"
+                                if item.get('color_match'):
+                                    color_text += " - Matches your room's color theme!"
+                                html_content += f"<li>{color_text}</li>"
+                            
+                            html_content += f"""
+                                    </ul>
+                                    <p><strong>Warranty:</strong> {warranty}</p>
+                                    <p><strong>Delivery:</strong> {delivery_time}</p>
+                                    <a href="{purchase_link}" class="purchase-link" target="_blank">View on Amazon</a>
+                                </div>
+                            </div>
+                            """
+            
+            html_content += "</div>"
+    
+    # Add budget summary
+    budget_utilization = (total_cost / user_data['total_budget']) * 100
+    html_content += f"""
+            <div class="budget-summary">
+                <h2>Budget Summary</h2>
+                <p><strong>Total Cost of Recommended Products:</strong> ₹{total_cost:,.2f}</p>
+                <p><strong>Your Budget:</strong> ₹{user_data['total_budget']:,.2f}</p>
+                <p><strong>Budget Utilization:</strong> {budget_utilization:.1f}%</p>
+                <p>{'Your selected products fit within your budget!' if budget_utilization <= 100 else 'Note: The total cost exceeds your budget. You may want to consider alternative options.'}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    with open(html_filename, 'w', encoding='utf-8') as f:
+        f.write(html_content)
 
 # Main function
 if __name__ == "__main__":
@@ -858,10 +1053,10 @@ if __name__ == "__main__":
     # Generate output files with the correct suffixes
     output_base_path = excel_filename.replace('.xlsx', '')
     pdf_filename = f"{output_base_path}.pdf"
-    txt_filename = f"{output_base_path}.txt"
+    html_filename = f"{output_base_path}.html"
     create_styled_pdf(pdf_filename, user_data, final_list)
-    generate_text_file(user_data, final_list, txt_filename)
+    generate_html_file(user_data, final_list, html_filename)
     
     print("\nProduct recommendations have been generated!")
-    print(f"Check {pdf_filename} and {txt_filename} for details.")
+    print(f"Check {pdf_filename} and {html_filename} for details.")
 
