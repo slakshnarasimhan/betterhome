@@ -11,7 +11,7 @@ import faiss
 # Configuration
 # ==========================
 MODEL_NAME = "nomic-embed-text"  # Use your installed Ollama model
-CSV_FILE_PATH = 'cleaned_products.csv'
+CSV_FILE_PATH = 'cleaned_products.csv'  # Use the cleaned data file
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
 
@@ -23,24 +23,33 @@ def load_product_catalog(file_path):
     print(f"Successfully loaded product catalog with {len(df)} entries.")
     df['Better Home Price'] = pd.to_numeric(df['Better Home Price'], errors='coerce')
     df['Retail Price'] = pd.to_numeric(df['Retail Price'], errors='coerce')
+    
+    # Verify Image Src column exists
+    if 'Image Src' not in df.columns:
+        print("Error: 'Image Src' column not found in CSV file")
+        return None
+    
+    print(f"Found {df['Image Src'].notna().sum()} products with image sources")
     return df
 
 # ==========================
-# Step 2: Prepare Entries (Enhanced with Product Type and Brand)
+# Step 2: Prepare Entries
 # ==========================
 def prepare_entries(df):
     entries = []
     product_type_entries = []
     brand_entries = []
+    image_entries = []
     
     for _, row in df.iterrows():
+        # Calculate discount if applicable
         if pd.notnull(row.get('Retail Price')) and row['Retail Price'] > 0:
             discount_percentage = ((row['Retail Price'] - row['Better Home Price']) / row['Retail Price']) * 100
             discount_text = f"Better Home Price is {discount_percentage:.2f}% less than Retail Price."
         else:
             discount_text = "No discount available."
 
-        # Main product entry with emphasis on Product Type and Brand
+        # Main product entry
         entry = (
             f"Product Type: {row.get('Product Type', 'Not Available')}. "
             f"Brand: {row.get('Brand', 'Not Available')}. "
@@ -54,8 +63,26 @@ def prepare_entries(df):
             f"Product URL: {row.get('url', 'Not Available')}."
         )
         entries.append(entry)
+        
+        # Create image entry only if image source exists
+        if pd.notna(row.get('Image Src')):
+            image_entry = (
+                f"Product: {row.get('title', 'Not Available')}. "
+                f"Brand: {row.get('Brand', 'Not Available')}. "
+                f"Type: {row.get('Product Type', 'Not Available')}. "
+                f"Image Source: {row.get('Image Src')}"
+            )
+            image_entries.append(image_entry)
 
-    return entries
+        # Product type entry
+        if pd.notna(row.get('Product Type')):
+            product_type_entries.append(f"Product Type: {row.get('Product Type')}")
+        
+        # Brand entry
+        if pd.notna(row.get('Brand')):
+            brand_entries.append(f"Brand: {row.get('Brand')}")
+
+    return entries, product_type_entries, brand_entries, image_entries
 
 # ==========================
 # Step 3: Generate Embeddings with Ollama
@@ -163,55 +190,74 @@ def build_faiss_index(embeddings, index_file_path):
 # Main Function
 # ==========================
 def main():
+    # Load product catalog
     df = load_product_catalog(CSV_FILE_PATH)
-    if df.empty:
+    if df is None or df.empty:
         print("Product catalog could not be loaded. Exiting.")
         return
 
-    entries = prepare_entries(df)
+    # Prepare all entries
+    entries, product_type_entries, brand_entries, image_entries = prepare_entries(df)
     if not entries:
         print("No valid entries were found. Exiting.")
         return
 
+    print(f"\nPrepared entries:")
+    print(f"- {len(entries)} product entries")
+    print(f"- {len(product_type_entries)} product type entries")
+    print(f"- {len(brand_entries)} brand entries")
+    print(f"- {len(image_entries)} image entries")
+
+    # Generate main product embeddings
+    print("\nGenerating product embeddings...")
     embeddings = generate_local_embeddings(entries)
     if not embeddings:
         print("No embeddings were generated. Exiting.")
         return
 
-    # Separate embeddings for product type, brand, and main product entry
-    product_type_entries = [f"Product Type: {row.get('Product Type', 'Not Available')}" for _, row in df.iterrows()]
-    brand_entries = [f"Brand: {row.get('Brand', 'Not Available')}" for _, row in df.iterrows()]
+    # Generate image embeddings
+    print("\nGenerating image embeddings...")
+    image_embeddings = generate_local_embeddings(image_entries)
+    if image_embeddings:
+        print(f"Generated {len(image_embeddings)} image embeddings")
+        print(f"Image embedding dimension: {len(image_embeddings[0])}")
 
-    print(f"Generating embeddings for {len(product_type_entries)} product types.")
+    # Generate product type embeddings
+    print("\nGenerating product type embeddings...")
     product_type_embeddings = generate_local_embeddings(product_type_entries)
-    print(f"Generated {len(product_type_embeddings)} product type embeddings.")
     if product_type_embeddings:
-        print(f"Product type embedding dimension: {len(product_type_embeddings[0])}.")
+        print(f"Generated {len(product_type_embeddings)} product type embeddings")
 
-    print(f"Generating embeddings for {len(brand_entries)} brands.")
+    # Generate brand embeddings
+    print("\nGenerating brand embeddings...")
     brand_embeddings = generate_local_embeddings(brand_entries)
-    print(f"Generated {len(brand_embeddings)} brand embeddings.")
     if brand_embeddings:
-        print(f"Brand embedding dimension: {len(brand_embeddings[0])}.")
+        print(f"Generated {len(brand_embeddings)} brand embeddings")
 
-    # Save embeddings
+    # Save all embeddings
     embeddings_dict = {
         'product_embeddings': embeddings,
         'product_type_embeddings': product_type_embeddings,
         'brand_embeddings': brand_embeddings,
+        'image_embeddings': image_embeddings,
         'metadata': {
             'total_products': len(df),
+            'products_with_images': len(image_entries),
             'unique_product_types': df['Product Type'].nunique(),
             'unique_brands': df['Brand'].nunique()
         }
     }
-    print("Saving embeddings to file.")
+    print("\nSaving embeddings to file...")
     save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
 
-    # Build and save separate FAISS indexes with specific file names
+    # Build and save FAISS indexes
+    print("\nBuilding FAISS indexes...")
     build_faiss_index(embeddings, 'faiss_index.index_product')
     build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
     build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
+    build_faiss_index(image_embeddings, 'faiss_index.index_image')
+
+    print("\nEmbedding generation completed successfully!")
 
 if __name__ == "__main__":
     main()

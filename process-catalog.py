@@ -35,17 +35,19 @@ def clean_data(file_path, output_file):
     # Display all columns read for verification
     print("Columns found in the CSV file:", df.columns.tolist())
 
-    # Clean all text fields
-    df = df.applymap(clean_text)
+    # Clean all text fields except image URLs
+    for column in df.columns:
+        if column != 'image_src':  # Skip cleaning image URLs
+            df[column] = df[column].apply(clean_text)
 
     # Generate URLs using handle
     if 'handle' in df.columns:
         df['url'] = 'https://betterhomeapp.com/products/' + df['handle']
 
-    # Rename columns (Ensure 'Product Type' is captured properly)
+    # Rename columns
     rename_mapping = {
         'brand_(product.metafields.custom.brand)': 'Brand',
-        'product_type': 'Product Type',  # Changed from 'Type' to 'Product Type'
+        'product_type': 'Product Type',
         'product_category': 'Category',
         'variant_sku': 'SKU',
         'variant_grams': 'Weight',
@@ -56,7 +58,8 @@ def clean_data(file_path, output_file):
         'product.metafields.custom.material': 'Material',
         'returns_(product.metafields.custom.returns)': 'Returns Policy',
         'warranty_(product.metafields.custom.warranty)': 'Warranty',
-        'product.metafields.custom.source': 'Manufacturer URL'
+        'product.metafields.custom.source': 'Manufacturer URL',
+        'image_src': 'Image Src'
     }
 
     # Apply renaming directly without filtering
@@ -81,7 +84,7 @@ def clean_data(file_path, output_file):
                 if group[column].isnull().any():
                     filled_value = group[column].dropna().iloc[0] if not group[column].dropna().empty else np.nan
                     df.loc[df['handle'] == handle, column] = df.loc[df['handle'] == handle, column].fillna(filled_value)
-            df = df.infer_objects(copy=False)  # Prevent FutureWarning for fillna()
+            df = df.infer_objects(copy=False)
 
     # Process Option Names for extracting attributes
     attributes = {'Color': [], 'Finish': [], 'Material': [], 'Style': []}
@@ -101,7 +104,8 @@ def clean_data(file_path, output_file):
     columns_to_keep = [
         'handle', 'title', 'Product Type', 'Category', 'tags', 'SKU', 'Weight', 'Better Home Price',
         'Retail Price', 'Description', 'Brand', 'Features', 'Material', 'Returns Policy',
-        'Manufacturer URL', 'Warranty', 'url', 'Color', 'Finish', 'Material', 'Style'
+        'Manufacturer URL', 'Warranty', 'url', 'Color', 'Finish', 'Material', 'Style',
+        'Image Src'
     ]
 
     existing_columns_in_df = [col for col in columns_to_keep if col in df.columns]
@@ -110,6 +114,13 @@ def clean_data(file_path, output_file):
     # Save the cleaned DataFrame to a new CSV file
     cleaned_df.to_csv(output_file, index=False)
     print(f"Data cleaned and saved to {output_file}")
+    
+    # Print sample of image sources
+    if 'Image Src' in cleaned_df.columns:
+        print("\nSample of Image Sources:")
+        print(cleaned_df['Image Src'].head())
+    else:
+        print("\nWarning: Image Src column not found in final output")
 
 
 if __name__ == "__main__":
