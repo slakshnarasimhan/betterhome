@@ -710,14 +710,17 @@ def create_styled_pdf(filename, user_data, recommendations):
                             model = item.get('model', 'Unknown Model')
                             price = float(item.get('price', 0))
                             features = item.get('features', [])
-                            retail_price = price * 1.2  # 20% markup for retail price
+                            retail_price = float(item.get('retail_price', price * 1.2))
                             savings = retail_price - price
-                            
-                            # Correctly access the nested URL field
+                            warranty = item.get('warranty', 'Standard warranty applies')
+                            delivery_time = item.get('delivery_time', 'Contact store for details')
                             purchase_link = item.get('url', 'https://betterhomeapp.com')
-                            print(f"Debug: Using purchase link for {brand} {model}: {purchase_link}")
-                            product_name = f"<link href='{purchase_link}'>{brand} {model}</link>"
-                            story.append(Paragraph(product_name, styles['ProductTitle']))
+                            
+                            # Get product image and Amazon rating
+                            image_url = get_product_image(item)
+                            amazon_data = get_amazon_rating(purchase_link)
+                            
+                            story.append(Paragraph(f"{brand} {model}", styles['ProductTitle']))
                             
                             # Get recommendation reason with total budget
                             reason = get_product_recommendation_reason(
@@ -757,9 +760,20 @@ def create_styled_pdf(filename, user_data, recommendations):
     
     doc.build(story)
 
-def get_product_image(url: str) -> str:
-    """Extract product image URL from the product page"""
+def get_product_image(product: Dict[str, Any]) -> str:
+    """Get product image URL from product data or fall back to scraping"""
     try:
+        # First try to use the image_src field from the product catalog
+        if product.get('image_src') and product['image_src'] != 'Not Available':
+            print(f"Debug: Using image_src from product catalog: {product['image_src']}")
+            return product['image_src']
+            
+        # If no image_src, try to scrape from the product URL
+        url = product.get('url', '')
+        if not url:
+            print("Debug: No product URL available")
+            return "https://via.placeholder.com/300x300?text=No+Image+Available"
+            
         print(f"Debug: Attempting to get product image from URL: {url}")
         
         # If the URL is already an image URL, return it directly
@@ -1036,7 +1050,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             purchase_link = item.get('url', 'https://betterhomeapp.com')
                             
                             # Get product image and Amazon rating
-                            image_url = get_product_image(purchase_link)
+                            image_url = get_product_image(item)
                             amazon_data = get_amazon_rating(purchase_link)
                             
                             html_content += f"""

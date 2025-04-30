@@ -11,7 +11,7 @@ import faiss
 # Configuration
 # ==========================
 MODEL_NAME = "nomic-embed-text"  # Use your installed Ollama model
-CSV_FILE_PATH = 'cleaned_products.csv'  # Use the cleaned data file
+CSV_FILE_PATH = 'cleaned_products.csv'  # Use the main products file
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 INDEX_FILE_PATH = 'faiss_index.index'
 
@@ -107,7 +107,7 @@ def generate_local_embeddings(entries, batch_size=1):
             results = []
             for entry in batch:
                 try:
-                    single_resp = client.embed(model=MODEL_NAME, input=[entry])
+                    single_resp = client.embed(model=MODEL_NAME, input=entry)
                     if isinstance(single_resp, dict) and 'embeddings' in single_resp:
                         results.extend(single_resp['embeddings'])
                     else:
@@ -129,36 +129,32 @@ def generate_local_embeddings(entries, batch_size=1):
 
     return embeddings
 
+# ==========================
+# Step 4: Save Product Catalog
+# ==========================
+def save_product_catalog(df, file_path='web_app/product_catalog.json'):
+    catalog = []
+    for _, row in df.iterrows():
+        product = {
+            'product_type': row.get('Product Type', 'Not Available'),
+            'brand': row.get('Brand', 'Not Available'),
+            'title': row.get('title', 'Not Available'),
+            'better_home_price': row.get('Better Home Price', 'Not Available'),
+            'retail_price': row.get('Retail Price', 'Not Available'),
+            'warranty': row.get('Warranty', 'Not Available'),
+            'features': row.get('Features', 'Not Available'),
+            'description': row.get('Description', 'Not Available'),
+            'url': row.get('url', 'Not Available'),
+            'image_src': row.get('Image Src', 'Not Available')
+        }
+        catalog.append(product)
     
-    def generate_batch_embeddings(batch):
-        try:
-            response = client.embed(model=MODEL_NAME, input=batch)
-            if isinstance(response, dict) and 'embeddings' in response:
-                return response['embeddings']
-            else:
-                print(f"Failed to extract embeddings for batch. Response: {response}")
-                return []
-
-        except Exception as e:
-            print(f"Error generating embeddings for batch: {str(e)}")
-            return []
-    
-    with ThreadPoolExecutor() as executor:
-        batches = [entries[i:i + batch_size] for i in range(0, len(entries), batch_size)]
-        results = list(tqdm(executor.map(generate_batch_embeddings, batches), total=len(batches), desc="Generating Embeddings"))
-        for batch_embeddings in results:
-            embeddings.extend(batch_embeddings)
-
-    if embeddings:
-        print(f"Successfully generated embeddings for {len(embeddings)} entries.")
-        print(f"Embedding dimension: {len(embeddings[0])}.")
-    else:
-        print("Error: No embeddings were generated.")
-
-    return embeddings
+    with open(file_path, 'w') as f:
+        json.dump({'products': catalog}, f, indent=2)
+    print(f"Product catalog saved successfully to {file_path}.")
 
 # ==========================
-# Step 4: Save Embeddings
+# Step 5: Save Embeddings
 # ==========================
 def save_embeddings(embeddings_dict, file_name):
     with open(file_name, 'w') as f:
@@ -166,7 +162,7 @@ def save_embeddings(embeddings_dict, file_name):
     print(f"Embeddings saved successfully to {file_name}.")
 
 # ==========================
-# Step 5: Build & Save FAISS Index
+# Step 6: Build & Save FAISS Index
 # ==========================
 def build_faiss_index(embeddings, index_file_path):
     if not embeddings:
@@ -188,34 +184,49 @@ def build_faiss_index(embeddings, index_file_path):
 # Main Function
 # ==========================
 def main():
+    print("Starting script...")
     # Load product catalog
+    print("Loading product catalog...")
     df = load_product_catalog(CSV_FILE_PATH)
     if df is None or df.empty:
         print("Error: Product catalog could not be loaded.")
         return
+    print(f"Loaded {len(df)} products")
+
+    # Save the product catalog with image URLs
+    print("Saving product catalog...")
+    save_product_catalog(df)
 
     # Prepare all entries
+    print("Preparing entries...")
     entries, product_type_entries, brand_entries, image_entries = prepare_entries(df)
     if not entries:
         print("Error: No valid entries were found.")
         return
+    print(f"Prepared {len(entries)} entries")
 
     # Generate embeddings
+    print("Generating embeddings...")
     embeddings = generate_local_embeddings(entries)
     if not embeddings:
         print("Error: No embeddings were generated.")
         return
+    print(f"Generated {len(embeddings)} embeddings")
 
     # Generate image embeddings
+    print("Generating image embeddings...")
     image_embeddings = generate_local_embeddings(image_entries)
 
     # Generate product type embeddings
+    print("Generating product type embeddings...")
     product_type_embeddings = generate_local_embeddings(product_type_entries)
 
     # Generate brand embeddings
+    print("Generating brand embeddings...")
     brand_embeddings = generate_local_embeddings(brand_entries)
 
     # Save all embeddings
+    print("Saving embeddings...")
     embeddings_dict = {
         'product_embeddings': embeddings,
         'product_type_embeddings': product_type_embeddings,
@@ -231,6 +242,7 @@ def main():
     save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
 
     # Build and save FAISS indexes
+    print("Building FAISS indexes...")
     build_faiss_index(embeddings, 'faiss_index.index_product')
     build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
     build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
