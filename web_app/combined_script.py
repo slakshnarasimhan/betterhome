@@ -8,12 +8,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import sys
 from reportlab.pdfgen import canvas
-import requests
-from bs4 import BeautifulSoup
-import re
-from urllib.parse import urlparse
-import os
-from datetime import datetime
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -25,9 +19,17 @@ def load_product_catalog() -> Dict[str, Any]:
     """Load product catalog from JSON file"""
     try:
         with open('product_catalog.json', 'r') as f:
-            return json.load(f)
+            catalog = json.load(f)
+            print("\n[DEBUG] Loaded product_catalog.json. Top-level keys:", list(catalog.keys()))
+            if isinstance(catalog, dict):
+                for k in catalog:
+                    print(f"[DEBUG] Catalog key: {k}, #items: {len(catalog[k]) if isinstance(catalog[k], list) else 'N/A'}")
+            return catalog
     except FileNotFoundError:
         print("Product catalog file not found")
+        return {}
+    except Exception as e:
+        print(f"[DEBUG] Error loading product_catalog.json: {e}")
         return {}
 
 # Function to load configuration
@@ -128,15 +130,16 @@ def calculate_total_cost(recommendations):
     for room, products in recommendations.items():
         if not isinstance(products, dict):
             continue
-            
+        
         for product_type, options in products.items():
             if not options or not isinstance(options, list):
                 continue
-                
+            
             # Only count the highest-priced option for each product type
             if product_type not in processed_types:
                 try:
-                    prices = [float(option.get('price', 0)) for option in options if isinstance(option, dict)]
+                    prices = [float(option.get('retail_price', option.get('price', option.get('better_home_price', 0)))) for option in options if isinstance(option, dict)]
+                    print(f"[DEBUG] Calculating total cost for {product_type}: prices={prices}")
                     if prices:
                         max_price = max(prices)
                         total_cost += max_price
@@ -244,6 +247,7 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
 def get_specific_product_recommendations(appliance_type: str, target_budget_category: str, demographics: Dict[str, int], room_color_theme: str = None, user_data: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     """Get specific product recommendations based on appliance type, budget category, demographics, and room color theme"""
     catalog = load_product_catalog()
+    print(f"\n[DEBUG] Looking for recommendations for appliance_type='{appliance_type}' with budget_category='{target_budget_category}'")
     recommendations = []
     product_groups = {}  # Dictionary to group products by model
     
@@ -268,22 +272,42 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
     ranges = budget_ranges.get(appliance_type, default_ranges)
     
     # Process available products
-    if catalog and appliance_type in catalog:
+    if catalog and "products" in catalog:
+        # Normalize appliance_type for matching
+        norm_type = appliance_type.lower().replace('_', ' ')
+        filtered_products = [
+            p for p in catalog["products"]
+            if isinstance(p.get("product_type", ""), str) and p.get("product_type", "").lower().replace('_', ' ') == norm_type
+        ]
+        print(f"[DEBUG] Found {len(filtered_products)} products for type '{appliance_type}' in catalog (filtered by product_type).")
         matching_products = []
-        for product in catalog[appliance_type]:
-            price = float(product.get('price', 0))
+        for product in filtered_products:
+            # Use retail_price as primary, fallback to price or better_home_price
+            price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
+            if product.get('retail_price') is not None:
+                print(f"[DEBUG] Using retail_price for product: {product.get('brand', '')} {product.get('title', '')} -> {product.get('retail_price')}")
+            elif product.get('price') is not None:
+                print(f"[DEBUG] Using price for product: {product.get('brand', '')} {product.get('title', '')} -> {product.get('price')}")
+            else:
+                print(f"[DEBUG] Using better_home_price for product: {product.get('brand', '')} {product.get('title', '')} -> {product.get('better_home_price')}")
             
             # Determine if product matches budget category and type requirements
             product_matches = False
             if appliance_type == 'washing_machine':
-                user_type = user_data['laundry'].get('washing_machine_type', '').lower()
-                if user_type in ['yes', '']:
-                    type_matches = True  # Accept all
+                user_type = str(user_data['laundry'].get('washing_machine_type', '')).strip().lower()
+                # Debug print for every candidate washing machine
+                print(f"[DEBUG] Candidate washing machine: product_type='{product.get('product_type')}', type='{product.get('type')}', title='{product.get('title')}', price='{product.get('price')}', better_home_price='{product.get('better_home_price')}'")
+                # Loosen filtering: show all products where 'washing' is in product_type, type, or title
+                product_type_str = str(product.get('product_type', '')).lower()
+                type_str = str(product.get('type', '')).lower()
+                title_str = str(product.get('title', '')).lower()
+                if user_type in ['yes', '', 'washing machine'] or (
+                    'washing' in product_type_str or 'washing' in type_str or 'washing' in title_str):
+                    type_matches = True
+                    print(f"[DEBUG] Accepting washing machine for user_type='{user_type}' and product fields.")
                 else:
-                    product_type = product.get('type', '').lower()
-                    type_matches = (product_type == user_type)
-
-                
+                    type_matches = False
+                    print(f"[DEBUG] Skipping washing machine due to type mismatch: user_type='{user_type}', product_type='{product_type_str}', type='{type_str}', title='{title_str}'")
                 if type_matches:
                     if target_budget_category == 'premium':
                         product_matches = True
@@ -303,6 +327,10 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
             # Add matching products to list
             if product_matches:
                 matching_products.append(product)
+            else:
+                print(f"[DEBUG] Skipping product (price={price}): {product.get('brand', '')} {product.get('title', '')}")
+        
+        print(f"[DEBUG] {len(matching_products)} products matched for '{appliance_type}' after filtering.")
         
         # Sort matching products by price in descending order
         matching_products.sort(key=lambda x: float(x.get('price', 0)), reverse=True)
@@ -310,34 +338,36 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
         # Take the top 2 products
         for product in matching_products[:2]:
             # Create a unique key for the product group
-            product_key = f"{product['brand']}_{product['model']}"
+            product_key = f"{product.get('brand', 'UnknownBrand')}_{product.get('model', product.get('title', 'UnknownModel'))}"
             
             if product_key not in product_groups:
-                # Initialize product group
+                # Initialize product group with robust .get() usage
                 product_groups[product_key] = {
-                    'brand': product['brand'],
-                    'model': product['model'],
-                    'price': product['price'],
+                    'brand': product.get('brand', 'UnknownBrand'),
+                    'model': product.get('model', product.get('title', 'UnknownModel')),
+                    'price': product.get('price', 0),
                     'features': product.get('features', []),
-                    'retail_price': product.get('retail_price', product['price'] * 1.2),
+                    'retail_price': product.get('retail_price', product.get('price', 0) * 1.2),
                     'description': f"{product.get('type', '')} {product.get('capacity', '')}",
-                    'color_options': set(),
+                    'color_options': set(product.get('color_options', [])) if product.get('color_options') else set(),
                     'color_match': False,
                     'warranty': product.get('warranty', 'Standard warranty applies'),
                     'in_stock': product.get('in_stock', True),
                     'delivery_time': product.get('delivery_time', 'Contact store for details'),
                     'url': product.get('url', 'https://betterhomeapp.com'),
-                    'relevance_score': 0
+                    'relevance_score': 0,
+                    'energy_rating': product.get('energy_rating', None),
+                    'capacity': product.get('capacity', ''),
+                    'type': product.get('type', ''),
+                    'suction_power': product.get('suction_power', ''),
                 }
             
             # Add color options and check color match
             if product.get('color_options'):
-                product_groups[product_key]['color_options'].update(product['color_options'])
-                
+                product_groups[product_key]['color_options'].update(product.get('color_options', []))
                 if room_color_theme:
                     room_colors = room_color_theme.lower().split()
                     product_colors = [c.lower() for c in product.get('color_options', [])]
-                    
                     for room_color in room_colors:
                         if any(room_color in pc for pc in product_colors):
                             product_groups[product_key]['color_match'] = True
@@ -345,9 +375,10 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
                             break
             
             # Add points for premium features
-            if 'BLDC' in str(product.get('features', '')).upper():
+            features_str = str(product.get('features', ''))
+            if 'BLDC' in features_str.upper():
                 product_groups[product_key]['relevance_score'] += 1
-            if 'remote' in str(product.get('features', '')).lower():
+            if 'remote' in features_str.lower():
                 product_groups[product_key]['relevance_score'] += 1
             if target_budget_category == 'premium':
                 product_groups[product_key]['relevance_score'] += 2  # Prefer premium products
@@ -708,19 +739,22 @@ def create_styled_pdf(filename, user_data, recommendations):
                             # Get product details
                             brand = item.get('brand', 'Unknown Brand')
                             model = item.get('model', 'Unknown Model')
-                            price = float(item.get('price', 0))
+                            price = float(item.get('retail_price', item.get('price', item.get('better_home_price', 0))))
+                            if item.get('retail_price') is not None:
+                                print(f"[DEBUG] Using retail_price for product: {brand} {model} -> {item.get('retail_price')}")
+                            elif item.get('price') is not None:
+                                print(f"[DEBUG] Using price for product: {brand} {model} -> {item.get('price')}")
+                            else:
+                                print(f"[DEBUG] Using better_home_price for product: {brand} {model} -> {item.get('better_home_price')}")
                             features = item.get('features', [])
-                            retail_price = float(item.get('retail_price', price * 1.2))
+                            retail_price = price * 1.2  # 20% markup for retail price
                             savings = retail_price - price
-                            warranty = item.get('warranty', 'Standard warranty applies')
-                            delivery_time = item.get('delivery_time', 'Contact store for details')
+                            
+                            # Correctly access the nested URL field
                             purchase_link = item.get('url', 'https://betterhomeapp.com')
-                            
-                            # Get product image and Amazon rating
-                            image_url = get_product_image(item)
-                            amazon_data = get_amazon_rating(purchase_link)
-                            
-                            story.append(Paragraph(f"{brand} {model}", styles['ProductTitle']))
+                            print(f"Debug: Using purchase link for {brand} {model}: {purchase_link}")
+                            product_name = f"<link href='{purchase_link}'>{brand} {model}</link>"
+                            story.append(Paragraph(product_name, styles['ProductTitle']))
                             
                             # Get recommendation reason with total budget
                             reason = get_product_recommendation_reason(
@@ -760,356 +794,99 @@ def create_styled_pdf(filename, user_data, recommendations):
     
     doc.build(story)
 
-def get_product_image(product: Dict[str, Any]) -> str:
-    """Get product image URL from product data or fall back to scraping"""
-    try:
-        # First try to use the image_src field from the product catalog
-        if product.get('image_src') and product['image_src'] != 'Not Available':
-            print(f"Debug: Using image_src from product catalog: {product['image_src']}")
-            return product['image_src']
-            
-        # If no image_src, try to scrape from the product URL
-        url = product.get('url', '')
-        if not url:
-            print("Debug: No product URL available")
-            return "https://via.placeholder.com/300x300?text=No+Image+Available"
-            
-        print(f"Debug: Attempting to get product image from URL: {url}")
+def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], txt_filename: str) -> None:
+    """Generate a text file with user information and product recommendations"""
+    with open(txt_filename, 'w') as f:
+        # Write user information
+        f.write("USER INFORMATION\n")
+        f.write("================\n")
+        f.write(f"Name: {user_data['name']}\n")
+        f.write(f"Mobile: {user_data['mobile']}\n")
+        f.write(f"Email: {user_data['email']}\n")
+        f.write(f"Address: {user_data['address']}\n\n")
         
-        # If the URL is already an image URL, return it directly
-        if url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-            print(f"Debug: URL is already an image URL: {url}")
-            return url
-            
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
-        }
+        f.write("BUDGET AND FAMILY SIZE\n")
+        f.write("=====================\n")
+        f.write(f"Total Budget: ₹{user_data['total_budget']:,.2f}\n")
+        f.write(f"Family Size: {sum(user_data['demographics'].values())} members\n\n")
         
-        # Add timeout and verify SSL
-        response = requests.get(url, headers=headers, timeout=10, verify=True)
-        response.raise_for_status()  # Raise an exception for bad status codes
+        f.write("ROOM-WISE RECOMMENDATIONS\n")
+        f.write("========================\n\n")
         
-        soup = BeautifulSoup(response.text, 'html.parser')
+        total_cost = calculate_total_cost(final_list)
         
-        # Try different selectors for product image
-        image_selectors = [
-            '#landingImage',  # Amazon main product image
-            '#imgTagWrapperId img',  # Alternative Amazon selector
-            '.product-image img',  # Generic product image
-            'img[src*="product"]',  # Generic product image
-            'img[src*="image"]',    # Generic image
-            'img[src*="photo"]'     # Generic photo
-        ]
-        
-        for selector in image_selectors:
-            img = soup.select_one(selector)
-            if img and img.get('src'):
-                image_url = img['src']
-                # Ensure the URL is absolute
-                if not image_url.startswith(('http://', 'https://')):
-                    from urllib.parse import urljoin
-                    image_url = urljoin(url, image_url)
-                print(f"Debug: Found image with selector {selector}: {image_url}")
-                return image_url
-        
-        print("Debug: No image found with any selector")
-        return "https://via.placeholder.com/300x300?text=No+Image+Available"
-    except requests.exceptions.RequestException as e:
-        print(f"Error getting product image (RequestException): {str(e)}")
-        return "https://via.placeholder.com/300x300?text=Error+Loading+Image"
-    except Exception as e:
-        print(f"Error getting product image: {str(e)}")
-        return "https://via.placeholder.com/300x300?text=Error+Loading+Image"
-
-def get_amazon_rating(url: str) -> Dict[str, Any]:
-    """Extract Amazon rating and review count from the product page"""
-    try:
-        print(f"Debug: Attempting to get ratings from URL: {url}")
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
-        }
-        
-        # Add timeout and verify SSL
-        response = requests.get(url, headers=headers, timeout=10, verify=True)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        rating = None
-        review_count = None
-        
-        # Try multiple selectors for rating
-        rating_selectors = [
-            '#acrPopover',
-            '.a-icon-star',
-            '[data-hook="rating-out-of-text"]',
-            '.review-rating'
-        ]
-        
-        for selector in rating_selectors:
-            rating_element = soup.select_one(selector)
-            if rating_element:
-                rating = rating_element.get('title', '').split()[0]
-                if rating:
-                    print(f"Debug: Found rating with selector {selector}: {rating}")
-                    break
-        
-        # Try multiple selectors for review count
-        review_selectors = [
-            '#acrCustomerReviewText',
-            '[data-hook="total-review-count"]',
-            '.totalReviewCount',
-            '.review-count'
-        ]
-        
-        for selector in review_selectors:
-            review_element = soup.select_one(selector)
-            if review_element:
-                review_text = review_element.text
-                print(f"Debug: Review text found with selector {selector}: {review_text}")
-                review_count = re.search(r'(\d+,?\d*)', review_text)
-                if review_count:
-                    review_count = review_count.group(1)
-                    print(f"Debug: Found review count: {review_count}")
-                    break
-        
-        if not rating or not review_count:
-            print("Debug: Could not find rating or review count")
-        
-        return {
-            'rating': rating or 'Not available',
-            'review_count': review_count or 'Not available'
-        }
-    except requests.exceptions.RequestException as e:
-        print(f"Error getting Amazon rating (RequestException): {str(e)}")
-        return {'rating': 'Not available', 'review_count': 'Not available'}
-    except Exception as e:
-        print(f"Error getting Amazon rating: {str(e)}")
-        return {'rating': 'Not available', 'review_count': 'Not available'}
-
-def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
-    """Generate an HTML file with user information and product recommendations"""
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>BetterHome Product Recommendations</title>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                margin: 0;
-                padding: 20px;
-                color: #333;
-            }}
-            .container {{
-                max-width: 1200px;
-                margin: 0 auto;
-            }}
-            .header {{
-                background-color: #f8f9fa;
-                padding: 20px;
-                border-radius: 5px;
-                margin-bottom: 20px;
-            }}
-            .room-section {{
-                margin-bottom: 30px;
-                padding: 20px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-            }}
-            .room-title {{
-                color: #2c3e50;
-                border-bottom: 2px solid #3498db;
-                padding-bottom: 10px;
-            }}
-            .product-card {{
-                display: flex;
-                margin: 20px 0;
-                padding: 20px;
-                border: 1px solid #eee;
-                border-radius: 5px;
-                background-color: #fff;
-            }}
-            .product-image {{
-                flex: 0 0 300px;
-                margin-right: 20px;
-            }}
-            .product-image img {{
-                width: 100%;
-                height: auto;
-                border-radius: 5px;
-            }}
-            .product-details {{
-                flex: 1;
-            }}
-            .product-title {{
-                font-size: 1.2em;
-                margin-bottom: 10px;
-            }}
-            .product-price {{
-                color: #e74c3c;
-                font-size: 1.1em;
-                margin: 10px 0;
-            }}
-            .amazon-rating {{
-                display: flex;
-                align-items: center;
-                margin: 10px 0;
-            }}
-            .rating-stars {{
-                color: #f39c12;
-                margin-right: 10px;
-            }}
-            .features-list {{
-                list-style-type: none;
-                padding: 0;
-            }}
-            .features-list li {{
-                margin: 5px 0;
-                padding-left: 20px;
-                position: relative;
-            }}
-            .features-list li:before {{
-                content: "•";
-                color: #3498db;
-                position: absolute;
-                left: 0;
-            }}
-            .budget-summary {{
-                background-color: #f8f9fa;
-                padding: 20px;
-                border-radius: 5px;
-                margin-top: 20px;
-            }}
-            .purchase-link {{
-                display: inline-block;
-                background-color: #3498db;
-                color: white;
-                padding: 10px 20px;
-                text-decoration: none;
-                border-radius: 5px;
-                margin-top: 10px;
-            }}
-            .purchase-link:hover {{
-                background-color: #2980b9;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>BetterHome Product Recommendations</h1>
-                <p><strong>Generated on:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-                <p><strong>Name:</strong> {user_data['name']}</p>
-                <p><strong>Mobile:</strong> {user_data['mobile']}</p>
-                <p><strong>Email:</strong> {user_data['email']}</p>
-                <p><strong>Address:</strong> {user_data['address']}</p>
-                <p><strong>Total Budget:</strong> ₹{user_data['total_budget']:,.2f}</p>
-                <p><strong>Family Size:</strong> {sum(user_data['demographics'].values())} members</p>
-            </div>
-    """
-    
-    total_cost = calculate_total_cost(final_list)
-    
-    # Process each room
-    for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
-        if room in final_list and final_list[room]:
-            room_title = room.replace('_', ' ').title()
-            room_desc = get_room_description(room, user_data)
-            
-            html_content += f"""
-            <div class="room-section">
-                <h2 class="room-title">{room_title}</h2>
-                <p>{room_desc}</p>
-            """
-            
-            # Add products for the room
-            for appliance_type, items in final_list[room].items():
-                if isinstance(items, list) and items:
-                    for item in items:
-                        if isinstance(item, dict):
-                            # Get product details
-                            brand = item.get('brand', 'Unknown Brand')
-                            model = item.get('model', 'Unknown Model')
-                            price = float(item.get('price', 0))
-                            features = item.get('features', [])
-                            retail_price = float(item.get('retail_price', price * 1.2))
-                            savings = retail_price - price
-                            warranty = item.get('warranty', 'Standard warranty applies')
-                            delivery_time = item.get('delivery_time', 'Contact store for details')
-                            purchase_link = item.get('url', 'https://betterhomeapp.com')
-                            
-                            # Get product image and Amazon rating
-                            image_url = get_product_image(item)
-                            amazon_data = get_amazon_rating(purchase_link)
-                            
-                            html_content += f"""
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="{image_url}" alt="{brand} {model}">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">{brand} {model}</h3>
-                                    <div class="product-price">
-                                        Price: ₹{price:,.2f} (Retail: ₹{retail_price:,.2f})
-                                        <br>You Save: ₹{savings:,.2f}
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars">{"★" * int(float(amazon_data['rating']) if amazon_data['rating'].replace('.', '').isdigit() else 0)}</span>
-                                        <span>{amazon_data['rating']} ({amazon_data['review_count']} reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            """
-                            
-                            # Add features
-                            for feature in features:
-                                html_content += f"<li>{feature}</li>"
-                            
-                            # Add color options if available
-                            if item.get('color_options'):
-                                color_text = f"Color Options: {', '.join(item['color_options'])}"
+        # Process each room
+        for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
+            if room in final_list and final_list[room]:
+                f.write(f"{room.replace('_', ' ').upper()}\n")
+                f.write("-" * len(room) + "\n")
+                
+                # Add room description
+                room_desc = get_room_description(room, user_data)
+                f.write(f"{room_desc}\n\n")
+                
+                # Add products for the room
+                for appliance_type, items in final_list[room].items():
+                    if isinstance(items, list) and items:
+                        for item in items:
+                            if isinstance(item, dict):
+                                # Get product details
+                                brand = item.get('brand', 'Unknown Brand')
+                                model = item.get('model', 'Unknown Model')
+                                price = float(item.get('retail_price', item.get('price', item.get('better_home_price', 0))))
+                                if item.get('retail_price') is not None:
+                                    print(f"[DEBUG] Using retail_price for product: {brand} {model} -> {item.get('retail_price')}")
+                                elif item.get('price') is not None:
+                                    print(f"[DEBUG] Using price for product: {brand} {model} -> {item.get('price')}")
+                                else:
+                                    print(f"[DEBUG] Using better_home_price for product: {brand} {model} -> {item.get('better_home_price')}")
+                                features = item.get('features', [])
+                                retail_price = float(item.get('retail_price', price * 1.2))
+                                savings = retail_price - price
+                                warranty = item.get('warranty', 'Standard warranty applies')
+                                delivery_time = item.get('delivery_time', 'Contact store for details')
+                                
+                                f.write(f"{appliance_type.replace('_', ' ').title()}: {brand} {model}\n")
+                                f.write(f"Price: ₹{price:,.2f} (Retail: ₹{retail_price:,.2f})\n")
+                                f.write(f"Features: {', '.join(features)}\n")
+                                
+                                if item.get('color_options'):
+                                    f.write(f"Color Options: {', '.join(item['color_options'])}")
+                                    if item.get('color_match'):
+                                        f.write(" - Matches your room's color theme!")
+                                    f.write("\n")
+                                
+                                f.write("Why we recommend this:\n")
+                                if savings > 0:
+                                    f.write(f" • Offers excellent value with savings of ₹{savings:,.2f} compared to retail price\n")
+                                
                                 if item.get('color_match'):
-                                    color_text += " - Matches your room's color theme!"
-                                html_content += f"<li>{color_text}</li>"
-                            
-                            html_content += f"""
-                                    </ul>
-                                    <p><strong>Warranty:</strong> {warranty}</p>
-                                    <p><strong>Delivery:</strong> {delivery_time}</p>
-                                    <a href="{purchase_link}" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            """
+                                    f.write(" • Color options complement your room's color theme\n")
+                                
+                                # Add specific features based on appliance type
+                                if appliance_type == 'ceiling_fan':
+                                    f.write(" • BLDC motor technology ensures high energy efficiency and silent operation - perfect for Chennai's climate\n")
+                                elif appliance_type == 'bathroom_exhaust':
+                                    f.write(" • Essential for Chennai's humid climate to prevent mold and maintain bathroom freshness\n")
+                                elif appliance_type == 'refrigerator':
+                                    f.write(" • Energy-efficient design helps reduce electricity bills\n")
+                                elif appliance_type == 'washing_machine':
+                                    f.write(" • Advanced washing technology ensures thorough cleaning while being gentle on clothes\n")
+                                
+                                f.write(f"Warranty: {warranty}\n")
+                                f.write(f"Delivery: {delivery_time}\n\n")
             
-            html_content += "</div>"
-    
-    # Add budget summary
-    budget_utilization = (total_cost / user_data['total_budget']) * 100
-    html_content += f"""
-            <div class="budget-summary">
-                <h2>Budget Summary</h2>
-                <p><strong>Total Cost of Recommended Products:</strong> ₹{total_cost:,.2f}</p>
-                <p><strong>Your Budget:</strong> ₹{user_data['total_budget']:,.2f}</p>
-                <p><strong>Budget Utilization:</strong> {budget_utilization:.1f}%</p>
-                <p>{'Your selected products fit within your budget!' if budget_utilization <= 100 else 'Note: The total cost exceeds your budget. You may want to consider alternative options.'}</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    with open(html_filename, 'w', encoding='utf-8') as f:
-        f.write(html_content)
+        # Add budget summary
+        f.write("\nBUDGET SUMMARY\n")
+        f.write("=============\n")
+        f.write(f"Total Cost of Recommended Products: ₹{total_cost:,.2f}\n")
+        f.write(f"Your Budget: ₹{user_data['total_budget']:,.2f}\n")
+        budget_utilization = (total_cost / user_data['total_budget']) * 100
+        f.write(f"Budget Utilization: {budget_utilization:.1f}%\n")
+        if budget_utilization <= 100:
+            f.write("Your selected products fit within your budget!\n")
+        else:
+            f.write("Note: The total cost exceeds your budget. You may want to consider alternative options.\n")
 
 # Main function
 if __name__ == "__main__":
@@ -1126,14 +903,17 @@ if __name__ == "__main__":
     
     # Generate initial recommendations
     final_list = generate_final_product_list(user_data)
+    print("\n[DEBUG] Final recommendations structure:")
+    import pprint
+    pprint.pprint(final_list)
     
     # Generate output files with the correct suffixes
     output_base_path = excel_filename.replace('.xlsx', '')
     pdf_filename = f"{output_base_path}.pdf"
-    html_filename = f"{output_base_path}.html"
+    txt_filename = f"{output_base_path}.txt"
     create_styled_pdf(pdf_filename, user_data, final_list)
-    generate_html_file(user_data, final_list, html_filename)
+    generate_text_file(user_data, final_list, txt_filename)
     
     print("\nProduct recommendations have been generated!")
-    print(f"Check {pdf_filename} and {html_filename} for details.")
+    print(f"Check {pdf_filename} and {txt_filename} for details.")
 
