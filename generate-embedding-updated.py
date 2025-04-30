@@ -100,10 +100,11 @@ def generate_local_embeddings(entries, batch_size=1):
             if isinstance(response, dict) and 'embeddings' in response:
                 return response['embeddings']
             else:
-                print(f"[{MODEL_NAME}] Invalid response: {response}")
+                print(f"Error: Invalid response format from Ollama: {response}")
                 return []
         except Exception as e:
-            print(f"[{MODEL_NAME}] Batch failed: {e}. Retrying each item...")
+            print(f"Error generating embeddings for batch: {str(e)}")
+            print("First entry in failing batch:", batch[0][:100] + "..." if batch else "Empty batch")
             results = []
             for entry in batch:
                 try:
@@ -117,43 +118,20 @@ def generate_local_embeddings(entries, batch_size=1):
             return results
 
     batches = [entries[i:i + batch_size] for i in range(0, len(entries), batch_size)]
+    total_batches = len(batches)
+    successful_batches = 0
+    
     for batch in tqdm(batches, desc="Generating Embeddings"):
         batch_embeddings = generate_batch_embeddings(batch)
-        embeddings.extend(batch_embeddings)
-
-    if embeddings:
-        print(f"Successfully generated embeddings for {len(embeddings)} entries.")
-        print(f"Embedding dimension: {len(embeddings[0])}.")
-    else:
-        print("Error: No embeddings were generated.")
-
-    return embeddings
-
-    
-    def generate_batch_embeddings(batch):
-        try:
-            response = client.embed(model=MODEL_NAME, input=batch)
-            if isinstance(response, dict) and 'embeddings' in response:
-                return response['embeddings']
-            else:
-                print(f"Failed to extract embeddings for batch. Response: {response}")
-                return []
-
-        except Exception as e:
-            print(f"Error generating embeddings for batch: {str(e)}")
-            return []
-    
-    with ThreadPoolExecutor() as executor:
-        batches = [entries[i:i + batch_size] for i in range(0, len(entries), batch_size)]
-        results = list(tqdm(executor.map(generate_batch_embeddings, batches), total=len(batches), desc="Generating Embeddings"))
-        for batch_embeddings in results:
+        if batch_embeddings:
             embeddings.extend(batch_embeddings)
+            successful_batches += 1
 
     if embeddings:
-        print(f"Successfully generated embeddings for {len(embeddings)} entries.")
-        print(f"Embedding dimension: {len(embeddings[0])}.")
+        print(f"Successfully generated embeddings for {successful_batches}/{total_batches} batches")
+        print(f"Embedding dimension: {len(embeddings[0])}")
     else:
-        print("Error: No embeddings were generated.")
+        print(f"Failed to generate any embeddings. Processed {total_batches} batches.")
 
     return embeddings
 
@@ -200,20 +178,18 @@ def main():
         print("Error: No valid entries were found.")
         return
 
-    # Generate embeddings
-    embeddings = generate_local_embeddings(entries)
+    print(f"Starting embedding generation for {len(entries)} entries...")
+    
+    # Generate embeddings with smaller batch size
+    embeddings = generate_local_embeddings(entries, batch_size=1)
     if not embeddings:
-        print("Error: No embeddings were generated.")
+        print("Error: Failed to generate main product embeddings.")
         return
 
-    # Generate image embeddings
-    image_embeddings = generate_local_embeddings(image_entries)
-
-    # Generate product type embeddings
-    product_type_embeddings = generate_local_embeddings(product_type_entries)
-
-    # Generate brand embeddings
-    brand_embeddings = generate_local_embeddings(brand_entries)
+    # Generate remaining embeddings only if main embeddings succeeded
+    image_embeddings = generate_local_embeddings(image_entries, batch_size=1) if image_entries else []
+    product_type_embeddings = generate_local_embeddings(product_type_entries, batch_size=1) if product_type_entries else []
+    brand_embeddings = generate_local_embeddings(brand_entries, batch_size=1) if brand_entries else []
 
     # Save all embeddings
     embeddings_dict = {
@@ -228,15 +204,30 @@ def main():
             'unique_brands': df['Brand'].nunique()
         }
     }
-    save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
+    
+    try:
+        save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
+        print(f"Successfully saved embeddings to {EMBEDDINGS_FILE_PATH}")
+    except Exception as e:
+        print(f"Error saving embeddings: {str(e)}")
+        return
 
     # Build and save FAISS indexes
-    build_faiss_index(embeddings, 'faiss_index.index_product')
-    build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
-    build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
-    build_faiss_index(image_embeddings, 'faiss_index.index_image')
+    try:
+        if embeddings:
+            build_faiss_index(embeddings, 'faiss_index.index_product')
+        if product_type_embeddings:
+            build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
+        if brand_embeddings:
+            build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
+        if image_embeddings:
+            build_faiss_index(image_embeddings, 'faiss_index.index_image')
+        print("Successfully built FAISS indexes")
+    except Exception as e:
+        print(f"Error building FAISS indexes: {str(e)}")
+        return
 
-    print("\nEmbedding generation completed successfully!")
+    print("Embedding generation completed successfully")
 
 if __name__ == "__main__":
     main()
