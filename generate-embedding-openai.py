@@ -87,6 +87,8 @@ def prepare_entries(df):
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     catalog = []
     for _, row in df.iterrows():
+        # Debug statement to print Features data from CSV
+        print(f"[DEBUG] Features from CSV: {row.get('Features', 'Not Available')}")
         product = {
             'product_type': row.get('Product Type', 'Not Available'),
             'brand': row.get('Brand', 'Not Available'),
@@ -99,6 +101,8 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             'url': row.get('url', 'Not Available'),
             'image_src': row.get('Image Src', 'Not Available')
         }
+        # Debug statement to print Features data before writing to JSON
+        print(f"[DEBUG] Features to JSON: {product['features']}")
         catalog.append(product)
     
     with open(file_path, 'w') as f:

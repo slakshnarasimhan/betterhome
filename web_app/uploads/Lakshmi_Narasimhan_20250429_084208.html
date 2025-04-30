@@ -1,567 +1,91 @@
 
-    <!DOCTYPE html>
-    <html lang="en">
+    <html>
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>BetterHome Product Recommendations</title>
         <style>
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                margin: 0;
-                padding: 20px;
-                color: #333;
-            }
-            .container {
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-            .header {
-                background-color: #f8f9fa;
-                padding: 20px;
-                border-radius: 5px;
-                margin-bottom: 20px;
-            }
-            .room-section {
-                margin-bottom: 30px;
-                padding: 20px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-            }
-            .room-title {
-                color: #2c3e50;
-                border-bottom: 2px solid #3498db;
-                padding-bottom: 10px;
-            }
-            .product-card {
-                display: flex;
-                margin: 20px 0;
-                padding: 20px;
-                border: 1px solid #eee;
-                border-radius: 5px;
-                background-color: #fff;
-            }
-            .product-image {
-                flex: 0 0 300px;
-                margin-right: 20px;
-            }
-            .product-image img {
-                width: 100%;
-                height: auto;
-                border-radius: 5px;
-            }
-            .product-details {
-                flex: 1;
-            }
-            .product-title {
-                font-size: 1.2em;
-                margin-bottom: 10px;
-            }
-            .product-price {
-                color: #e74c3c;
-                font-size: 1.1em;
-                margin: 10px 0;
-            }
-            .amazon-rating {
-                display: flex;
-                align-items: center;
-                margin: 10px 0;
-            }
-            .rating-stars {
-                color: #f39c12;
-                margin-right: 10px;
-            }
-            .features-list {
-                list-style-type: none;
-                padding: 0;
-            }
-            .features-list li {
-                margin: 5px 0;
-                padding-left: 20px;
-                position: relative;
-            }
-            .features-list li:before {
-                content: "•";
-                color: #3498db;
-                position: absolute;
-                left: 0;
-            }
-            .budget-summary {
-                background-color: #f8f9fa;
-                padding: 20px;
-                border-radius: 5px;
-                margin-top: 20px;
-            }
-            .purchase-link {
-                display: inline-block;
-                background-color: #3498db;
-                color: white;
-                padding: 10px 20px;
-                text-decoration: none;
-                border-radius: 5px;
-                margin-top: 10px;
-            }
-            .purchase-link:hover {
-                background-color: #2980b9;
-            }
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1, h2 { color: #2c3e50; }
+            .product { border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; }
+            .product img { max-width: 100px; float: left; margin-right: 10px; }
+            .product-details { overflow: hidden; }
+            .product-title { font-size: 18px; font-weight: bold; }
+            .product-price { color: #e74c3c; }
+            .product-description { font-size: 14px; }
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <h1>BetterHome Product Recommendations</h1>
-                <p><strong>Generated on:</strong> 2025-04-29 08:44:50</p>
-                <p><strong>Name:</strong> Lakshmi Narasimhan</p>
-                <p><strong>Mobile:</strong> 9845731544</p>
-                <p><strong>Email:</strong> slakshnarasimhan@gmail.com</p>
-                <p><strong>Address:</strong> 112, Prestige Silver Oak, ECC Rd, Whitefield</p>
-                <p><strong>Total Budget:</strong> ₹500,000.00</p>
-                <p><strong>Family Size:</strong> 6 members</p>
-            </div>
-    
-            <div class="room-section">
-                <h2 class="room-title">Hall</h2>
-                <p>A welcoming space with 2 fan(s) and an AC, complemented by a half white color theme.</p>
-            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Atomberg Atomberg Aris Starlight IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade Ceiling Fan">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Atomberg Atomberg Aris Starlight IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade Ceiling Fan</h3>
-                                    <div class="product-price">
-                                        Price: ₹10,250.00 (Retail: ₹12,300.00)
-                                        <br>You Save: ₹2,050.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 3 Years Manufacturer Warranty</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/atomberg-aris-starlight-ceiling-fan" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Atomberg Atomberg Aris IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade 5 Star Rated BLDC Fan">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Atomberg Atomberg Aris IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade 5 Star Rated BLDC Fan</h3>
-                                    <div class="product-price">
-                                        Price: ₹9,899.00 (Retail: ₹11,878.80)
-                                        <br>You Save: ₹1,979.80
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 3 Years Manufacturer Warranty</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/atomberg-aris-starlight-iot-enabled-1200-mm-bldc-motor-with-remote-3-blade-ceiling-fan-copy" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Daikin Daikin AC 2.02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Daikin Daikin AC 2.02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser</h3>
-                                    <div class="product-price">
-                                        Price: ₹64,990.00 (Retail: ₹77,988.00)
-                                        <br>You Save: ₹12,998.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser. Buy original Daikin</li><li>02 Ton 3 Star Inverter Split AC FTKL71UV16T RKL71UV16T, Copper Condenser at wholesale prices from Better Home. Power Chill Power chill operation of your AC ensures instant and faster cooling even in the extreme heat conditions. It cools 20 faster than the normal mode providing instant relief from the heat. Hepta Sense Daikin Swing Inverter ACs has 7 Sensors located on IDU and ODU. Each of these sensors has role to play in the working of Air conditioner that improves overall performance, provide comfort to users and help to increase durability and life of the AC. Automatic Error Display It auto detects the error and shows the related code on the IDU display. Now you can easily self diagnose the error and report it to your Daikin authorized service center for a quick resolution. PM</li><li>5 Filter It is capable to Trap fine air particles upto</li><li>5 microns resulting clean and pure inside air. Coanda Airflow Radiant cooling enhances comfort cooling by evenly distributing air in every corner of the room. With the help of one click on your remote control, experience enhanced comfort. 3 Stage Filteration The 3 Stage Air Filtration process captures micro dust particles and eliminates pollutants airborne pathogens such as viruses, bacteria, mould, and fungi to make the indoor air clean, safe, and fresh.</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> Manufacturer warranty for 1 year on Product, 5 Years on PCB Printed Circuit Board and 10 Years on Compressor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/daikin-ac-2-02-ton-inverter-3-star-split-ac-ftkl71uv16t-and-rkl71uv16t-copper-condenser" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Daikin Daikin AC 1.8 Ton - Inverter - Split AC - JTKJ60UV16V and RKJ60UV16V - Copper Condenser">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Daikin Daikin AC 1.8 Ton - Inverter - Split AC - JTKJ60UV16V and RKJ60UV16V - Copper Condenser</h3>
-                                    <div class="product-price">
-                                        Price: ₹68,967.00 (Retail: ₹82,760.40)
-                                        <br>You Save: ₹13,793.40
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> Manufacturer warranty for 1 year on Product, 5 Years on PCB Printed Circuit Board and 10 Years on Compressor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/daikin-ac-1-8-ton-inverter-split-ac-jtkj60uv16v-and-rkj60uv16v-copper-condenser" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            </div>
-            <div class="room-section">
-                <h2 class="room-title">Kitchen</h2>
-                <p>A functional kitchen with a 90 cm chimney, Hob (built-in) - placed inside with 4 burners, and a small fan.</p>
-            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Bosch Bosch Chimney 90 CM - DIB98JQ50I - Series 6 - Island Cooker Hood Stainless Steel">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Bosch Bosch Chimney 90 CM - DIB98JQ50I - Series 6 - Island Cooker Hood Stainless Steel</h3>
-                                    <div class="product-price">
-                                        Price: ₹119,700.00 (Retail: ₹143,640.00)
-                                        <br>You Save: ₹23,940.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>Built-in Free-standing Built-in Designed to elevate your kitchen experience, this chimney offers powerful suction, innovative features, and a sleek design</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 2 years on product manufacturer warranty, 3 years on motor manufacturer warranty</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/bosch-chimney-90-cm-dib98jq50i-series-6-island-cooker-hood-stainless-steel" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Bosch Bosch Chimney 90 CM - DWB97LM50I - Series 6 - Wall Mounted Cooker Hood - Stainless Steel">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Bosch Bosch Chimney 90 CM - DWB97LM50I - Series 6 - Wall Mounted Cooker Hood - Stainless Steel</h3>
-                                    <div class="product-price">
-                                        Price: ₹86,400.00 (Retail: ₹103,680.00)
-                                        <br>You Save: ₹17,280.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>Experience the perfect blend of style and efficiency with the Bosch DWB97LM50I Wall Mounted Chimney</li><li>Designed to elevate your kitchen experience, this chimney offers powerful suction, innovative features, and a sleek design</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 2 years of Product manufacturer warranty. 3 years of manufacturer warranty for motor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/bosch-chimney-90-cm-dwb97lm50i-series-6-wall-mounted-cooker-hood-stainless-steel" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Polycab Polycab Sunami 500mm Farrata Fan">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Polycab Polycab Sunami 500mm Farrata Fan</h3>
-                                    <div class="product-price">
-                                        Price: ₹3,874.00 (Retail: ₹4,648.80)
-                                        <br>You Save: ₹774.80
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>A highly specialized coating that prevents rusting and provides robust protection against corrosion Polycab TPW fans are meticulously engineered to prevent overheating of motor and blades thus increasing its efficiency Polycab TPW fans fitted with a high performance totally enclosed motor that delivers maximum output The aerodynamically designed blades coupled with increased blade width reduce drag and maximizes the air sweep The low resistivity of copper reduces energy losses and also increases the lifespan of the fan motor A high-performing electric motor that operates at optimum efficiency yet consumes much less power Polycab TPW fans give you the highest air delivery and wide air throw to cool the room A protection tool that prevents small children from inserting their finger or accidentally touching the fast rotating blades High Air Thrust</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> nan</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/polycab-sunami-500mm-farrata-fan" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Atomberg Atomberg Renesa 400mm BLDC motor Energy Saving Wall Fan Remote Control">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Atomberg Atomberg Renesa 400mm BLDC motor Energy Saving Wall Fan Remote Control</h3>
-                                    <div class="product-price">
-                                        Price: ₹3,750.00 (Retail: ₹4,500.00)
-                                        <br>You Save: ₹750.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> nan</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/atomberg-renesa-400mm-bldc-motor-energy-saving-wall-fan-remote-control" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            </div>
-            <div class="room-section">
-                <h2 class="room-title">Master Bedroom</h2>
-                <p>Master bedroom with green theme, an AC, and a bathroom equipped with yes water heating.</p>
-            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Daikin Daikin AC 2.02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Daikin Daikin AC 2.02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser</h3>
-                                    <div class="product-price">
-                                        Price: ₹64,990.00 (Retail: ₹77,988.00)
-                                        <br>You Save: ₹12,998.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser. Buy original Daikin</li><li>02 Ton 3 Star Inverter Split AC FTKL71UV16T RKL71UV16T, Copper Condenser at wholesale prices from Better Home. Power Chill Power chill operation of your AC ensures instant and faster cooling even in the extreme heat conditions. It cools 20 faster than the normal mode providing instant relief from the heat. Hepta Sense Daikin Swing Inverter ACs has 7 Sensors located on IDU and ODU. Each of these sensors has role to play in the working of Air conditioner that improves overall performance, provide comfort to users and help to increase durability and life of the AC. Automatic Error Display It auto detects the error and shows the related code on the IDU display. Now you can easily self diagnose the error and report it to your Daikin authorized service center for a quick resolution. PM</li><li>5 Filter It is capable to Trap fine air particles upto</li><li>5 microns resulting clean and pure inside air. Coanda Airflow Radiant cooling enhances comfort cooling by evenly distributing air in every corner of the room. With the help of one click on your remote control, experience enhanced comfort. 3 Stage Filteration The 3 Stage Air Filtration process captures micro dust particles and eliminates pollutants airborne pathogens such as viruses, bacteria, mould, and fungi to make the indoor air clean, safe, and fresh.</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> Manufacturer warranty for 1 year on Product, 5 Years on PCB Printed Circuit Board and 10 Years on Compressor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/daikin-ac-2-02-ton-inverter-3-star-split-ac-ftkl71uv16t-and-rkl71uv16t-copper-condenser" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Daikin Daikin AC 1.8 Ton - Inverter - Split AC - JTKJ60UV16V and RKJ60UV16V - Copper Condenser">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Daikin Daikin AC 1.8 Ton - Inverter - Split AC - JTKJ60UV16V and RKJ60UV16V - Copper Condenser</h3>
-                                    <div class="product-price">
-                                        Price: ₹68,967.00 (Retail: ₹82,760.40)
-                                        <br>You Save: ₹13,793.40
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> Manufacturer warranty for 1 year on Product, 5 Years on PCB Printed Circuit Board and 10 Years on Compressor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/daikin-ac-1-8-ton-inverter-split-ac-jtkj60uv16v-and-rkj60uv16v-copper-condenser" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Atomberg Atomberg Aris Starlight IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade Ceiling Fan">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Atomberg Atomberg Aris Starlight IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade Ceiling Fan</h3>
-                                    <div class="product-price">
-                                        Price: ₹10,250.00 (Retail: ₹12,300.00)
-                                        <br>You Save: ₹2,050.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 3 Years Manufacturer Warranty</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/atomberg-aris-starlight-ceiling-fan" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Atomberg Atomberg Aris IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade 5 Star Rated BLDC Fan">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Atomberg Atomberg Aris IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade 5 Star Rated BLDC Fan</h3>
-                                    <div class="product-price">
-                                        Price: ₹9,899.00 (Retail: ₹11,878.80)
-                                        <br>You Save: ₹1,979.80
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 3 Years Manufacturer Warranty</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/atomberg-aris-starlight-iot-enabled-1200-mm-bldc-motor-with-remote-3-blade-ceiling-fan-copy" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            </div>
-            <div class="room-section">
-                <h2 class="room-title">Bedroom 2</h2>
-                <p>Second bedroom with white theme, an AC, and a bathroom equipped with yes water heating.</p>
-            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Daikin Daikin AC 2.02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Daikin Daikin AC 2.02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser</h3>
-                                    <div class="product-price">
-                                        Price: ₹64,990.00 (Retail: ₹77,988.00)
-                                        <br>You Save: ₹12,998.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>02 Ton - Inverter - 3 Star - Split AC - FTKL71UV16T and RKL71UV16T - Copper Condenser. Buy original Daikin</li><li>02 Ton 3 Star Inverter Split AC FTKL71UV16T RKL71UV16T, Copper Condenser at wholesale prices from Better Home. Power Chill Power chill operation of your AC ensures instant and faster cooling even in the extreme heat conditions. It cools 20 faster than the normal mode providing instant relief from the heat. Hepta Sense Daikin Swing Inverter ACs has 7 Sensors located on IDU and ODU. Each of these sensors has role to play in the working of Air conditioner that improves overall performance, provide comfort to users and help to increase durability and life of the AC. Automatic Error Display It auto detects the error and shows the related code on the IDU display. Now you can easily self diagnose the error and report it to your Daikin authorized service center for a quick resolution. PM</li><li>5 Filter It is capable to Trap fine air particles upto</li><li>5 microns resulting clean and pure inside air. Coanda Airflow Radiant cooling enhances comfort cooling by evenly distributing air in every corner of the room. With the help of one click on your remote control, experience enhanced comfort. 3 Stage Filteration The 3 Stage Air Filtration process captures micro dust particles and eliminates pollutants airborne pathogens such as viruses, bacteria, mould, and fungi to make the indoor air clean, safe, and fresh.</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> Manufacturer warranty for 1 year on Product, 5 Years on PCB Printed Circuit Board and 10 Years on Compressor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/daikin-ac-2-02-ton-inverter-3-star-split-ac-ftkl71uv16t-and-rkl71uv16t-copper-condenser" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Daikin Daikin AC 1.8 Ton - Inverter - Split AC - JTKJ60UV16V and RKJ60UV16V - Copper Condenser">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Daikin Daikin AC 1.8 Ton - Inverter - Split AC - JTKJ60UV16V and RKJ60UV16V - Copper Condenser</h3>
-                                    <div class="product-price">
-                                        Price: ₹68,967.00 (Retail: ₹82,760.40)
-                                        <br>You Save: ₹13,793.40
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> Manufacturer warranty for 1 year on Product, 5 Years on PCB Printed Circuit Board and 10 Years on Compressor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/daikin-ac-1-8-ton-inverter-split-ac-jtkj60uv16v-and-rkj60uv16v-copper-condenser" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Atomberg Atomberg Aris Starlight IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade Ceiling Fan">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Atomberg Atomberg Aris Starlight IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade Ceiling Fan</h3>
-                                    <div class="product-price">
-                                        Price: ₹10,250.00 (Retail: ₹12,300.00)
-                                        <br>You Save: ₹2,050.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 3 Years Manufacturer Warranty</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/atomberg-aris-starlight-ceiling-fan" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Atomberg Atomberg Aris IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade 5 Star Rated BLDC Fan">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Atomberg Atomberg Aris IOT Enabled 1200 mm BLDC Motor with Remote 3 Blade 5 Star Rated BLDC Fan</h3>
-                                    <div class="product-price">
-                                        Price: ₹9,899.00 (Retail: ₹11,878.80)
-                                        <br>You Save: ₹1,979.80
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 3 Years Manufacturer Warranty</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/atomberg-aris-starlight-iot-enabled-1200-mm-bldc-motor-with-remote-3-blade-ceiling-fan-copy" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            </div>
-            <div class="room-section">
-                <h2 class="room-title">Laundry</h2>
-                <p>Laundry area equipped with a yes washing machine and a dryer.</p>
-            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Bosch Bosch 8 Kg Fully Automatic Front Load Washing Machine Series 6 - WGA13400IN">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Bosch Bosch 8 Kg Fully Automatic Front Load Washing Machine Series 6 - WGA13400IN</h3>
-                                    <div class="product-price">
-                                        Price: ₹39,100.00 (Retail: ₹46,920.00)
-                                        <br>You Save: ₹7,820.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>Bosch front loading washing machine WGA13400IN has one touch start automatic program which selects the optimal programme settings for your laundry load</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 2 years manufacturer warranty. 10 years manufacturer warranty against on motor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/bosch-8-kg-fully-automatic-front-load-washing-machine-series-6-wga13400in" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            
-                            <div class="product-card">
-                                <div class="product-image">
-                                    <img src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Bosch Bosch 6.5 Kg Fully Automatic Front Load Washing Machine Series 2 - WAJ24265IN">
-                                </div>
-                                <div class="product-details">
-                                    <h3 class="product-title">Bosch Bosch 6.5 Kg Fully Automatic Front Load Washing Machine Series 2 - WAJ24265IN</h3>
-                                    <div class="product-price">
-                                        Price: ₹36,415.00 (Retail: ₹43,698.00)
-                                        <br>You Save: ₹7,283.00
-                                    </div>
-                                    <div class="amazon-rating">
-                                        <span class="rating-stars"></span>
-                                        <span>Not available (Not available reviews)</span>
-                                    </div>
-                                    <ul class="features-list">
-                            <li>5 Kg 1200 rpm - WAJ24265IN price fits your budget. Anti-Tangle and Anti Wrinkle feature minimizes tangles in laundry by up to 50 making it gentler on fabric and easier to iron. Feature minimizes wrinkles in laundry by up to 50 making it gentler on fabric and easier to iron. Anti-Vibration Side Panels reduce vibrations and ensure greater stability during the washing and spinning process. The Speed Perfect option washes in a shorter time with the cleaning results of the standard program.</li>
-                                    </ul>
-                                    <p><strong>Warranty:</strong> 2 years manufacturer warranty.10 years manufacturer warranty against on motor.</p>
-                                    <p><strong>Delivery:</strong> 2-4 days</p>
-                                    <a href="https://betterhomeapp.com/products/bosch-6-5-kg-fully-automatic-front-load-washing-machine-series-2-waj24265in" class="purchase-link" target="_blank">View on BetterHome</a>
-                                </div>
-                            </div>
-                            </div>
-            <div class="budget-summary">
-                <h2>Budget Summary</h2>
-                <p><strong>Total Cost of Recommended Products:</strong> ₹252,141.00</p>
-                <p><strong>Your Budget:</strong> ₹500,000.00</p>
-                <p><strong>Budget Utilization:</strong> 50.4%</p>
-                <p>Your selected products fit within your budget!</p>
-            </div>
-        </div>
+        <h1>BetterHome Product Recommendations</h1>
+        <p><strong>Name:</strong> Lakshmi Narasimhan</p>
+        <p><strong>Mobile:</strong> 9845731544</p>
+        <p><strong>Email:</strong> slakshnarasimhan@gmail.com</p>
+        <p><strong>Address:</strong> 112, Prestige Silver Oak, ECC Rd, Whitefield</p>
+        <p><strong>Total Budget:</strong> ₹500,000.00</p>
+        <p><strong>Family Size:</strong> 6 members</p>
+        <hr>
+    <h2>Hall</h2>
+                <div class='product'>
+                    <img src='path/to/placeholder/image.png' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>Superfan Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm 48 inches</div>
+                        <div class='product-price'>Price: ₹13,500.00</div>
+                        <div class='product-description'>Description:  </div>
+                    </div>
+                </div>
+                <h2>Kitchen</h2>
+                <div class='product'>
+                    <img src='path/to/placeholder/image.png' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>Bosch Bosch Chimney 60 CM - DWBA68J60I - Series 4 - Wall-Mounted Cooker Hood - Flat Black</div>
+                        <div class='product-price'>Price: ₹42,990.00</div>
+                        <div class='product-description'>Description:  </div>
+                    </div>
+                </div>
+                
+                <div class='product'>
+                    <img src='path/to/placeholder/image.png' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>Bosch Bosch Chimney 90 CM - DIB98JQ50I - Series 6 - Island Cooker Hood Stainless Steel</div>
+                        <div class='product-price'>Price: ₹133,000.00</div>
+                        <div class='product-description'>Description:  </div>
+                    </div>
+                </div>
+                <h2>Master Bedroom</h2>
+                <div class='product'>
+                    <img src='path/to/placeholder/image.png' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>Superfan Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm 48 inches</div>
+                        <div class='product-price'>Price: ₹13,500.00</div>
+                        <div class='product-description'>Description:  </div>
+                    </div>
+                </div>
+                <h2>Bedroom 2</h2>
+                <div class='product'>
+                    <img src='path/to/placeholder/image.png' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>Superfan Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm 48 inches</div>
+                        <div class='product-price'>Price: ₹13,500.00</div>
+                        <div class='product-description'>Description:  </div>
+                    </div>
+                </div>
+                <h2>Laundry</h2>
+                <div class='product'>
+                    <img src='path/to/placeholder/image.png' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>Bosch Bosch 8 Kg Fully Automatic Front Load Washing Machine Series 6 - WGA13400IN</div>
+                        <div class='product-price'>Price: ₹54,490.00</div>
+                        <div class='product-description'>Description:  </div>
+                    </div>
+                </div>
+                
+                <div class='product'>
+                    <img src='path/to/placeholder/image.png' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>Bosch Bosch 6.5 Kg Fully Automatic Front Load Washing Machine Series 2 - WAJ24265IN</div>
+                        <div class='product-price'>Price: ₹46,990.00</div>
+                        <div class='product-description'>Description:  </div>
+                    </div>
+                </div>
+                
     </body>
     </html>
     

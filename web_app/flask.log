@@ -4308,3 +4308,160 @@ TXT exists: False
  * Restarting with watchdog (inotify)
  * Debugger is active!
  * Debugger PIN: 471-718-053
+3.144.21.143 - - [30/Apr/2025 07:08:25] "GET / HTTP/1.1" 200 -
+3.144.21.143 - - [30/Apr/2025 07:10:26] "GET / HTTP/1.1" 200 -
+3.144.21.143 - - [30/Apr/2025 07:14:44] code 400, message Bad request syntax ('SSH-2.0-Go')
+3.144.21.143 - - [30/Apr/2025 07:14:44] "[31m[1mSSH-2.0-Go[0m" 400 -
+3.144.21.143 - - [30/Apr/2025 07:16:24] code 400, message Bad request version ('À\x14À')
+3.144.21.143 - - [30/Apr/2025 07:16:24] "[31m[1m\x16\x03\x01\x00{\x01\x00\x00w\x03\x03µj\x7f/\x91\x05¤bò\x14Ï3³v.\x0b,#úbè¯\x90\\\x0d¾£\x9bÖ×üu\x00\x00\x1aÀ/À+À\x11À\x07À\x13À\x09À\x14À[0m" 400 -
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
