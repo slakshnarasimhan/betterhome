@@ -100,10 +100,11 @@ def generate_local_embeddings(entries, batch_size=1):
             if isinstance(response, dict) and 'embeddings' in response:
                 return response['embeddings']
             else:
-                print(f"[{MODEL_NAME}] Invalid response: {response}")
+                print(f"Error: Invalid response format from Ollama: {response}")
                 return []
         except Exception as e:
-            print(f"[{MODEL_NAME}] Batch failed: {e}. Retrying each item...")
+            print(f"Error generating embeddings for batch: {str(e)}")
+            print("First entry in failing batch:", batch[0][:100] + "..." if batch else "Empty batch")
             results = []
             for entry in batch:
                 try:
@@ -117,6 +118,9 @@ def generate_local_embeddings(entries, batch_size=1):
             return results
 
     batches = [entries[i:i + batch_size] for i in range(0, len(entries), batch_size)]
+    total_batches = len(batches)
+    successful_batches = 0
+    
     for batch in tqdm(batches, desc="Generating Embeddings"):
         batch_embeddings = generate_batch_embeddings(batch)
         embeddings.extend(batch_embeddings)
@@ -129,29 +133,33 @@ def generate_local_embeddings(entries, batch_size=1):
 
     return embeddings
 
-# ==========================
-# Step 4: Save Product Catalog
-# ==========================
-def save_product_catalog(df, file_path='web_app/product_catalog.json'):
-    catalog = []
-    for _, row in df.iterrows():
-        product = {
-            'product_type': row.get('Product Type', 'Not Available'),
-            'brand': row.get('Brand', 'Not Available'),
-            'title': row.get('title', 'Not Available'),
-            'better_home_price': row.get('Better Home Price', 'Not Available'),
-            'retail_price': row.get('Retail Price', 'Not Available'),
-            'warranty': row.get('Warranty', 'Not Available'),
-            'features': row.get('Features', 'Not Available'),
-            'description': row.get('Description', 'Not Available'),
-            'url': row.get('url', 'Not Available'),
-            'image_src': row.get('Image Src', 'Not Available')
-        }
-        catalog.append(product)
     
-    with open(file_path, 'w') as f:
-        json.dump({'products': catalog}, f, indent=2)
-    print(f"Product catalog saved successfully to {file_path}.")
+    def generate_batch_embeddings(batch):
+        try:
+            response = client.embed(model=MODEL_NAME, input=batch)
+            if isinstance(response, dict) and 'embeddings' in response:
+                return response['embeddings']
+            else:
+                print(f"Failed to extract embeddings for batch. Response: {response}")
+                return []
+
+        except Exception as e:
+            print(f"Error generating embeddings for batch: {str(e)}")
+            return []
+    
+    with ThreadPoolExecutor() as executor:
+        batches = [entries[i:i + batch_size] for i in range(0, len(entries), batch_size)]
+        results = list(tqdm(executor.map(generate_batch_embeddings, batches), total=len(batches), desc="Generating Embeddings"))
+        for batch_embeddings in results:
+            embeddings.extend(batch_embeddings)
+
+    if embeddings:
+        print(f"Successfully generated embeddings for {len(embeddings)} entries.")
+        print(f"Embedding dimension: {len(embeddings[0])}.")
+    else:
+        print("Error: No embeddings were generated.")
+
+    return embeddings
 
 # ==========================
 # Step 5: Save Embeddings
@@ -206,23 +214,19 @@ def main():
     print(f"Prepared {len(entries)} entries")
 
     # Generate embeddings
-    print("Generating embeddings...")
     embeddings = generate_local_embeddings(entries)
     if not embeddings:
-        print("Error: No embeddings were generated.")
+        print("Error: Failed to generate main product embeddings.")
         return
     print(f"Generated {len(embeddings)} embeddings")
 
     # Generate image embeddings
-    print("Generating image embeddings...")
     image_embeddings = generate_local_embeddings(image_entries)
 
     # Generate product type embeddings
-    print("Generating product type embeddings...")
     product_type_embeddings = generate_local_embeddings(product_type_entries)
 
     # Generate brand embeddings
-    print("Generating brand embeddings...")
     brand_embeddings = generate_local_embeddings(brand_entries)
 
     # Save all embeddings
@@ -239,16 +243,21 @@ def main():
             'unique_brands': df['Brand'].nunique()
         }
     }
-    save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
+    
+    try:
+        save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
+        print(f"Successfully saved embeddings to {EMBEDDINGS_FILE_PATH}")
+    except Exception as e:
+        print(f"Error saving embeddings: {str(e)}")
+        return
 
     # Build and save FAISS indexes
-    print("Building FAISS indexes...")
     build_faiss_index(embeddings, 'faiss_index.index_product')
     build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
     build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
     build_faiss_index(image_embeddings, 'faiss_index.index_image')
 
-    print("\nEmbedding generation completed successfully!")
+    print("Embedding generation completed successfully")
 
 if __name__ == "__main__":
     main()
