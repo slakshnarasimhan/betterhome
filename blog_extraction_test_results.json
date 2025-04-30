@@ -1,0 +1,37 @@
+{
+  "Better Home": {
+    "error": "Failed to extract content"
+  },
+  "Kitchen Brand Store": {
+    "title": "The Power of Information:",
+    "url": "https://in.kitchenbrandstore.com/blog/revolutionizing-your-home-and-kitchen-the-impact-of-e-commerce-on-appliance-shopping",
+    "content_length": 0,
+    "has_videos": false,
+    "categories": [],
+    "related_words": []
+  },
+  "The Optimal Zone": {
+    "title": "Helping you plan better",
+    "url": "https://theoptimalzone.in/",
+    "content_length": 64,
+    "has_videos": false,
+    "categories": [],
+    "related_words": [
+      "Air Conditioner"
+    ]
+  },
+  "Baltra": {
+    "title": "Infrared Induction Cooker: The Ultimate Guide to Efficient Cooking",
+    "url": "https://baltra.in/blog/",
+    "content_length": 193,
+    "has_videos": false,
+    "categories": [],
+    "related_words": []
+  },
+  "Crompton": {
+    "error": "No article links found"
+  },
+  "Atomberg": {
+    "error": "No article links found"
+  }
+}
