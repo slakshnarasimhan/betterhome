@@ -20,16 +20,14 @@ INDEX_FILE_PATH = 'faiss_index.index'
 # ==========================
 def load_product_catalog(file_path):
     df = pd.read_csv(file_path)
-    print(f"Successfully loaded product catalog with {len(df)} entries.")
-    df['Better Home Price'] = pd.to_numeric(df['Better Home Price'], errors='coerce')
-    df['Retail Price'] = pd.to_numeric(df['Retail Price'], errors='coerce')
     
     # Verify Image Src column exists
     if 'Image Src' not in df.columns:
         print("Error: 'Image Src' column not found in CSV file")
         return None
     
-    print(f"Found {df['Image Src'].notna().sum()} products with image sources")
+    df['Better Home Price'] = pd.to_numeric(df['Better Home Price'], errors='coerce')
+    df['Retail Price'] = pd.to_numeric(df['Retail Price'], errors='coerce')
     return df
 
 # ==========================
@@ -193,46 +191,29 @@ def main():
     # Load product catalog
     df = load_product_catalog(CSV_FILE_PATH)
     if df is None or df.empty:
-        print("Product catalog could not be loaded. Exiting.")
+        print("Error: Product catalog could not be loaded.")
         return
 
     # Prepare all entries
     entries, product_type_entries, brand_entries, image_entries = prepare_entries(df)
     if not entries:
-        print("No valid entries were found. Exiting.")
+        print("Error: No valid entries were found.")
         return
 
-    print(f"\nPrepared entries:")
-    print(f"- {len(entries)} product entries")
-    print(f"- {len(product_type_entries)} product type entries")
-    print(f"- {len(brand_entries)} brand entries")
-    print(f"- {len(image_entries)} image entries")
-
-    # Generate main product embeddings
-    print("\nGenerating product embeddings...")
+    # Generate embeddings
     embeddings = generate_local_embeddings(entries)
     if not embeddings:
-        print("No embeddings were generated. Exiting.")
+        print("Error: No embeddings were generated.")
         return
 
     # Generate image embeddings
-    print("\nGenerating image embeddings...")
     image_embeddings = generate_local_embeddings(image_entries)
-    if image_embeddings:
-        print(f"Generated {len(image_embeddings)} image embeddings")
-        print(f"Image embedding dimension: {len(image_embeddings[0])}")
 
     # Generate product type embeddings
-    print("\nGenerating product type embeddings...")
     product_type_embeddings = generate_local_embeddings(product_type_entries)
-    if product_type_embeddings:
-        print(f"Generated {len(product_type_embeddings)} product type embeddings")
 
     # Generate brand embeddings
-    print("\nGenerating brand embeddings...")
     brand_embeddings = generate_local_embeddings(brand_entries)
-    if brand_embeddings:
-        print(f"Generated {len(brand_embeddings)} brand embeddings")
 
     # Save all embeddings
     embeddings_dict = {
@@ -247,11 +228,9 @@ def main():
             'unique_brands': df['Brand'].nunique()
         }
     }
-    print("\nSaving embeddings to file...")
     save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
 
     # Build and save FAISS indexes
-    print("\nBuilding FAISS indexes...")
     build_faiss_index(embeddings, 'faiss_index.index_product')
     build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
     build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
