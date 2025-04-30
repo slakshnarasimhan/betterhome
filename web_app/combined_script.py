@@ -8,6 +8,9 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import sys
 from reportlab.pdfgen import canvas
+import requests
+import os
+from urllib.parse import urlparse
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -24,6 +27,10 @@ def load_product_catalog() -> Dict[str, Any]:
             if isinstance(catalog, dict):
                 for k in catalog:
                     print(f"[DEBUG] Catalog key: {k}, #items: {len(catalog[k]) if isinstance(catalog[k], list) else 'N/A'}")
+                    # Debug statement to print image_src for each product
+                    if k == 'products':
+                        for product in catalog[k]:
+                            print(f"[DEBUG] Product image_src: {product.get('image_src', 'No image_src available')}")
             return catalog
     except FileNotFoundError:
         print("Product catalog file not found")
@@ -375,7 +382,10 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
                             break
             
             # Add points for premium features
-            features_str = str(product.get('features', ''))
+            features = product.get('features', [])
+            if isinstance(features, str):
+                features = [features]
+            features_str = ', '.join(features)
             if 'BLDC' in features_str.upper():
                 product_groups[product_key]['relevance_score'] += 1
             if 'remote' in features_str.lower():
@@ -746,7 +756,7 @@ def create_styled_pdf(filename, user_data, recommendations):
                                 print(f"[DEBUG] Using price for product: {brand} {model} -> {item.get('price')}")
                             else:
                                 print(f"[DEBUG] Using better_home_price for product: {brand} {model} -> {item.get('better_home_price')}")
-                            features = item.get('features', [])
+                            description = item.get('description', 'No description available')
                             retail_price = price * 1.2  # 20% markup for retail price
                             savings = retail_price - price
                             
@@ -769,7 +779,7 @@ def create_styled_pdf(filename, user_data, recommendations):
                             Price: ₹{price:,.2f}<br/>
                             Retail Price: ₹{retail_price:,.2f}<br/>
                             You Save: ₹{savings:,.2f}<br/>
-                            Features: {', '.join(features)}<br/>
+                            Description: {description}<br/>
                             Reason: {reason}<br/>
                             """
                             story.append(Paragraph(details, styles['Normal']))
@@ -840,7 +850,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                     print(f"[DEBUG] Using price for product: {brand} {model} -> {item.get('price')}")
                                 else:
                                     print(f"[DEBUG] Using better_home_price for product: {brand} {model} -> {item.get('better_home_price')}")
-                                features = item.get('features', [])
+                                description = item.get('description', 'No description available')
                                 retail_price = float(item.get('retail_price', price * 1.2))
                                 savings = retail_price - price
                                 warranty = item.get('warranty', 'Standard warranty applies')
@@ -848,7 +858,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                 
                                 f.write(f"{appliance_type.replace('_', ' ').title()}: {brand} {model}\n")
                                 f.write(f"Price: ₹{price:,.2f} (Retail: ₹{retail_price:,.2f})\n")
-                                f.write(f"Features: {', '.join(features)}\n")
+                                f.write(f"Description: {description}\n")
                                 
                                 if item.get('color_options'):
                                     f.write(f"Color Options: {', '.join(item['color_options'])}")
@@ -888,6 +898,110 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         else:
             f.write("Note: The total cost exceeds your budget. You may want to consider alternative options.\n")
 
+# Function to download an image from a URL
+def download_image(image_url: str, save_dir: str) -> str:
+    """Download an image from a URL and save it to the specified directory."""
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()
+        # Extract the image filename from the URL
+        parsed_url = urlparse(image_url)
+        image_filename = os.path.basename(parsed_url.path)
+        image_path = os.path.join(save_dir, image_filename)
+        # Save the image to the specified directory
+        with open(image_path, 'wb') as f:
+            f.write(response.content)
+        return image_path
+    except Exception as e:
+        print(f"[DEBUG] Error downloading image from {image_url}: {e}")
+        return ""
+
+# Function to generate an HTML file with recommendations
+def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
+    """Generate an HTML file with user information and product recommendations."""
+    html_content = """
+    <html>
+    <head>
+        <title>BetterHome Product Recommendations</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            h1, h2 {{ color: #2c3e50; }}
+            .product {{ border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; }}
+            .product img {{ max-width: 100px; float: left; margin-right: 10px; }}
+            .product-details {{ overflow: hidden; }}
+            .product-title {{ font-size: 18px; font-weight: bold; }}
+            .product-price {{ color: #e74c3c; }}
+            .product-description {{ font-size: 14px; }}
+        </style>
+    </head>
+    <body>
+        <h1>BetterHome Product Recommendations</h1>
+        <p><strong>Name:</strong> {name}</p>
+        <p><strong>Mobile:</strong> {mobile}</p>
+        <p><strong>Email:</strong> {email}</p>
+        <p><strong>Address:</strong> {address}</p>
+        <p><strong>Total Budget:</strong> ₹{total_budget:,.2f}</p>
+        <p><strong>Family Size:</strong> {family_size} members</p>
+        <hr>
+    """.format(
+        name=user_data['name'],
+        mobile=user_data['mobile'],
+        email=user_data['email'],
+        address=user_data['address'],
+        total_budget=user_data['total_budget'],
+        family_size=sum(user_data['demographics'].values())
+    )
+
+    # Process each room
+    for room, appliances in final_list.items():
+        if room == 'summary':
+            continue
+        html_content += f"<h2>{room.replace('_', ' ').title()}</h2>"
+        for appliance_type, products in appliances.items():
+            for product in products:
+                if not isinstance(product, dict):
+                    print(f"[DEBUG] Unexpected product type: {type(product)}")
+                    continue
+                image_src = product.get('image_src', '')
+                description = product.get('description', 'No description available')
+                # Debug statements for image_src and description
+                print(f"[DEBUG] Processing image_src: {image_src}")
+                print(f"[DEBUG] Product description: {description}")
+                if not image_src or not image_src.startswith(('http://', 'https://')):
+                    print(f"[DEBUG] Invalid image URL: {image_src}")
+                    image_path = 'path/to/placeholder/image.png'  # Use a placeholder image
+                else:
+                    image_path = download_image(image_src, './images')
+                # Debug statements to check values
+                print(f"[DEBUG] Processing product: {product.get('brand', 'Unknown Brand')} {product.get('model', 'Unknown Model')}")
+                print(f"[DEBUG] Image path: {image_path}")
+                print(f"[DEBUG] Price: {product.get('retail_price', product.get('price', product.get('better_home_price', 0)))}")
+                html_content += """
+                <div class='product'>
+                    <img src='{image_path}' alt='Product Image'>
+                    <div class='product-details'>
+                        <div class='product-title'>{brand} {model}</div>
+                        <div class='product-price'>Price: ₹{price:,.2f}</div>
+                        <div class='product-description'>Description: {description}</div>
+                    </div>
+                </div>
+                """.format(
+                    image_path=image_path,
+                    brand=product.get('brand', 'Unknown Brand'),
+                    model=product.get('model', 'Unknown Model'),
+                    price=float(product.get('retail_price', product.get('price', product.get('better_home_price', 0)))),
+                    description=description
+                )
+
+    html_content += """
+    </body>
+    </html>
+    """
+
+    # Write the HTML content to a file
+    with open(html_filename, 'w') as f:
+        f.write(html_content)
+
 # Main function
 if __name__ == "__main__":
     # Check if the Excel filename is provided as an argument
@@ -911,9 +1025,11 @@ if __name__ == "__main__":
     output_base_path = excel_filename.replace('.xlsx', '')
     pdf_filename = f"{output_base_path}.pdf"
     txt_filename = f"{output_base_path}.txt"
+    html_filename = f"{output_base_path}.html"
     create_styled_pdf(pdf_filename, user_data, final_list)
     generate_text_file(user_data, final_list, txt_filename)
+    generate_html_file(user_data, final_list, html_filename)
     
     print("\nProduct recommendations have been generated!")
-    print(f"Check {pdf_filename} and {txt_filename} for details.")
+    print(f"Check {pdf_filename}, {txt_filename}, and {html_filename} for details.")
 
