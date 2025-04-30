@@ -760,10 +760,24 @@ def create_styled_pdf(filename, user_data, recommendations):
 def get_product_image(url: str) -> str:
     """Extract product image URL from the product page"""
     try:
+        print(f"Debug: Attempting to get product image from URL: {url}")
+        
+        # If the URL is already an image URL, return it directly
+        if url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+            print(f"Debug: URL is already an image URL: {url}")
+            return url
+            
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
         }
-        response = requests.get(url, headers=headers, timeout=10)
+        
+        # Add timeout and verify SSL
+        response = requests.get(url, headers=headers, timeout=10, verify=True)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Try different selectors for product image
@@ -771,48 +785,97 @@ def get_product_image(url: str) -> str:
             '#landingImage',  # Amazon main product image
             '#imgTagWrapperId img',  # Alternative Amazon selector
             '.product-image img',  # Generic product image
-            'img[src*="product"]'  # Generic product image
+            'img[src*="product"]',  # Generic product image
+            'img[src*="image"]',    # Generic image
+            'img[src*="photo"]'     # Generic photo
         ]
         
         for selector in image_selectors:
             img = soup.select_one(selector)
             if img and img.get('src'):
-                return img['src']
+                image_url = img['src']
+                # Ensure the URL is absolute
+                if not image_url.startswith(('http://', 'https://')):
+                    from urllib.parse import urljoin
+                    image_url = urljoin(url, image_url)
+                print(f"Debug: Found image with selector {selector}: {image_url}")
+                return image_url
         
+        print("Debug: No image found with any selector")
         return "https://via.placeholder.com/300x300?text=No+Image+Available"
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting product image (RequestException): {str(e)}")
+        return "https://via.placeholder.com/300x300?text=Error+Loading+Image"
     except Exception as e:
         print(f"Error getting product image: {str(e)}")
-        return "https://via.placeholder.com/300x300?text=No+Image+Available"
+        return "https://via.placeholder.com/300x300?text=Error+Loading+Image"
 
 def get_amazon_rating(url: str) -> Dict[str, Any]:
     """Extract Amazon rating and review count from the product page"""
     try:
+        print(f"Debug: Attempting to get ratings from URL: {url}")
+        
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
         }
-        response = requests.get(url, headers=headers, timeout=10)
+        
+        # Add timeout and verify SSL
+        response = requests.get(url, headers=headers, timeout=10, verify=True)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
         soup = BeautifulSoup(response.text, 'html.parser')
         
         rating = None
         review_count = None
         
-        # Try to get rating
-        rating_element = soup.select_one('#acrPopover')
-        if rating_element:
-            rating = rating_element.get('title', '').split()[0]
+        # Try multiple selectors for rating
+        rating_selectors = [
+            '#acrPopover',
+            '.a-icon-star',
+            '[data-hook="rating-out-of-text"]',
+            '.review-rating'
+        ]
         
-        # Try to get review count
-        review_element = soup.select_one('#acrCustomerReviewText')
-        if review_element:
-            review_text = review_element.text
-            review_count = re.search(r'(\d+,?\d*)', review_text)
-            if review_count:
-                review_count = review_count.group(1)
+        for selector in rating_selectors:
+            rating_element = soup.select_one(selector)
+            if rating_element:
+                rating = rating_element.get('title', '').split()[0]
+                if rating:
+                    print(f"Debug: Found rating with selector {selector}: {rating}")
+                    break
+        
+        # Try multiple selectors for review count
+        review_selectors = [
+            '#acrCustomerReviewText',
+            '[data-hook="total-review-count"]',
+            '.totalReviewCount',
+            '.review-count'
+        ]
+        
+        for selector in review_selectors:
+            review_element = soup.select_one(selector)
+            if review_element:
+                review_text = review_element.text
+                print(f"Debug: Review text found with selector {selector}: {review_text}")
+                review_count = re.search(r'(\d+,?\d*)', review_text)
+                if review_count:
+                    review_count = review_count.group(1)
+                    print(f"Debug: Found review count: {review_count}")
+                    break
+        
+        if not rating or not review_count:
+            print("Debug: Could not find rating or review count")
         
         return {
             'rating': rating or 'Not available',
             'review_count': review_count or 'Not available'
         }
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting Amazon rating (RequestException): {str(e)}")
+        return {'rating': 'Not available', 'review_count': 'Not available'}
     except Exception as e:
         print(f"Error getting Amazon rating: {str(e)}")
         return {'rating': 'Not available', 'review_count': 'Not available'}
@@ -1009,7 +1072,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                     </ul>
                                     <p><strong>Warranty:</strong> {warranty}</p>
                                     <p><strong>Delivery:</strong> {delivery_time}</p>
-                                    <a href="{purchase_link}" class="purchase-link" target="_blank">View on Amazon</a>
+                                    <a href="{purchase_link}" class="purchase-link" target="_blank">View on BetterHome</a>
                                 </div>
                             </div>
                             """
