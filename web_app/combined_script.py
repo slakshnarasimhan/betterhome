@@ -11,6 +11,7 @@ from reportlab.pdfgen import canvas
 import requests
 import os
 from urllib.parse import urlparse
+import re # Add import for regex
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -250,11 +251,70 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
     else:
         return 'premium'
 
+# Helper function to parse product feature string
+def parse_product_feature(feature_str: str) -> Dict[str, str]:
+    """Parses a feature string like 'Key: Value Unit' into a dict."""
+    if not isinstance(feature_str, str) or ':' not in feature_str:
+        return {} 
+    key, value_part = feature_str.split(':', 1)
+    key = key.strip().lower()
+    value_part = value_part.strip()
+    # Try to extract numeric value and unit
+    match = re.match(r"([\d.]+)\s*(\w*)", value_part, re.IGNORECASE)
+    if match:
+        return {'key': key, 'value': match.group(1), 'unit': match.group(2).lower() if match.group(2) else None, 'raw_value': value_part}
+    else:
+        # Handle cases like "Key: Value" or "Key: Yes/No"
+        return {'key': key, 'value': value_part, 'unit': None, 'raw_value': value_part}
+
+# Function to compare features (basic numerical comparison for now)
+def compare_features(req_value_str: str, prod_feature: Dict[str, str]) -> bool:
+    """Compares a required feature value string with a parsed product feature."""
+    if not isinstance(req_value_str, str) or not prod_feature:
+        return False
+        
+    # Attempt numerical comparison if possible
+    req_match = re.match(r"([\d.]+)\s*(\w*)", req_value_str, re.IGNORECASE)
+    prod_value_num = None
+    try:
+        prod_value_num = float(prod_feature.get('value', 'not a number'))
+    except ValueError:
+        pass
+
+    if req_match and prod_value_num is not None:
+        req_val = float(req_match.group(1))
+        req_unit = req_match.group(2).lower() if req_match.group(2) else None
+        prod_unit = prod_feature.get('unit')
+        
+        # Compare numbers, ignore units if only one is present or if they mismatch slightly (cm vs cms)
+        unit_match = (req_unit == prod_unit) or \
+                     (req_unit and prod_unit and req_unit.startswith(prod_unit)) or \
+                     (req_unit and prod_unit and prod_unit.startswith(req_unit)) or \
+                     (req_unit is None or prod_unit is None) # Allow comparison if one lacks unit
+
+        if unit_match and abs(req_val - prod_value_num) < 1e-6: # Tolerance for float comparison
+             print(f"[DEBUG] Feature Match: Req='{req_value_str}', Prod='{prod_feature['raw_value']}' -> NUMERICAL MATCH")
+             return True
+             
+    # Fallback to case-insensitive raw string comparison (handles non-numeric values)
+    match = req_value_str.strip().lower() == prod_feature.get('raw_value', '').lower()
+    if match:
+        print(f"[DEBUG] Feature Match: Req='{req_value_str}', Prod='{prod_feature['raw_value']}' -> STRING MATCH")
+    return match
+
 # Function to get specific product recommendations
-def get_specific_product_recommendations(appliance_type: str, target_budget_category: str, demographics: Dict[str, int], room_color_theme: str = None, user_data: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-    """Get specific product recommendations based on appliance type, budget category, demographics, and room color theme"""
+def get_specific_product_recommendations(
+    appliance_type: str, 
+    target_budget_category: str, 
+    demographics: Dict[str, int], 
+    room_color_theme: str = None, 
+    user_data: Dict[str, Any] = None,
+    required_features: Dict[str, str] = None  # Added parameter
+) -> List[Dict[str, Any]]:
+    """Get specific product recommendations based on appliance type, budget category, demographics, color theme, and specific features."""
+    required_features = required_features or {} # Ensure it's a dict
     catalog = load_product_catalog()
-    print(f"\n[DEBUG] Looking for recommendations for appliance_type='{appliance_type}' with budget_category='{target_budget_category}'")
+    print(f"\n[DEBUG] Looking for recommendations for appliance_type='{appliance_type}' with budget_category='{target_budget_category}' and required_features={required_features}")
     recommendations = []
     product_groups = {}  # Dictionary to group products by model
     
@@ -280,130 +340,144 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
     
     # Process available products
     if catalog and "products" in catalog:
-        # Normalize appliance_type for matching
         norm_type = appliance_type.lower().replace('_', ' ')
         filtered_products = [
             p for p in catalog["products"]
             if isinstance(p.get("product_type", ""), str) and p.get("product_type", "").lower().replace('_', ' ') == norm_type
         ]
         print(f"[DEBUG] Found {len(filtered_products)} products for type '{appliance_type}' in catalog (filtered by product_type).")
-        matching_products = []
+        
+        matching_products_data = [] # Store product data along with scores
         for product in filtered_products:
             # Use retail_price as primary, fallback to price or better_home_price
-            price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
-            if product.get('retail_price') is not None:
-                print(f"[DEBUG] Using retail_price for product: {product.get('brand', '')} {product.get('title', '')} -> {product.get('retail_price')}")
-            elif product.get('price') is not None:
-                print(f"[DEBUG] Using price for product: {product.get('brand', '')} {product.get('title', '')} -> {product.get('price')}")
-            else:
-                print(f"[DEBUG] Using better_home_price for product: {product.get('brand', '')} {product.get('title', '')} -> {product.get('better_home_price')}")
+            try:
+                price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
+            except (ValueError, TypeError):
+                price = 0.0
             
             # Determine if product matches budget category and type requirements
-            product_matches = False
-            if appliance_type == 'washing_machine':
-                user_type = str(user_data['laundry'].get('washing_machine_type', '')).strip().lower()
-                # Debug print for every candidate washing machine
-                print(f"[DEBUG] Candidate washing machine: product_type='{product.get('product_type')}', type='{product.get('type')}', title='{product.get('title')}', price='{product.get('price')}', better_home_price='{product.get('better_home_price')}'")
-                # Loosen filtering: show all products where 'washing' is in product_type, type, or title
-                product_type_str = str(product.get('product_type', '')).lower()
-                type_str = str(product.get('type', '')).lower()
-                title_str = str(product.get('title', '')).lower()
-                if user_type in ['yes', '', 'washing machine'] or (
-                    'washing' in product_type_str or 'washing' in type_str or 'washing' in title_str):
-                    type_matches = True
-                    print(f"[DEBUG] Accepting washing machine for user_type='{user_type}' and product fields.")
-                else:
-                    type_matches = False
-                    print(f"[DEBUG] Skipping washing machine due to type mismatch: user_type='{user_type}', product_type='{product_type_str}', type='{type_str}', title='{title_str}'")
-                if type_matches:
-                    if target_budget_category == 'premium':
-                        product_matches = True
-                    elif target_budget_category == 'mid' and price <= ranges['mid']:
-                        product_matches = True
-                    elif target_budget_category == 'budget' and price <= ranges['budget']:
-                        product_matches = True
-            else:
-                # For other appliances, match based on budget category
-                if target_budget_category == 'premium':
-                    product_matches = True  # Accept all prices for premium category
-                elif target_budget_category == 'mid':
-                    product_matches = (price <= ranges.get('mid', float('inf')))
-                else:  # budget category
-                    product_matches = (price <= ranges.get('budget', float('inf')))
+            product_matches_budget = False
+            if target_budget_category == 'premium':
+                product_matches_budget = True
+            elif target_budget_category == 'mid':
+                product_matches_budget = (price <= ranges.get('mid', float('inf')))
+            else:  # budget category
+                product_matches_budget = (price <= ranges.get('budget', float('inf')))
             
-            # Add matching products to list
-            if product_matches:
-                matching_products.append(product)
-            else:
-                print(f"[DEBUG] Skipping product (price={price}): {product.get('brand', '')} {product.get('title', '')}")
-        
-        print(f"[DEBUG] {len(matching_products)} products matched for '{appliance_type}' after filtering.")
-        
-        # Sort matching products by price in descending order
-        matching_products.sort(key=lambda x: float(x.get('price', 0)), reverse=True)
-        
-        # Take the top 2 products
-        for product in matching_products[:2]:
-            # Create a unique key for the product group
-            product_key = f"{product.get('brand', 'UnknownBrand')}_{product.get('model', product.get('title', 'UnknownModel'))}"
-            
-            if product_key not in product_groups:
-                # Initialize product group with robust .get() usage
-                product_groups[product_key] = {
-                    'brand': product.get('brand', 'UnknownBrand'),
-                    'model': product.get('model', product.get('title', 'UnknownModel')),
-                    'price': product.get('price', 0),
-                    'features': product.get('features', []),
-                    'retail_price': product.get('retail_price', product.get('price', 0) * 1.2),
-                    'description': f"{product.get('type', '')} {product.get('capacity', '')}",
-                    'color_options': set(product.get('color_options', [])) if product.get('color_options') else set(),
-                    'color_match': False,
-                    'warranty': product.get('warranty', 'Standard warranty applies'),
-                    'in_stock': product.get('in_stock', True),
-                    'delivery_time': product.get('delivery_time', 'Contact store for details'),
-                    'url': product.get('url', 'https://betterhomeapp.com'),
-                    'relevance_score': 0,
-                    'energy_rating': product.get('energy_rating', None),
-                    'capacity': product.get('capacity', ''),
-                    'type': product.get('type', ''),
-                    'suction_power': product.get('suction_power', ''),
-                    'image_src': product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
+            # Add matching products to list if budget matches
+            if not product_matches_budget:
+                print(f"[DEBUG] Skipping product (price={price}, budget={target_budget_category}): {product.get('brand', '')} {product.get('title', '')}")
+                continue
 
-                }
+            # Calculate feature match score
+            feature_match_score = 0
+            product_features_list = product.get('features', []) # Already a list from json
+            if required_features and product_features_list:
+                print(f"[DEBUG] Checking features for {product.get('title')}: Required={required_features}, Product Features={product_features_list}")
+                for req_key, req_value in required_features.items():
+                    req_key_norm = req_key.strip().lower()
+                    found_match_for_req = False
+                    for feature_str in product_features_list:
+                        parsed_prod_feature = parse_product_feature(feature_str)
+                        if parsed_prod_feature.get('key') == req_key_norm:
+                             if compare_features(req_value, parsed_prod_feature):
+                                 feature_match_score += 5 # Significant boost for matching feature
+                                 found_match_for_req = True
+                                 break # Stop checking this product's features for this required key
+                    if not found_match_for_req:
+                         print(f"[DEBUG] No matching feature found for required key '{req_key_norm}' with value '{req_value}'")
+
+            # Calculate relevance score (existing logic)
+            relevance_score = 0
+            product_data = product.copy() # Work on a copy
+            product_data['color_match'] = False # Initialize color match flag
             
-            # Add color options and check color match
-            if product.get('color_options'):
-                product_groups[product_key]['color_options'].update(product.get('color_options', []))
+            if product_data.get('color_options'):
+                product_data['color_options'] = list(set(product_data.get('color_options', [])))
                 if room_color_theme:
                     room_colors = room_color_theme.lower().split()
-                    product_colors = [c.lower() for c in product.get('color_options', [])]
+                    product_colors = [c.lower() for c in product_data.get('color_options', [])]
                     for room_color in room_colors:
                         if any(room_color in pc for pc in product_colors):
-                            product_groups[product_key]['color_match'] = True
-                            product_groups[product_key]['relevance_score'] += 2
+                            product_data['color_match'] = True
+                            relevance_score += 2
                             break
+            else:
+                product_data['color_options'] = []
             
-            # Add points for premium features
-            features = product.get('features', [])
-            if isinstance(features, str):
-                features = [features]
-            features_str = ', '.join(features)
-            if 'BLDC' in features_str.upper():
-                product_groups[product_key]['relevance_score'] += 1
-            if 'remote' in features_str.lower():
-                product_groups[product_key]['relevance_score'] += 1
+            features_str_list = product_data.get('features', [])
+            features_str_combined = '|'.join(features_str_list)
+            if 'BLDC' in features_str_combined.upper():
+                relevance_score += 1
+            if 'remote' in features_str_combined.lower():
+                relevance_score += 1
             if target_budget_category == 'premium':
-                product_groups[product_key]['relevance_score'] += 2  # Prefer premium products
-    
-    # Convert product groups to list
-    for product in product_groups.values():
-        product['color_options'] = list(product['color_options'])
-        recommendations.append(product)
-    
-    # Sort by relevance score and price (preferring higher-priced options)
-    recommendations.sort(key=lambda x: (-x['relevance_score'], -float(x.get('price', 0))))
-    
-    return recommendations[:2]
+                relevance_score += 2
+
+            # Store product with scores
+            product_data['feature_match_score'] = feature_match_score
+            product_data['relevance_score'] = relevance_score
+            # Ensure price fields are present and numeric before adding
+            product_data['price'] = price # Store the calculated price used for budget check
+            product_data['retail_price'] = float(product.get('retail_price', price * 1.2)) # Estimate retail if missing
+            product_data['better_home_price'] = float(product.get('better_home_price', price / 1.2 if price > 0 else 0)) # Estimate BH if missing
+            
+            matching_products_data.append(product_data)
+
+        print(f"[DEBUG] {len(matching_products_data)} products matched budget for '{appliance_type}'. Now sorting...")
+
+        # Sort by feature match score, then relevance score, then price (descending)
+        matching_products_data.sort(key=lambda x: (
+            -x.get('feature_match_score', 0), 
+            -x.get('relevance_score', 0), 
+            -float(x.get('price', 0)) # Sort by the price used for budget matching
+        ))
+
+        # Group top products by model (using existing logic, but apply to sorted list)
+        # Take the top N unique models after sorting
+        final_recommendations = []
+        seen_models = set()
+        limit = 2 # Number of unique models to recommend
+        
+        for product_data in matching_products_data:
+            # Create a unique key for the product model (use title as fallback)
+            model_key = f"{product_data.get('brand', 'UnknownBrand')}_{product_data.get('title', 'UnknownModel')}"
+            
+            if model_key not in seen_models:
+                # Format the recommendation dict as needed by downstream functions
+                recommendation = {
+                    'brand': product_data.get('brand', 'UnknownBrand'),
+                    'model': product_data.get('title', 'UnknownModel'), # Use title for model name
+                    'price': product_data.get('price', 0.0),
+                    'retail_price': product_data.get('retail_price', 0.0),
+                    'better_home_price': product_data.get('better_home_price', 0.0),
+                    'features': product_data.get('features', []),
+                    'description': f"{product_data.get('type', '')} {product_data.get('capacity', '')}",
+                    'color_options': product_data.get('color_options', []),
+                    'color_match': product_data.get('color_match', False),
+                    'warranty': product_data.get('warranty', 'Standard warranty applies'),
+                    'in_stock': product_data.get('in_stock', True),
+                    'delivery_time': product_data.get('delivery_time', 'Contact store for details'),
+                    'url': product_data.get('url', 'https://betterhomeapp.com'),
+                    'relevance_score': product_data.get('relevance_score', 0),
+                    'feature_match_score': product_data.get('feature_match_score', 0),
+                    'energy_rating': product_data.get('energy_rating', None),
+                    'capacity': product_data.get('capacity', ''),
+                    'type': product_data.get('type', ''),
+                    'suction_power': product_data.get('suction_power', ''),
+                    'image_src': product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
+                }
+                
+                final_recommendations.append(recommendation)
+                seen_models.add(model_key)
+                if len(final_recommendations) >= limit:
+                    break
+                    
+        return final_recommendations
+
+    else: # No catalog loaded or no products key
+      print("[DEBUG] Product catalog not loaded or empty.")
+      return []
 
 # Function to generate final product list
 def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
