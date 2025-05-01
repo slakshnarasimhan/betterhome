@@ -24,14 +24,6 @@ def load_product_catalog() -> Dict[str, Any]:
     try:
         with open('product_catalog.json', 'r') as f:
             catalog = json.load(f)
-            print("\n[DEBUG] Loaded product_catalog.json. Top-level keys:", list(catalog.keys()))
-            if isinstance(catalog, dict):
-                for k in catalog:
-                    print(f"[DEBUG] Catalog key: {k}, #items: {len(catalog[k]) if isinstance(catalog[k], list) else 'N/A'}")
-                    # Debug statement to print image_src for each product
-                    if k == 'products':
-                        for product in catalog[k]:
-                            print(f"[DEBUG] Product image_src: {product.get('image_src', 'No image_src available')}")
             return catalog
     except FileNotFoundError:
         print("Product catalog file not found")
@@ -55,9 +47,6 @@ def analyze_user_requirements(excel_file: str):
     try:
         # Read the Excel file
         df = pd.read_excel(excel_file)
-        
-        # Debug: Print column names to identify discrepancies
-        print("Debug: Excel file columns:", df.columns.tolist())
         
         # Clean up column names by removing newlines and extra spaces
         df.columns = [col.split('\n')[0].strip() for col in df.columns]
@@ -91,7 +80,9 @@ def analyze_user_requirements(excel_file: str):
                 'stove_type': df.iloc[0]['Kitchen: Gas stove type?'],
                 'num_burners': int(df.iloc[0]['Kitchen: Number of burners?']),
                 'small_fan': df.iloc[0]['Kitchen: Do you need a small fan?'] == 'Yes',
-                'color_theme': None  # No color theme specified for kitchen
+                'color_theme': None,  # No color theme specified for kitchen
+                'refrigerator_type': df.iloc[0].get('Kitchen: Refrigerator type?', None), # Add refrigerator type
+                'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None) # Add refrigerator capacity
             },
             'master_bedroom': {
                 'ac': df.iloc[0]['Master: Air Conditioner (AC)?'] == 'Yes',
@@ -119,9 +110,6 @@ def analyze_user_requirements(excel_file: str):
         # Merge requirements into user_data
         user_data.update(requirements)
         
-        print("\nDebug: Processed user data:", user_data)
-        print("\nDebug: Processed requirements:", requirements)
-        
         return user_data
         
     except Exception as e:
@@ -147,7 +135,6 @@ def calculate_total_cost(recommendations):
             if product_type not in processed_types:
                 try:
                     prices = [float(option.get('retail_price', option.get('price', option.get('better_home_price', 0)))) for option in options if isinstance(option, dict)]
-                    print(f"[DEBUG] Calculating total cost for {product_type}: prices={prices}")
                     if prices:
                         max_price = max(prices)
                         total_cost += max_price
@@ -295,13 +282,10 @@ def compare_features(req_value_str: str, prod_feature: Dict[str, str]) -> bool:
         # Use a small tolerance for float comparison
         TOLERANCE = 1e-6
         if unit_match and abs(req_val - prod_value_num) < TOLERANCE:
-             print(f"[DEBUG] Feature Match: Req='{req_value_str}', Prod='{prod_feature['raw_value']}' -> NUMERICAL MATCH")
              return True
              
     # Fallback to case-insensitive raw string comparison (handles non-numeric values)
     match = req_value_str.strip().lower() == prod_feature.get('raw_value', '').lower()
-    if match:
-        print(f"[DEBUG] Feature Match: Req='{req_value_str}', Prod='{prod_feature['raw_value']}' -> STRING MATCH")
     return match
 
 # Function to get specific product recommendations
@@ -314,9 +298,9 @@ def get_specific_product_recommendations(
     required_features: Dict[str, str] = None  # Added parameter
 ) -> List[Dict[str, Any]]:
     """Get specific product recommendations based on appliance type, budget category, demographics, color theme, and specific features."""
+
     required_features = required_features or {} # Ensure it's a dict
     catalog = load_product_catalog()
-    print(f"\n[DEBUG] Looking for recommendations for appliance_type='{appliance_type}' with budget_category='{target_budget_category}' and required_features={required_features}")
     recommendations = []
     product_groups = {}  # Dictionary to group products by model
     
@@ -347,7 +331,6 @@ def get_specific_product_recommendations(
             p for p in catalog["products"]
             if isinstance(p.get("product_type", ""), str) and p.get("product_type", "").lower().replace('_', ' ') == norm_type
         ]
-        print(f"[DEBUG] Found {len(filtered_products)} products for type '{appliance_type}' in catalog (filtered by product_type).")
         
         matching_products_data = [] # Store product data along with scores
         for product in filtered_products:
@@ -368,14 +351,12 @@ def get_specific_product_recommendations(
             
             # Add matching products to list if budget matches
             if not product_matches_budget:
-                print(f"[DEBUG] Skipping product (price={price}, budget={target_budget_category}): {product.get('brand', '')} {product.get('title', '')}")
                 continue
 
             # Calculate feature match score
             feature_match_score = 0
             product_features_list = product.get('features', []) # Already a list from json
             if required_features and product_features_list:
-                print(f"[DEBUG] Checking features for {product.get('title')}: Required={required_features}, Product Features={product_features_list}")
                 for req_key, req_value in required_features.items():
                     req_key_norm = req_key.strip().lower()
                     found_match_for_req = False
@@ -387,7 +368,7 @@ def get_specific_product_recommendations(
                                  found_match_for_req = True
                                  break # Stop checking this product's features for this required key
                     if not found_match_for_req:
-                         print(f"[DEBUG] No matching feature found for required key '{req_key_norm}' with value '{req_value}'")
+                         pass
 
             # Calculate relevance score (existing logic)
             relevance_score = 0
@@ -425,8 +406,6 @@ def get_specific_product_recommendations(
             product_data['better_home_price'] = float(product.get('better_home_price', price / 1.2 if price > 0 else 0)) # Estimate BH if missing
             
             matching_products_data.append(product_data)
-
-        print(f"[DEBUG] {len(matching_products_data)} products matched budget for '{appliance_type}'. Now sorting...")
 
         # Sort by feature match score, then relevance score, then price (descending)
         matching_products_data.sort(key=lambda x: (
@@ -475,10 +454,44 @@ def get_specific_product_recommendations(
                 if len(final_recommendations) >= limit:
                     break
                     
+        # If no products match the budget or feature requirements, select the best available product
+        if not final_recommendations:
+            # Sort by price (ascending) and feature match score (descending) to find the best available product
+            matching_products_data.sort(key=lambda x: (
+                float(x.get('price', float('inf'))),  # Sort by price ascending
+                -x.get('feature_match_score', 0)  # Sort by feature match score descending
+            ))
+            # Take the top product if available
+            if matching_products_data:
+                # Append the formatted recommendation, not the raw product_data
+                top_product_data = matching_products_data[0]
+                recommendation = {
+                    'brand': top_product_data.get('brand', 'UnknownBrand'),
+                    'model': top_product_data.get('title', 'UnknownModel'),
+                    'price': top_product_data.get('price', 0.0),
+                    'retail_price': top_product_data.get('retail_price', 0.0),
+                    'better_home_price': top_product_data.get('better_home_price', 0.0),
+                    'features': top_product_data.get('features', []),
+                    'description': f"{top_product_data.get('type', '')} {top_product_data.get('capacity', '')}",
+                    'color_options': top_product_data.get('color_options', []),
+                    'color_match': top_product_data.get('color_match', False),
+                    'warranty': top_product_data.get('warranty', 'Standard warranty applies'),
+                    'in_stock': top_product_data.get('in_stock', True),
+                    'delivery_time': top_product_data.get('delivery_time', 'Contact store for details'),
+                    'url': top_product_data.get('url', 'https://betterhomeapp.com'),
+                    'relevance_score': top_product_data.get('relevance_score', 0),
+                    'feature_match_score': top_product_data.get('feature_match_score', 0),
+                    'energy_rating': top_product_data.get('energy_rating', None),
+                    'capacity': top_product_data.get('capacity', ''),
+                    'type': top_product_data.get('type', ''),
+                    'suction_power': top_product_data.get('suction_power', ''),
+                    'image_src': top_product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
+                }
+                final_recommendations.append(recommendation)
+
         return final_recommendations
 
     else: # No catalog loaded or no products key
-      print("[DEBUG] Product catalog not loaded or empty.")
       return []
 
 # Function to generate final product list
@@ -527,42 +540,6 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         }
     }
 
-    # Add debug statements to verify image_src
-    for room, appliances in final_list.items():
-        for appliance_type, products in appliances.items():
-            if isinstance(products, list):  # Ensure products is a list
-                for product in products:
-                    if isinstance(product, dict):  # Ensure product is a dictionary
-                        image_src = product.get('image_src', '')
-                        if not image_src or not image_src.startswith(('http://', 'https://')):
-                            print(f"[DEBUG] Invalid image URL: {image_src}")
-                            image_src = 'https://via.placeholder.com/300x300?text=No+Image+Available'  # Use a placeholder image
-                        else:
-                            print(f"[DEBUG] Valid image URL: {image_src}")
-                        # Add buy button
-                        purchase_url = product.get('url', '#')
-                        html_content = f"""
-                        <div class='product'>
-                            <img src='{image_src}' alt='Product Image'>
-                            <div class='product-details'>
-                                <div class='product-title'>{product.get('brand', 'Unknown Brand')} {product.get('model', 'Unknown Model')}</div>
-                                <div class='product-price'>Price: ₹{product.get('price', 0):,.2f}</div>
-                                <div class='product-description'>Description: {product.get('description', 'No description available')}</div>
-                                <div class='product-description'>Retail Price: ₹{product.get('retail_price', 0):,.2f}</div>
-                                <div class='product-description'>You Save: ₹{product.get('retail_price', 0) - product.get('price', 0):,.2f}</div>
-                                <div class='product-description'>Warranty: {product.get('warranty', 'Standard warranty applies')}</div>
-                                <div class='product-description'>Delivery: {product.get('delivery_time', 'Contact store for details')}</div>
-                                <div class='product-description'>Reason: {get_product_recommendation_reason(product, appliance_type, room, user_data['demographics'], user_data['total_budget'])}</div>
-                                <a href='{purchase_url}' target='_blank'>Buy Now</a>
-                            </div>
-                        </div>
-                        """
-                        print(f"[DEBUG] Generated HTML content for product: {product.get('brand', 'Unknown Brand')} {product.get('model', 'Unknown Model')}\n{html_content}")
-                    else:
-                        print(f"[DEBUG] Unexpected product type: {type(product)}")
-            else:
-                print(f"[DEBUG] Unexpected products type: {type(products)}")
-
     # Process hall requirements
     if user_data['hall'].get('ac', False):
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
@@ -577,17 +554,20 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     # Process kitchen requirements
     if user_data['kitchen'].get('chimney_width'):
         budget_category = get_budget_category(user_data['total_budget'], 'chimney')
-        recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+        required_features = {'dimensions': user_data['kitchen'].get('chimney_width')}
+        recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
         final_list['kitchen']['chimney'] = recommendations
     
     if user_data['kitchen'].get('refrigerator_capacity'):
         budget_category = get_budget_category(user_data['total_budget'], 'refrigerator')
-        recommendations = get_specific_product_recommendations('refrigerator', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+        required_features = {'capacity': user_data['kitchen'].get('refrigerator_capacity')}
+        recommendations = get_specific_product_recommendations('refrigerator', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
         final_list['kitchen']['refrigerator'] = recommendations
     
     if user_data['kitchen'].get('gas_stove_type'):
         budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
-        recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+        required_features = {'type': user_data['kitchen'].get('gas_stove_type')}
+        recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
         final_list['kitchen']['gas_stove'] = recommendations
     
     if user_data['kitchen'].get('small_fan', False):
@@ -608,12 +588,14 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     # Process master bedroom bathroom requirements
     if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('water_heater_type'):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
-        recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        required_features = {'type': user_data['master_bedroom']['bathroom'].get('water_heater_type')}
+        recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
         final_list['master_bedroom']['bathroom']['water_heater'] = recommendations
     
     if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'):
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
-        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        required_features = {'dimensions': user_data['master_bedroom']['bathroom'].get('exhaust_fan_size')}
+        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
         final_list['master_bedroom']['bathroom']['exhaust_fan'] = recommendations
     
     # Process bedroom 2 requirements
@@ -629,22 +611,21 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     # Process bedroom 2 bathroom requirements
     if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('water_heater_type'):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
-        recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        required_features = {'type': user_data['bedroom_2']['bathroom'].get('water_heater_type')}
+        recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
         final_list['bedroom_2']['bathroom']['water_heater'] = recommendations
     
     if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
-        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        required_features = {'dimensions': user_data['bedroom_2']['bathroom'].get('exhaust_fan_size')}
+        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
         final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
     
     # Process laundry requirements
-    print("\nDebug: Laundry data:", user_data['laundry'])
     if str(user_data['laundry'].get('washing_machine_type', '')).strip().lower() == 'yes':
-        print("\nDebug: Found washing machine type:", user_data['laundry']['washing_machine_type'])
         budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
-        print("\nDebug: Budget category:", budget_category)
-        recommendations = get_specific_product_recommendations('washing_machine', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data)
-        print("\nDebug: Washing machine recommendations:", recommendations)
+        required_features = {'capacity': estimate_washing_machine_capacity(user_data['demographics'])}
+        recommendations = get_specific_product_recommendations('washing_machine', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data, required_features)
         final_list['laundry']['washing_machine'] = recommendations
     
     if user_data['laundry'].get('dryer_type', '').lower() == 'yes':
@@ -687,9 +668,6 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
         # Read the Excel file
         df = pd.read_excel(excel_filename)
         
-        # Debug: Print column names to identify discrepancies
-        print("Debug: Excel file columns:", df.columns.tolist())
-        
         # Clean up column names by removing newlines and extra spaces
         df.columns = [col.split('\n')[0].strip() for col in df.columns]
         row = df.iloc[0]
@@ -730,9 +708,10 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
         return None
 
 # Function to get product recommendation reason
-def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float) -> str:
-    """Generate a personalized recommendation reason for a product"""
+def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float, required_features: Dict[str, str] = None) -> str:
+    """Generate a personalized recommendation reason for a product, highlighting matching features."""
     reasons = []
+    required_features = required_features or {}
     
     # Budget consideration
     budget_saved = product.get('retail_price', 0) - product.get('price', 0)
@@ -746,6 +725,18 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     # Energy efficiency
     if product.get('energy_rating') in ['5 Star', '4 Star']:
         reasons.append(f"High energy efficiency ({product['energy_rating']}) helps reduce electricity bills")
+
+    # Highlight matching features
+    matching_features = []
+    product_features_list = product.get('features', [])
+    for req_key, req_value in required_features.items():
+        for feature_str in product_features_list:
+            parsed_prod_feature = parse_product_feature(feature_str)
+            if parsed_prod_feature.get('key') == req_key and compare_features(req_value, parsed_prod_feature):
+                matching_features.append(f"{parsed_prod_feature['key'].capitalize()}: {parsed_prod_feature['raw_value']}")
+                break
+    if matching_features:
+        reasons.append("Key features that match your requirements: " + ", ".join(matching_features))
 
     # Room and appliance specific reasons
     if appliance_type == 'ceiling_fan':
@@ -803,7 +794,7 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     return " • " + "\n • ".join(reasons)
 
 # Function to create a styled PDF
-def create_styled_pdf(filename, user_data, recommendations):
+def create_styled_pdf(filename, user_data, recommendations, required_features: Dict[str, str] = None):
     doc = SimpleDocTemplate(filename, pagesize=letter)
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
@@ -864,19 +855,12 @@ def create_styled_pdf(filename, user_data, recommendations):
                             brand = item.get('brand', 'Unknown Brand')
                             model = item.get('model', 'Unknown Model')
                             price = float(item.get('retail_price', item.get('price', item.get('better_home_price', 0))))
-                            if item.get('retail_price') is not None:
-                                print(f"[DEBUG] Using retail_price for product: {brand} {model} -> {item.get('retail_price')}")
-                            elif item.get('price') is not None:
-                                print(f"[DEBUG] Using price for product: {brand} {model} -> {item.get('price')}")
-                            else:
-                                print(f"[DEBUG] Using better_home_price for product: {brand} {model} -> {item.get('better_home_price')}")
                             description = item.get('description', 'No description available')
                             retail_price = price * 1.2  # 20% markup for retail price
                             savings = retail_price - price
                             
                             # Correctly access the nested URL field
                             purchase_url = item.get('url', 'https://betterhomeapp.com')
-                            print(f"Debug: Using purchase link for {brand} {model}: {purchase_url}")
                             product_name = f"<link href='{purchase_url}'>{brand} {model}</link>"
                             story.append(Paragraph(product_name, styles['ProductTitle']))
                             
@@ -886,7 +870,8 @@ def create_styled_pdf(filename, user_data, recommendations):
                                 appliance_type, 
                                 room, 
                                 user_data['demographics'],
-                                user_data['total_budget']
+                                user_data['total_budget'],
+                                required_features  # Pass the correct dictionary
                             )
                             
                             details = f"""
@@ -931,7 +916,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         
         f.write("BUDGET AND FAMILY SIZE\n")
         f.write("=====================\n")
-        f.write(f"Total Budget: ₹{user_data['total_budget']:,.2f}\n")
+        f.write(f"Total Budget: INR{user_data['total_budget']:,.2f}\n")
         f.write(f"Family Size: {sum(user_data['demographics'].values())} members\n\n")
         
         f.write("ROOM-WISE RECOMMENDATIONS\n")
@@ -958,12 +943,6 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                 brand = item.get('brand', 'Unknown Brand')
                                 model = item.get('model', 'Unknown Model')
                                 price = float(item.get('retail_price', item.get('price', item.get('better_home_price', 0))))
-                                if item.get('retail_price') is not None:
-                                    print(f"[DEBUG] Using retail_price for product: {brand} {model} -> {item.get('retail_price')}")
-                                elif item.get('price') is not None:
-                                    print(f"[DEBUG] Using price for product: {brand} {model} -> {item.get('price')}")
-                                else:
-                                    print(f"[DEBUG] Using better_home_price for product: {brand} {model} -> {item.get('better_home_price')}")
                                 description = item.get('description', 'No description available')
                                 retail_price = float(item.get('retail_price', price * 1.2))
                                 savings = retail_price - price
@@ -971,7 +950,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                 delivery_time = item.get('delivery_time', 'Contact store for details')
                                 
                                 f.write(f"{appliance_type.replace('_', ' ').title()}: {brand} {model}\n")
-                                f.write(f"Price: ₹{price:,.2f} (Retail: ₹{retail_price:,.2f})\n")
+                                f.write(f"Price: INR{price:,.2f} (Retail: INR{retail_price:,.2f})\n")
                                 f.write(f"Description: {description}\n")
                                 
                                 if item.get('color_options'):
@@ -982,7 +961,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                 
                                 f.write("Why we recommend this:\n")
                                 if savings > 0:
-                                    f.write(f" • Offers excellent value with savings of ₹{savings:,.2f} compared to retail price\n")
+                                    f.write(f" • Offers excellent value with savings of INR{savings:,.2f} compared to retail price\n")
                                 
                                 if item.get('color_match'):
                                     f.write(" • Color options complement your room's color theme\n")
@@ -1003,8 +982,8 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         # Add budget summary
         f.write("\nBUDGET SUMMARY\n")
         f.write("=============\n")
-        f.write(f"Total Cost of Recommended Products: ₹{total_cost:,.2f}\n")
-        f.write(f"Your Budget: ₹{user_data['total_budget']:,.2f}\n")
+        f.write(f"Total Cost of Recommended Products: INR{total_cost:,.2f}\n")
+        f.write(f"Your Budget: INR{user_data['total_budget']:,.2f}\n")
         budget_utilization = (total_cost / user_data['total_budget']) * 100
         f.write(f"Budget Utilization: {budget_utilization:.1f}%\n")
         if budget_utilization <= 100:
@@ -1054,7 +1033,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <p><strong>Mobile:</strong> {mobile}</p>
         <p><strong>Email:</strong> {email}</p>
         <p><strong>Address:</strong> {address}</p>
-        <p><strong>Total Budget:</strong> ₹{total_budget:,.2f}</p>
+        <p><strong>Total Budget:</strong> INR{total_budget:,.2f}</p>
         <p><strong>Family Size:</strong> {family_size} members</p>
         <hr>
     """.format(
@@ -1071,8 +1050,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     budget_utilization = (total_cost / user_data['total_budget']) * 100
     summary = f"""
     <h2>Budget Summary</h2>
-    <p>Total Cost of Recommended Products: ₹{total_cost:,.2f}</p>
-    <p>Your Budget: ₹{user_data['total_budget']:,.2f}</p>
+    <p>Total Cost of Recommended Products: INR{total_cost:,.2f}</p>
+    <p>Your Budget: INR{user_data['total_budget']:,.2f}</p>
     <p>Budget Utilization: {budget_utilization:.1f}%</p>
     """
     if budget_utilization <= 100:
@@ -1089,23 +1068,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         for appliance_type, products in appliances.items():
             for product in products:
                 if not isinstance(product, dict):
-                    print(f"[DEBUG] Unexpected product type: {type(product)}")
+                    # print(f"[DEBUG] Unexpected product type: {type(product)}")
                     continue
-                image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
-                description = product.get('description', 'No description available')
-                # Debug statements for image_src and description
-                print(f"[DEBUG] Processing image_src: {image_src}")
-                print(f"[DEBUG] Product description: {description}")
-
-                # Extract brand and model from the product dictionary
+                # Ensure brand and model are defined before use
                 brand = product.get('brand', 'Unknown Brand')
                 model = product.get('model', product.get('title', 'Unknown Model'))
-
-                # Debug statements to check values
-                print(f"[DEBUG] Processing product: {brand} {model}")
-                print(f"[DEBUG] Image src: {image_src}")
-                print(f"[DEBUG] Price: {product.get('retail_price', product.get('price', product.get('better_home_price', 0)))}")
-
+                image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
+                description = product.get('description', 'No description available')
                 # Include all relevant information
                 price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
                 retail_price = price * 1.2  # 20% markup for retail price
@@ -1117,7 +1086,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     appliance_type, 
                     room, 
                     user_data['demographics'],
-                    user_data['total_budget']
+                    user_data['total_budget'],
+                    required_features  # Pass the correct dictionary
                 )
                 purchase_url = product.get('url', '#')  # Default to '#' if URL is not available
                 html_content += f"""
@@ -1125,10 +1095,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <img src='{image_src}' alt='Product Image'>
                     <div class='product-details'>
                         <div class='product-title'>{brand} {model}</div>
-                        <div class='product-price'>Price: ₹{price:,.2f}</div>
+                        <div class='product-price'>Price: INR{price:,.2f}</div>
                         <div class='product-description'>Description: {description}</div>
-                        <div class='product-description'>Retail Price: ₹{retail_price:,.2f}</div>
-                        <div class='product-description'>You Save: ₹{savings:,.2f}</div>
+                        <div class='product-description'>Retail Price: INR{retail_price:,.2f}</div>
+                        <div class='product-description'>You Save: INR{savings:,.2f}</div>
                         <div class='product-description'>Warranty: {warranty}</div>
                         <div class='product-description'>Delivery: {delivery_time}</div>
                         <div class='product-description'>Reason: {reason}</div>
@@ -1180,6 +1150,15 @@ def convert_csv_to_json(csv_file: str, json_file: str):
         json.dump({'products': products}, f, indent=4)
     print(f"Data from {csv_file} converted and saved to {json_file}")
 
+def estimate_washing_machine_capacity(demographics: Dict[str, int]) -> float:
+    """Estimate the required washing machine capacity based on household demographics."""
+    adults_capacity = demographics.get('adults', 0) * 1.5
+    kids_capacity = demographics.get('kids', 0) * 1.0
+    elders_capacity = demographics.get('elders', 0) * 1.2
+    total_capacity = adults_capacity + kids_capacity + elders_capacity
+    # print(f"[DEBUG] Estimated washing machine capacity: {total_capacity} kg for demographics: {demographics}")
+    return total_capacity
+
 # Main function
 if __name__ == "__main__":
     # Check if the Excel filename is provided as an argument
@@ -1195,16 +1174,14 @@ if __name__ == "__main__":
     
     # Generate initial recommendations
     final_list = generate_final_product_list(user_data)
-    print("\n[DEBUG] Final recommendations structure:")
-    import pprint
-    pprint.pprint(final_list)
     
     # Generate output files with the correct suffixes
     output_base_path = excel_filename.replace('.xlsx', '')
     pdf_filename = f"{output_base_path}.pdf"
     txt_filename = f"{output_base_path}.txt"
     html_filename = f"{output_base_path}.html"
-    create_styled_pdf(pdf_filename, user_data, final_list)
+    required_features = {}  # Initialize as an empty dictionary or populate as needed
+    create_styled_pdf(pdf_filename, user_data, final_list, required_features)
     generate_text_file(user_data, final_list, txt_filename)
     generate_html_file(user_data, final_list, html_filename)
     
