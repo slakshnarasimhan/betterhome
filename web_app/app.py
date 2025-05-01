@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory, Markup
 import pandas as pd
 import subprocess
 from datetime import datetime
@@ -93,6 +93,15 @@ def submit():
         # Read the HTML file content
         with open(html_filename, 'r', encoding='utf-8') as f:
             html_content = f.read()
+            
+        # Extract just the body content from the HTML
+        import re
+        body_match = re.search(r'<body.*?>(.*?)</body>', html_content, re.DOTALL)
+        if body_match:
+            html_content = body_match.group(1)
+        
+        # Convert the HTML content to a Markup object to prevent escaping
+        html_content = Markup(html_content)
         
         return render_template('results.html', 
                              html_content=html_content,
