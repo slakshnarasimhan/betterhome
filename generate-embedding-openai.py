@@ -6,6 +6,7 @@ from tqdm import tqdm
 import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 import faiss
+from typing import Dict, List
 
 # ==========================
 # Configuration
@@ -29,6 +30,17 @@ def load_product_catalog(file_path):
     print(f"Successfully loaded product catalog with {len(df)} entries.")
     df['Better Home Price'] = pd.to_numeric(df['Better Home Price'], errors='coerce')
     df['Retail Price'] = pd.to_numeric(df['Retail Price'], errors='coerce')
+    # Ensure 'Features' is included
+    if 'Features (product.metafields.custom.features)' in df.columns:
+        df.rename(columns={'Features (product.metafields.custom.features)': 'Features'}, inplace=True)
+
+    # Fill missing 'Features' for rows with the same 'Handle'
+    if 'Handle' in df.columns and 'Features' in df.columns:
+        for handle, group in df.groupby('Handle'):
+            if group['Features'].isnull().any():
+                filled_value = group['Features'].dropna().iloc[0] if not group['Features'].dropna().empty else 'Not Available'
+                df.loc[df['Handle'] == handle, 'Features'] = df.loc[df['Handle'] == handle, 'Features'].fillna(filled_value)
+
     return df
 
 # ==========================
@@ -84,11 +96,22 @@ def prepare_entries(df):
 # ==========================
 # Step 3: Save Product Catalog
 # ==========================
+def parse_features(features_str: str) -> List[str]:
+    """Convert features string into a list of features."""
+    return [feature.strip() for feature in features_str.split(',') if feature.strip()]
+
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     catalog = []
     for _, row in df.iterrows():
-        # Debug statement to print Features data from CSV
-        print(f"[DEBUG] Features from CSV: {row.get('Features', 'Not Available')}")
+        # Debug: Print 'Features' field before parsing
+        print(f"[DEBUG] Raw Features: {row.get('Features', 'Not Available')}")
+
+        # Parse features
+        parsed_features = parse_features(row.get('Features', ''))
+
+        # Debug: Print parsed features
+        print(f"[DEBUG] Parsed Features: {parsed_features}")
+
         product = {
             'product_type': row.get('Product Type', 'Not Available'),
             'brand': row.get('Brand', 'Not Available'),
@@ -96,7 +119,7 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             'better_home_price': row.get('Better Home Price', 'Not Available'),
             'retail_price': row.get('Retail Price', 'Not Available'),
             'warranty': row.get('Warranty', 'Not Available'),
-            'features': row.get('Features', 'Not Available'),
+            'features': parsed_features,  # Use parsed features
             'description': row.get('Description', 'Not Available'),
             'url': row.get('url', 'Not Available'),
             'image_src': row.get('Image Src', 'Not Available')
@@ -104,7 +127,6 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
         # Debug statement to print Features data before writing to JSON
         print(f"[DEBUG] Features to JSON: {product['features']}")
         catalog.append(product)
-    
     with open(file_path, 'w') as f:
         json.dump({'products': catalog}, f, indent=2)
     print(f"Product catalog saved successfully to {file_path}.")
