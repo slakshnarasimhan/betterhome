@@ -73,7 +73,8 @@ def analyze_user_requirements(excel_file: str):
             'hall': {
                 'fans': int(df.iloc[0]["Hall: Fan(s)?"]),
                 'ac': df.iloc[0]["Hall: Air Conditioner (AC)?"] == 'Yes',
-                'color_theme': df.iloc[0]['Hall: Colour theme?']
+                'color_theme': df.iloc[0]['Hall: Colour theme?'],
+                'size_sqft': float(df.iloc[0].get('Hall: What is the square feet ?', 150.0))  # Updated column name
             },
             'kitchen': {
                 'chimney_width': df.iloc[0]['Kitchen: Chimney width?'],
@@ -82,7 +83,8 @@ def analyze_user_requirements(excel_file: str):
                 'small_fan': df.iloc[0]['Kitchen: Do you need a small fan?'] == 'Yes',
                 'color_theme': None,  # No color theme specified for kitchen
                 'refrigerator_type': df.iloc[0].get('Kitchen: Refrigerator type?', None), # Add refrigerator type
-                'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None) # Add refrigerator capacity
+                'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None), # Add refrigerator capacity
+                'size_sqft': float(df.iloc[0].get('Kitchen: Size (square feet)', 100.0))  # Default to 100 sq ft if not specified
             },
             'master_bedroom': {
                 'ac': df.iloc[0]['Master: Air Conditioner (AC)?'] == 'Yes',
@@ -90,7 +92,8 @@ def analyze_user_requirements(excel_file: str):
                     'water_heater_type': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?']
                 },
-                'color_theme': df.iloc[0]['Master: What is the colour theme?']
+                'color_theme': df.iloc[0]['Master: What is the colour theme?'],
+                'size_sqft': float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?', 140.0))  # Updated column name
             },
             'bedroom_2': {
                 'ac': df.iloc[0]['Bedroom 2: Air Conditioner (AC)?'] == 'Yes',
@@ -98,12 +101,14 @@ def analyze_user_requirements(excel_file: str):
                     'water_heater_type': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?']
                 },
-                'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?']
+                'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
+                'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
             },
             'laundry': {
                 'washing_machine_type': df.iloc[0]['Laundry: Washing Machine?'],
                 'dryer_type': df.iloc[0]['Laundry: Dryer?'],
-                'color_theme': None  # No color theme specified for laundry
+                'color_theme': None,  # No color theme specified for laundry
+                'size_sqft': float(df.iloc[0].get('Laundry: Size (square feet)', 50.0))  # Default to 50 sq ft if not specified
             }
         }
         
@@ -295,7 +300,8 @@ def get_specific_product_recommendations(
     demographics: Dict[str, int], 
     room_color_theme: str = None, 
     user_data: Dict[str, Any] = None,
-    required_features: Dict[str, str] = None  # Added parameter
+    required_features: Dict[str, str] = None,  # Added parameter
+    room: str = None  # Add room parameter
 ) -> List[Dict[str, Any]]:
     """Get specific product recommendations based on appliance type, budget category, demographics, color theme, and specific features."""
 
@@ -420,6 +426,32 @@ def get_specific_product_recommendations(
             if target_budget_category == 'premium':
                 relevance_score += 2
 
+            # Prioritize sound level for bedrooms and elder rooms
+            if appliance_type == 'ac' and room in ['master_bedroom', 'bedroom_2']:
+                sound_level = None
+                for feature in product_features_list:
+                    if 'sound level' in feature.lower():
+                        match = re.search(r'(\d+\.?\d*)\s*dB', feature)
+                        if match:
+                            sound_level = float(match.group(1))
+                            break
+                if sound_level is not None:
+                    # Lower sound level is better
+                    relevance_score += max(0, 10 - sound_level / 10)  # Example scoring
+
+            # Prioritize power consumption for hall
+            if appliance_type == 'ac' and room == 'hall':
+                power_consumption = None
+                for feature in product_features_list:
+                    if 'power consumption' in feature.lower():
+                        match = re.search(r'(\d+\.?\d*)\s*W', feature)
+                        if match:
+                            power_consumption = float(match.group(1))
+                            break
+                if power_consumption is not None:
+                    # Lower power consumption is better
+                    relevance_score += max(0, 10 - power_consumption / 100)  # Example scoring
+
             # Store product with scores
             product_data['feature_match_score'] = feature_match_score
             product_data['relevance_score'] = relevance_score
@@ -429,6 +461,9 @@ def get_specific_product_recommendations(
             product_data['better_home_price'] = float(product.get('better_home_price', price / 1.2 if price > 0 else 0)) # Estimate BH if missing
             
             matching_products_data.append(product_data)
+
+        # Track unique combinations of brand and tonnage (or other relevant features)
+        unique_combinations = set()
 
         # Sort by feature match score, then relevance score, then price (descending)
         matching_products_data.sort(key=lambda x: (
@@ -447,7 +482,10 @@ def get_specific_product_recommendations(
             # Create a unique key for the product model (use title as fallback)
             model_key = f"{product_data.get('brand', 'UnknownBrand')}_{product_data.get('title', 'UnknownModel')}"
             
-            if model_key not in seen_models:
+            # Create a unique key for brand and tonnage
+            brand_tonnage_key = (product_data.get('brand', 'UnknownBrand'), product_data.get('capacity', ''))
+            
+            if model_key not in seen_models and brand_tonnage_key not in unique_combinations:
                 # Format the recommendation dict as needed by downstream functions
                 recommendation = {
                     'brand': product_data.get('brand', 'UnknownBrand'),
@@ -567,7 +605,12 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['hall'].get('ac', False):
         print(f"[DEBUG] Hall AC requirement: {user_data['hall'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
-        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data)
+        # Override the hall size to 200 sq ft for proper AC sizing, regardless of what was entered
+        hall_size = 200.0  # Force hall size to 200 sq ft
+        recommended_tonnage = determine_ac_tonnage(hall_size, 'hall')  # Pass 'hall' as room type for special handling
+        print(f"[DEBUG] Hall AC tonnage recommendation: {recommended_tonnage} Ton for {hall_size} sq ft (always using 2 Ton for hall)")
+        required_features = {'tonnage': f"{recommended_tonnage} Ton"}
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data, required_features)
         final_list['hall']['ac'] = recommendations
     
     if user_data['hall'].get('fans'):
@@ -603,7 +646,12 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['master_bedroom'].get('ac', False):
         print(f"[DEBUG] Master Bedroom AC requirement: {user_data['master_bedroom'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
-        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        # Calculate the recommended AC tonnage based on room size
+        master_size = user_data['master_bedroom'].get('size_sqft', 140.0)  # Default to 140 sq ft if not specified
+        recommended_tonnage = determine_ac_tonnage(master_size, 'master_bedroom')
+        print(f"[DEBUG] Master bedroom AC tonnage recommendation: {recommended_tonnage} Ton for {master_size} sq ft")
+        required_features = {'tonnage': f"{recommended_tonnage} Ton"}
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
         final_list['master_bedroom']['ac'] = recommendations
     
     budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
@@ -627,7 +675,12 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['bedroom_2'].get('ac', False):
         print(f"[DEBUG] Bedroom 2 AC requirement: {user_data['bedroom_2'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
-        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        # Calculate the recommended AC tonnage based on room size
+        bedroom2_size = user_data['bedroom_2'].get('size_sqft', 120.0)  # Default to 120 sq ft if not specified
+        recommended_tonnage = determine_ac_tonnage(bedroom2_size, 'bedroom_2')
+        print(f"[DEBUG] Bedroom 2 AC tonnage recommendation: {recommended_tonnage} Ton for {bedroom2_size} sq ft")
+        required_features = {'tonnage': f"{recommended_tonnage} Ton"}
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
         final_list['bedroom_2']['ac'] = recommendations
     
     budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
@@ -664,26 +717,52 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
     """Generate a description for each room based on user requirements"""
     if room == 'hall':
-        return f"A welcoming space with {user_data['hall'].get('fans', 'no')} fan(s) and {'an AC' if user_data['hall'].get('ac', False) else 'no AC'}, " \
+        room_size = user_data['hall'].get('size_sqft', 150.0)
+        ac_info = ""
+        if user_data['hall'].get('ac', False):
+            recommended_tonnage = determine_ac_tonnage(room_size, 'hall')
+            ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
+        else:
+            ac_info = "no AC"
+            
+        return f"A welcoming space of approximately {room_size} sq ft with {user_data['hall'].get('fans', 'no')} fan(s) and {ac_info}, " \
                f"complemented by a {user_data['hall'].get('color_theme', 'neutral')} color theme."
     
     elif room == 'kitchen':
-        return f"A functional kitchen with a {user_data['kitchen'].get('chimney_width', 'standard')} chimney, " \
+        room_size = user_data['kitchen'].get('size_sqft', 100.0)
+        return f"A functional kitchen of {room_size} sq ft with a {user_data['kitchen'].get('chimney_width', 'standard')} chimney, " \
                f"{user_data['kitchen'].get('stove_type', 'standard')} with {user_data['kitchen'].get('num_burners', '4')} burners, " \
                f"and {'a small fan' if user_data['kitchen'].get('small_fan', False) else 'no fan'}."
     
     elif room == 'master_bedroom':
-        return f"Master bedroom with {user_data['master_bedroom'].get('color_theme', 'neutral')} theme, " \
-               f"{'an AC' if user_data['master_bedroom'].get('ac', False) else 'no AC'}, " \
+        room_size = user_data['master_bedroom'].get('size_sqft', 140.0)
+        ac_info = ""
+        if user_data['master_bedroom'].get('ac', False):
+            recommended_tonnage = determine_ac_tonnage(room_size, 'master_bedroom')
+            ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
+        else:
+            ac_info = "no AC"
+            
+        return f"Master bedroom of {room_size} sq ft with {user_data['master_bedroom'].get('color_theme', 'neutral')} theme, " \
+               f"{ac_info}, " \
                f"and a bathroom equipped with {user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
     
     elif room == 'bedroom_2':
-        return f"Second bedroom with {user_data['bedroom_2'].get('color_theme', 'neutral')} theme, " \
-               f"{'an AC' if user_data['bedroom_2'].get('ac', False) else 'no AC'}, " \
+        room_size = user_data['bedroom_2'].get('size_sqft', 120.0)
+        ac_info = ""
+        if user_data['bedroom_2'].get('ac', False):
+            recommended_tonnage = determine_ac_tonnage(room_size, 'bedroom_2')
+            ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
+        else:
+            ac_info = "no AC"
+            
+        return f"Second bedroom of {room_size} sq ft with {user_data['bedroom_2'].get('color_theme', 'neutral')} theme, " \
+               f"{ac_info}, " \
                f"and a bathroom equipped with {user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
     
     elif room == 'laundry':
-        return f"Laundry area equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine" \
+        room_size = user_data['laundry'].get('size_sqft', 50.0)
+        return f"Laundry area of {room_size} sq ft equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine" \
                f"{' and a dryer' if user_data['laundry'].get('dryer_type', '').lower() == 'yes' else ''}."
     
     return ""
@@ -770,6 +849,56 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
             reasons.append("BLDC motor technology ensures high energy efficiency and silent operation - perfect for Chennai's climate")
         if room == 'hall':
             reasons.append("Ideal for your hall, providing effective air circulation in the common area")
+    
+    elif appliance_type == 'ac':
+        # Add AC tonnage recommendation based on room size
+        room_size = 0
+        room_type = None
+        if room == 'hall':
+            room_size = user_data['hall'].get('size_sqft', 150.0)
+            room_type = 'hall'
+        elif room == 'master_bedroom':
+            room_size = user_data['master_bedroom'].get('size_sqft', 140.0)
+            room_type = 'master_bedroom'
+        elif room == 'bedroom_2':
+            room_size = user_data['bedroom_2'].get('size_sqft', 120.0)
+            room_type = 'bedroom_2'
+        
+        if room_size > 0:
+            recommended_tonnage = determine_ac_tonnage(room_size, room_type)
+            if room_type == 'hall':
+                reasons.append(f"For your hall of {room_size} sq ft, we recommend at least a {recommended_tonnage} Ton AC for effective cooling")
+            else:
+                reasons.append(f"Based on your {room} size of {room_size} sq ft, a {recommended_tonnage} Ton AC is recommended for optimal cooling")
+        
+        # Check if the AC tonnage matches the recommended tonnage
+        product_tonnage = None
+        for feature in product.get('features', []):
+            if 'ton' in feature.lower():
+                # Try to extract tonnage from feature
+                tonnage_match = re.search(r'(\d+\.?\d*)\s*ton', feature.lower())
+                if tonnage_match:
+                    product_tonnage = float(tonnage_match.group(1))
+                    break
+        
+        if product_tonnage is not None and room_type == 'hall' and product_tonnage >= 1.5:
+            reasons.append(f"This {product_tonnage} Ton AC meets our minimum recommendation of 1.5 Ton for hall areas")
+        elif product_tonnage is not None and room_size > 0:
+            if abs(product_tonnage - recommended_tonnage) <= 0.25:  # Within 0.25 tons of recommendation
+                reasons.append(f"This {product_tonnage} Ton AC closely matches our recommendation for your {room} size")
+            elif product_tonnage > recommended_tonnage:
+                reasons.append(f"This {product_tonnage} Ton AC provides extra cooling capacity for your {room} size")
+            else:
+                reasons.append(f"This AC's tonnage is slightly below our recommendation, but may be adequate for energy efficiency")
+        
+        # Add inverter technology benefit if mentioned in features
+        if any('inverter' in feature.lower() for feature in product.get('features', [])):
+            reasons.append("Inverter technology provides energy efficiency and consistent cooling")
+        
+        # Add star rating benefit if available
+        energy_rating = product.get('energy_rating')
+        if energy_rating:
+            reasons.append(f"{energy_rating} energy rating helps reduce electricity consumption")
     
     elif appliance_type == 'bathroom_exhaust':
         if demographics.get('elders', 0) > 0 and 'humidity sensor' in [f.lower() for f in product.get('features', [])]:
@@ -1038,120 +1167,551 @@ def download_image(image_url: str, save_dir: str) -> str:
 # Function to generate an HTML file with recommendations
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """Generate an HTML file with user information and product recommendations."""
+    # Check if logo exists
+    logo_path = "better_home_logo.png"
+    logo_exists = os.path.exists(logo_path)
+    
     html_content = """
-    <html>
+    <!DOCTYPE html>
+    <html lang="en">
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>BetterHome Product Recommendations</title>
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; }}
-            h1, h2 {{ color: #2c3e50; }}
-            .product {{ border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; }}
-            .product img {{ max-width: 100px; float: left; margin-right: 10px; }}
-            .product-details {{ overflow: hidden; }}
-            .product-title {{ font-size: 18px; font-weight: bold; }}
-            .product-price {{ color: #e74c3c; }}
-            .product-description {{ font-size: 14px; }}
-            .room-description {{ font-style: italic; margin-bottom: 15px; color: #555; }} /* Style for room description */
-            .product img:hover {{ /* Add hover effect for images */
-                transform: scale(1.5); /* Zoom in slightly */
-                transition: transform 0.3s ease; /* Smooth transition */
-            }}
+            /* Modern typography and base styles */
+            body {
+                font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                line-height: 1.6;
+                color: #333;
+                background-color: #f9f9f9;
+            }
+            
+            .container {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 30px;
+            }
+            
+            header {
+                text-align: center;
+                margin-bottom: 40px;
+                border-bottom: 1px solid #eaeaea;
+                padding-bottom: 30px;
+            }
+            
+            .logo {
+                max-width: 200px;
+                margin-bottom: 15px;
+            }
+            
+            h1 {
+                color: #2c3e50;
+                margin-top: 0;
+                font-weight: 300;
+                font-size: 32px;
+                margin-bottom: 10px;
+            }
+            
+            h2 {
+                color: #2980b9;
+                font-weight: 400;
+                margin-top: 40px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #eaeaea;
+                font-size: 24px;
+            }
+            
+            .client-info {
+                background-color: #fff;
+                padding: 25px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                margin-bottom: 40px;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+            }
+            
+            .client-info-item {
+                flex: 0 0 48%;
+                margin-bottom: 15px;
+            }
+            
+            .client-info-label {
+                color: #7f8c8d;
+                font-size: 14px;
+                margin-bottom: 3px;
+            }
+            
+            .client-info-value {
+                font-size: 16px;
+                font-weight: 500;
+            }
+            
+            .budget-summary {
+                background-color: #f1f9ff;
+                padding: 25px;
+                border-radius: 8px;
+                margin: 30px 0;
+                border-left: 4px solid #3498db;
+            }
+            
+            .budget-summary h2 {
+                margin-top: 0;
+                border-bottom: none;
+                color: #2c3e50;
+            }
+            
+            .budget-info {
+                display: flex;
+                flex-wrap: wrap;
+                margin-top: 15px;
+            }
+            
+            .budget-item {
+                flex: 1;
+                min-width: 200px;
+                padding: 10px 15px;
+                margin: 5px;
+                background-color: white;
+                border-radius: 6px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .budget-item-label {
+                color: #7f8c8d;
+                font-size: 14px;
+            }
+            
+            .budget-item-value {
+                font-size: 18px;
+                font-weight: 500;
+                color: #2c3e50;
+                margin-top: 5px;
+            }
+            
+            .budget-status {
+                margin-top: 20px;
+                padding: 10px 15px;
+                border-radius: 4px;
+                font-weight: 500;
+            }
+            
+            .budget-status.good {
+                background-color: #e8f6e9;
+                color: #27ae60;
+            }
+            
+            .budget-status.warning {
+                background-color: #fef5e7;
+                color: #e67e22;
+            }
+            
+            .room-section {
+                margin-bottom: 50px;
+            }
+            
+            .room-description {
+                font-style: italic;
+                margin: 0 0 25px 0;
+                color: #555;
+                background-color: #fff;
+                padding: 15px 20px;
+                border-radius: 6px;
+                border-left: 4px solid #ddd;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            }
+            
+            .products-grid {
+                display: flex;
+                flex-wrap: wrap;
+                margin: 0 -15px;
+            }
+            
+            .product-card {
+                flex: 0 0 calc(50% - 30px);
+                margin: 15px;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                overflow: hidden;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            
+            .product-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            }
+            
+            .product-image-container {
+                padding: 20px;
+                background-color: #fafafa;
+                text-align: center;
+                border-bottom: 1px solid #eee;
+                height: 200px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                position: relative;
+            }
+            
+            .product-image {
+                max-width: 100%;
+                max-height: 180px;
+                transition: transform 0.3s ease;
+            }
+            
+            .product-image:hover {
+                transform: scale(1.15);
+            }
+            
+            .product-details {
+                padding: 20px;
+            }
+            
+            .product-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #2c3e50;
+                margin-bottom: 10px;
+            }
+            
+            .product-type {
+                display: inline-block;
+                font-size: 12px;
+                font-weight: 500;
+                color: #fff;
+                background-color: #3498db;
+                padding: 3px 8px;
+                border-radius: 4px;
+                margin-bottom: 10px;
+            }
+            
+            .price-container {
+                display: flex;
+                align-items: center;
+                margin: 15px 0;
+            }
+            
+            .current-price {
+                font-size: 22px;
+                font-weight: 700;
+                color: #e74c3c;
+            }
+            
+            .retail-price {
+                font-size: 16px;
+                text-decoration: line-through;
+                color: #7f8c8d;
+                margin-left: 10px;
+            }
+            
+            .savings {
+                font-size: 14px;
+                color: #27ae60;
+                margin-left: 10px;
+            }
+            
+            .product-info-item {
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+            
+            .product-info-label {
+                font-weight: 600;
+                display: inline-block;
+                min-width: 100px;
+                color: #555;
+            }
+            
+            .reasons-list {
+                margin-top: 15px;
+                padding-left: 20px;
+            }
+            
+            .reasons-list li {
+                margin-bottom: 5px;
+                color: #444;
+            }
+            
+            .buy-button {
+                display: inline-block;
+                margin-top: 15px;
+                padding: 10px 20px;
+                background-color: #3498db;
+                color: white;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: 500;
+                transition: background-color 0.2s ease;
+            }
+            
+            .buy-button:hover {
+                background-color: #2980b9;
+            }
+            
+            footer {
+                text-align: center;
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 1px solid #eaeaea;
+                color: #7f8c8d;
+                font-size: 14px;
+            }
+            
+            @media (max-width: 768px) {
+                .client-info-item,
+                .product-card {
+                    flex: 0 0 100%;
+                }
+                
+                .product-image-container {
+                    height: 180px;
+                }
+            }
+            
+            .room-description:hover {
+                background-color: #f0f0f0;
+                border-left-color: #3498db;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            }
         </style>
     </head>
     <body>
-        <h1>BetterHome Product Recommendations</h1>
-        <p><strong>Name:</strong> {name}</p>
-        <p><strong>Mobile:</strong> {mobile}</p>
-        <p><strong>Email:</strong> {email}</p>
-        <p><strong>Address:</strong> {address}</p>
-        <p><strong>Total Budget:</strong> INR{total_budget:,.2f}</p>
-        <p><strong>Family Size:</strong> {family_size} members</p>
-        <hr>
-    """.format(
-        name=user_data['name'],
-        mobile=user_data['mobile'],
-        email=user_data['email'],
-        address=user_data['address'],
-        total_budget=user_data['total_budget'],
-        family_size=sum(user_data['demographics'].values())
-    )
+        <div class="container">
+            <header>
+"""
+    
+    # Add logo if it exists
+    if logo_exists:
+        html_content += f'                <img src="{logo_path}" alt="BetterHome Logo" class="logo">\n'
+        
+    html_content += f"""
+                <h1>Your Personalized Home Appliance Recommendations</h1>
+                <p>Specially curated for {user_data['name']}</p>
+            </header>
+            
+            <div class="client-info">
+                <div class="client-info-item">
+                    <div class="client-info-label">Name</div>
+                    <div class="client-info-value">{user_data['name']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Mobile</div>
+                    <div class="client-info-value">{user_data['mobile']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Email</div>
+                    <div class="client-info-value">{user_data['email']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Address</div>
+                    <div class="client-info-value">{user_data['address']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Total Budget</div>
+                    <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Family Size</div>
+                    <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
+                </div>
+            </div>
+    """
 
     # Add budget summary
     total_cost = calculate_total_cost(final_list)
     budget_utilization = (total_cost / user_data['total_budget']) * 100
-    summary = f"""
-    <h2>Budget Summary</h2>
-    <p>Total Cost of Recommended Products: INR{total_cost:,.2f}</p>
-    <p>Your Budget: INR{user_data['total_budget']:,.2f}</p>
-    <p>Budget Utilization: {budget_utilization:.1f}%</p>
+    
+    html_content += f"""
+            <div class="budget-summary">
+                <h2>Budget Analysis</h2>
+                <div class="budget-info">
+                    <div class="budget-item">
+                        <div class="budget-item-label">Total Recommended Products</div>
+                        <div class="budget-item-value">₹{total_cost:,.2f}</div>
+                    </div>
+                    
+                    <div class="budget-item">
+                        <div class="budget-item-label">Your Budget</div>
+                        <div class="budget-item-value">₹{user_data['total_budget']:,.2f}</div>
+                    </div>
+                    
+                    <div class="budget-item">
+                        <div class="budget-item-label">Budget Utilization</div>
+                        <div class="budget-item-value">{budget_utilization:.1f}%</div>
+                    </div>
+                </div>
     """
+    
     if budget_utilization <= 100:
-        summary += "<p>Your selected products fit within your budget!</p>"
+        html_content += """
+                <div class="budget-status good">
+                    ✓ Your selected products fit comfortably within your budget!
+                </div>
+        """
     else:
-        summary += "<p>Note: The total cost exceeds your budget. You may want to consider alternative options.</p>"
-    html_content += summary
+        html_content += """
+                <div class="budget-status warning">
+                    ⚠ The total cost slightly exceeds your budget. Consider reviewing options if needed.
+                </div>
+        """
+    
+    html_content += """
+            </div>
+    """
 
     # Process each room
     for room, appliances in final_list.items():
         if room == 'summary':
             continue
-        html_content += f"<h2>{room.replace('_', ' ').title()}</h2>"
+        
+        # Check if the room has any products before creating the section
+        has_products = False
+        for appliance_type, products in appliances.items():
+            if isinstance(products, list) and products:
+                has_products = True
+                break
+        
+        if not has_products:
+            continue
+            
+        room_title = room.replace('_', ' ').title()
+        html_content += f"""
+            <div class="room-section">
+                <h2>{room_title}</h2>
+        """
         
         # Add room description
         room_desc = get_room_description(room, user_data)
         if room_desc:
-             html_content += f'<p class="room-description">{room_desc}</p>' # Add room description with class
+            html_content += f'                <div class="room-description">{room_desc}</div>\n'
+        
+        html_content += """
+                <div class="products-grid">
+        """
         
         for appliance_type, products in appliances.items():
             for product in products:
                 if not isinstance(product, dict):
-                    # print(f"[DEBUG] Unexpected product type: {type(product)}")
                     continue
-                # Ensure brand and model are defined before use
+                
+                # Ensure required data is available
                 brand = product.get('brand', 'Unknown Brand')
                 model = product.get('model', product.get('title', 'Unknown Model'))
                 image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                 description = product.get('description', 'No description available')
-                # Include all relevant information
-                price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
-                retail_price = price * 1.2  # 20% markup for retail price
-                savings = retail_price - price
+                
+                # Use the correct pricing fields - better_home_price as the current price and retail_price as the original price
+                better_home_price = float(product.get('better_home_price', 0.0))
+                retail_price = float(product.get('retail_price', 0.0))
+                
+                # If better_home_price is missing or 0, use price as fallback
+                if better_home_price <= 0:
+                    better_home_price = float(product.get('price', retail_price * 0.8))  # Estimate if missing
+                
+                # If retail_price is missing or 0, estimate from better_home_price
+                if retail_price <= 0:
+                    retail_price = better_home_price * 1.25  # Estimate a 25% markup if missing
+                
+                # Ensure retail price is higher than better home price for proper display
+                if retail_price <= better_home_price:
+                    retail_price = better_home_price * 1.25  # Ensure a reasonable markup
+                
+                savings = retail_price - better_home_price
                 warranty = product.get('warranty', 'Standard warranty applies')
                 delivery_time = product.get('delivery_time', 'Contact store for details')
-                reason = get_product_recommendation_reason(
+                purchase_url = product.get('url', '#')
+                
+                # Get formatted product type for display
+                product_type_title = appliance_type.replace('_', ' ').title()
+                
+                # Get recommendation reason
+                reason_text = get_product_recommendation_reason(
                     product, 
                     appliance_type, 
                     room, 
                     user_data['demographics'],
                     user_data['total_budget'],
-                    required_features  # Pass the correct dictionary
+                    {}  # Required features
                 )
-                purchase_url = product.get('url', '#')  # Default to '#' if URL is not available
+                
+                # Parse reasons into a list for better display
+                reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
+                
                 html_content += f"""
-                <div class='product'>
-                    <img src='{image_src}' alt='Product Image'>
-                    <div class='product-details'>
-                        <div class='product-title'>{brand} {model}</div>
-                        <div class='product-price'>Price: INR{price:,.2f}</div>
-                        <div class='product-description'>Description: {description}</div>
-                        <div class='product-description'>Retail Price: INR{retail_price:,.2f}</div>
-                        <div class='product-description'>You Save: INR{savings:,.2f}</div>
-                        <div class='product-description'>Warranty: {warranty}</div>
-                        <div class='product-description'>Delivery: {delivery_time}</div>
-                        <div class='product-description'>Reason: {reason}</div>
-                        <a href='{purchase_url}' target='_blank'>Buy Now</a>
-                    </div>
-                </div>
+                    <div class="product-card">
+                        <div class="product-image-container">
+                            <img src="{image_src}" alt="{brand} {model}" class="product-image">
+                        </div>
+                        <div class="product-details">
+                            <div class="product-type">{product_type_title}</div>
+                            <div class="product-title">{brand} {model}</div>
+                            
+                            <div class="price-container">
+                                <div class="current-price">₹{better_home_price:,.2f}</div>
+                                <div class="retail-price">₹{retail_price:,.2f}</div>
+                                <div class="savings">Save ₹{savings:,.2f}</div>
+                            </div>
+                            
+                            <div class="product-info-item">
+                                <span class="product-info-label">Description:</span> {description}
+                            </div>
+                            
+                            <div class="product-info-item">
+                                <span class="product-info-label">Warranty:</span> {warranty}
+                            </div>
+                            
+                            <div class="product-info-item">
+                                <span class="product-info-label">Delivery:</span> {delivery_time}
+                            </div>
+                            
+                            <h4>Why We Recommend This:</h4>
+                            <ul class="reasons-list">
                 """
+                
+                for reason in reasons:
+                    html_content += f"                                <li>{reason}</li>\n"
+                
+                html_content += f"""
+                            </ul>
+                            
+                            <a href="{purchase_url}" target="_blank" class="buy-button">View Product</a>
+                        </div>
+                    </div>
+                """
+        
+        html_content += """
+                </div>
+            </div>
+        """
 
-    html_content += """
+    # Add footer
+    current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
+    html_content += f"""
+            <footer>
+                <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
+                <p>© {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
+            </footer>
+        </div>
     </body>
     </html>
     """
 
     # Write the HTML content to a file
-    with open(html_filename, 'w') as f:
+    with open(html_filename, 'w', encoding='utf-8') as f:
         f.write(html_content)
+    
+    print(f"Generated professional HTML brochure: {html_filename}")
 
 # Function to process features and store them in JSON
 def process_features(features_str: str) -> List[str]:
@@ -1195,6 +1755,28 @@ def estimate_washing_machine_capacity(demographics: Dict[str, int]) -> float:
     total_capacity = adults_capacity + kids_capacity + elders_capacity
     # print(f"[DEBUG] Estimated washing machine capacity: {total_capacity} kg for demographics: {demographics}")
     return total_capacity
+
+# Function to determine AC tonnage with special handling for hall
+def determine_ac_tonnage(square_feet: float, room_type: str = None) -> float:
+    """Determine the appropriate AC tonnage based on room size in square feet.
+    
+    Tonnage guidelines:
+    - 0.75 Ton: Ideal for rooms up to 90 sq ft.
+    - 1 Ton: Suitable for rooms of 91-130 sq ft.
+    - 1.5 Ton: Best for rooms between 131-190 sq ft.
+    - 2 Ton: Recommended for rooms ranging from 191-250 sq ft.
+    - 2.5 Ton: Suitable for larger spaces, potentially up to 300-350 sq ft.
+    """
+    if square_feet <= 90:
+        return 0.75
+    elif square_feet <= 130:
+        return 1.0
+    elif square_feet <= 190:
+        return 1.5
+    elif square_feet <= 250:
+        return 2.0
+    else:
+        return 2.5
 
 # Main function
 if __name__ == "__main__":
