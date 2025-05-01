@@ -4465,3 +4465,29 @@ TXT exists: False
  * Restarting with watchdog (inotify)
  * Debugger is active!
  * Debugger PIN: 471-718-053
+162.216.150.201 - - [30/Apr/2025 17:43:35] code 400, message Bad request version ('À\x13À')
+162.216.150.201 - - [30/Apr/2025 17:43:35] "[31m[1m\x16\x03\x01\x00î\x01\x00\x00ê\x03\x03A\x96\x1dÓUÁÞ(3­2nø\x96¤úH<ÈMR°ÍËà\x8dÑ\x15\x7f\x8f¨8 \x93þi\x13ÁrÇÅ:\x10ðÒ¾¦"\x93\x17\x12\x98\x11¼ý¿£\x93)'Ú/[­I\x00&À+À/À,À0Ì©Ì¨À\x09À\x13À[0m" 400 -
+162.216.150.201 - - [30/Apr/2025 17:43:35] code 400, message Bad request syntax ('\x16\x03\x01\x00Ê\x01\x00\x00Æ\x03\x03\x948O¬\x83XWS½pÝ±)Y\x9dv«ÆF\x05ç¦uZ')
+162.216.150.201 - - [30/Apr/2025 17:43:35] "[31m[1m\x16\x03\x01\x00Ê\x01\x00\x00Æ\x03\x03\x948O¬\x83XWS½pÝ±)Y\x9dv«ÆF\x05ç¦uZ[0m" 400 -
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+91.196.152.190 - - [01/May/2025 03:29:16] code 400, message Bad request version ('À#À¬À®À+À')
+91.196.152.190 - - [01/May/2025 03:29:16] "[31m[1m\x16\x03\x03\x01§\x01\x00\x01£\x03\x03\x7fr>0¦¬Á$²:{\x11ÝË\x1aã(ù\x1b>ÐÒ\x0eþ­\x117s¼¦ß\x81 ¿ð\x0dþð?|Û\x07\x82Û\x01÷Æ?¢:Ó ¡N(=ÒÐ&Òàz}¬á\x00\x8a\x00\x16\x003\x00gÀ\x9eÀ¢\x00\x9e\x009\x00kÀ\x9fÀ£\x00\x9f\x00E\x00¾\x00\x88\x00Ä\x00\x9aÀ\x08À\x09À#À¬À®À+À[0m" 400 -
+91.196.152.216 - - [01/May/2025 03:29:20] "GET / HTTP/1.1" 200 -
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Detected change in '/home/ec2-user/betterhome/web_app/combined_script.py', reloading
+ * Restarting with watchdog (inotify)
+ * Debugger is active!
+ * Debugger PIN: 471-718-053

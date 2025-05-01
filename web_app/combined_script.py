@@ -1070,6 +1070,40 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     with open(html_filename, 'w') as f:
         f.write(html_content)
 
+# Function to process features and store them in JSON
+def process_features(features_str: str) -> List[str]:
+    """Split features string by semicolon and return as a list."""
+    return [feature.strip() for feature in features_str.split(';') if feature.strip()]
+
+# Update the function that processes the CSV to JSON conversion
+def convert_csv_to_json(csv_file: str, json_file: str):
+    df = pd.read_csv(csv_file)
+    products = []
+    for _, row in df.iterrows():
+        product = {
+            'handle': row['handle'],
+            'title': row['title'],
+            'product_type': row['Product Type'],
+            'category': row['Category'],
+            'tags': row['tags'],
+            'sku': row['SKU'],
+            'weight': row['Weight'],
+            'better_home_price': row['Better Home Price'],
+            'retail_price': row['Retail Price'],
+            'description': row['Description'],
+            'brand': row['Brand'],
+            'features': process_features(row['Features']),  # Process features
+            'returns_policy': row['Returns Policy'],
+            'warranty': row['Warranty'],
+            'url': row['url'],
+            'image_src': row['Image Src'],
+            'image_alt_text': row['Image Alt Text']
+        }
+        products.append(product)
+    with open(json_file, 'w') as f:
+        json.dump({'products': products}, f, indent=4)
+    print(f"Data from {csv_file} converted and saved to {json_file}")
+
 # Main function
 if __name__ == "__main__":
     # Check if the Excel filename is provided as an argument
