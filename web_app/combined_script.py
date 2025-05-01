@@ -292,7 +292,9 @@ def compare_features(req_value_str: str, prod_feature: Dict[str, str]) -> bool:
                      (req_unit and prod_unit and prod_unit.startswith(req_unit)) or \
                      (req_unit is None or prod_unit is None) # Allow comparison if one lacks unit
 
-        if unit_match and abs(req_val - prod_value_num) < 1e-6: # Tolerance for float comparison
+        # Use a small tolerance for float comparison
+        TOLERANCE = 1e-6
+        if unit_match and abs(req_val - prod_value_num) < TOLERANCE:
              print(f"[DEBUG] Feature Match: Req='{req_value_str}', Prod='{prod_feature['raw_value']}' -> NUMERICAL MATCH")
              return True
              
