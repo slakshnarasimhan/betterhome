@@ -97,8 +97,12 @@ def prepare_entries(df):
 # Step 3: Save Product Catalog
 # ==========================
 def parse_features(features_str: str) -> List[str]:
-    """Convert features string into a list of features."""
-    return [feature.strip() for feature in features_str.split(',') if feature.strip()]
+    """Convert features string (separated by '|') into a list of features."""
+    # Handle potential non-string types gracefully
+    if not isinstance(features_str, str):
+        return []
+    # Split by '|' and strip whitespace from each feature
+    return [feature.strip() for feature in features_str.split('|') if feature.strip()]
 
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     catalog = []
