@@ -367,6 +367,8 @@ def get_specific_product_recommendations(appliance_type: str, target_budget_cate
                     'capacity': product.get('capacity', ''),
                     'type': product.get('type', ''),
                     'suction_power': product.get('suction_power', ''),
+                    'image_src': product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
+
                 }
             
             # Add color options and check color match
@@ -448,6 +450,42 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             'lifestyle_factors': ['Family size and composition considered']
         }
     }
+
+    # Add debug statements to verify image_src
+    for room, appliances in final_list.items():
+        for appliance_type, products in appliances.items():
+            if isinstance(products, list):  # Ensure products is a list
+                for product in products:
+                    if isinstance(product, dict):  # Ensure product is a dictionary
+                        image_src = product.get('image_src', '')
+                        if not image_src or not image_src.startswith(('http://', 'https://')):
+                            print(f"[DEBUG] Invalid image URL: {image_src}")
+                            image_src = 'https://via.placeholder.com/300x300?text=No+Image+Available'  # Use a placeholder image
+                        else:
+                            print(f"[DEBUG] Valid image URL: {image_src}")
+                        # Add buy button
+                        purchase_url = product.get('url', '#')
+                        html_content = f"""
+                        <div class='product'>
+                            <img src='{image_src}' alt='Product Image'>
+                            <div class='product-details'>
+                                <div class='product-title'>{product.get('brand', 'Unknown Brand')} {product.get('model', 'Unknown Model')}</div>
+                                <div class='product-price'>Price: ₹{product.get('price', 0):,.2f}</div>
+                                <div class='product-description'>Description: {product.get('description', 'No description available')}</div>
+                                <div class='product-description'>Retail Price: ₹{product.get('retail_price', 0):,.2f}</div>
+                                <div class='product-description'>You Save: ₹{product.get('retail_price', 0) - product.get('price', 0):,.2f}</div>
+                                <div class='product-description'>Warranty: {product.get('warranty', 'Standard warranty applies')}</div>
+                                <div class='product-description'>Delivery: {product.get('delivery_time', 'Contact store for details')}</div>
+                                <div class='product-description'>Reason: {get_product_recommendation_reason(product, appliance_type, room, user_data['demographics'], user_data['total_budget'])}</div>
+                                <a href='{purchase_url}' target='_blank'>Buy Now</a>
+                            </div>
+                        </div>
+                        """
+                        print(f"[DEBUG] Generated HTML content for product: {product.get('brand', 'Unknown Brand')} {product.get('model', 'Unknown Model')}\n{html_content}")
+                    else:
+                        print(f"[DEBUG] Unexpected product type: {type(product)}")
+            else:
+                print(f"[DEBUG] Unexpected products type: {type(products)}")
 
     # Process hall requirements
     if user_data['hall'].get('ac', False):
@@ -761,9 +799,9 @@ def create_styled_pdf(filename, user_data, recommendations):
                             savings = retail_price - price
                             
                             # Correctly access the nested URL field
-                            purchase_link = item.get('url', 'https://betterhomeapp.com')
-                            print(f"Debug: Using purchase link for {brand} {model}: {purchase_link}")
-                            product_name = f"<link href='{purchase_link}'>{brand} {model}</link>"
+                            purchase_url = item.get('url', 'https://betterhomeapp.com')
+                            print(f"Debug: Using purchase link for {brand} {model}: {purchase_url}")
+                            product_name = f"<link href='{purchase_url}'>{brand} {model}</link>"
                             story.append(Paragraph(product_name, styles['ProductTitle']))
                             
                             # Get recommendation reason with total budget
@@ -952,6 +990,21 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         family_size=sum(user_data['demographics'].values())
     )
 
+    # Add budget summary
+    total_cost = calculate_total_cost(final_list)
+    budget_utilization = (total_cost / user_data['total_budget']) * 100
+    summary = f"""
+    <h2>Budget Summary</h2>
+    <p>Total Cost of Recommended Products: ₹{total_cost:,.2f}</p>
+    <p>Your Budget: ₹{user_data['total_budget']:,.2f}</p>
+    <p>Budget Utilization: {budget_utilization:.1f}%</p>
+    """
+    if budget_utilization <= 100:
+        summary += "<p>Your selected products fit within your budget!</p>"
+    else:
+        summary += "<p>Note: The total cost exceeds your budget. You may want to consider alternative options.</p>"
+    html_content += summary
+
     # Process each room
     for room, appliances in final_list.items():
         if room == 'summary':
@@ -962,36 +1015,51 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 if not isinstance(product, dict):
                     print(f"[DEBUG] Unexpected product type: {type(product)}")
                     continue
-                image_src = product.get('image_src', '')
+                image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                 description = product.get('description', 'No description available')
                 # Debug statements for image_src and description
                 print(f"[DEBUG] Processing image_src: {image_src}")
                 print(f"[DEBUG] Product description: {description}")
-                if not image_src or not image_src.startswith(('http://', 'https://')):
-                    print(f"[DEBUG] Invalid image URL: {image_src}")
-                    image_path = 'path/to/placeholder/image.png'  # Use a placeholder image
-                else:
-                    image_path = download_image(image_src, './images')
+
+                # Extract brand and model from the product dictionary
+                brand = product.get('brand', 'Unknown Brand')
+                model = product.get('model', product.get('title', 'Unknown Model'))
+
                 # Debug statements to check values
-                print(f"[DEBUG] Processing product: {product.get('brand', 'Unknown Brand')} {product.get('model', 'Unknown Model')}")
-                print(f"[DEBUG] Image path: {image_path}")
+                print(f"[DEBUG] Processing product: {brand} {model}")
+                print(f"[DEBUG] Image src: {image_src}")
                 print(f"[DEBUG] Price: {product.get('retail_price', product.get('price', product.get('better_home_price', 0)))}")
-                html_content += """
+
+                # Include all relevant information
+                price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
+                retail_price = price * 1.2  # 20% markup for retail price
+                savings = retail_price - price
+                warranty = product.get('warranty', 'Standard warranty applies')
+                delivery_time = product.get('delivery_time', 'Contact store for details')
+                reason = get_product_recommendation_reason(
+                    product, 
+                    appliance_type, 
+                    room, 
+                    user_data['demographics'],
+                    user_data['total_budget']
+                )
+                purchase_url = product.get('url', '#')  # Default to '#' if URL is not available
+                html_content += f"""
                 <div class='product'>
-                    <img src='{image_path}' alt='Product Image'>
+                    <img src='{image_src}' alt='Product Image'>
                     <div class='product-details'>
                         <div class='product-title'>{brand} {model}</div>
                         <div class='product-price'>Price: ₹{price:,.2f}</div>
                         <div class='product-description'>Description: {description}</div>
+                        <div class='product-description'>Retail Price: ₹{retail_price:,.2f}</div>
+                        <div class='product-description'>You Save: ₹{savings:,.2f}</div>
+                        <div class='product-description'>Warranty: {warranty}</div>
+                        <div class='product-description'>Delivery: {delivery_time}</div>
+                        <div class='product-description'>Reason: {reason}</div>
+                        <a href='{purchase_url}' target='_blank'>Buy Now</a>
                     </div>
                 </div>
-                """.format(
-                    image_path=image_path,
-                    brand=product.get('brand', 'Unknown Brand'),
-                    model=product.get('model', 'Unknown Model'),
-                    price=float(product.get('retail_price', product.get('price', product.get('better_home_price', 0)))),
-                    description=description
-                )
+                """
 
     html_content += """
     </body>
