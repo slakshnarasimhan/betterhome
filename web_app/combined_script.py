@@ -327,11 +327,34 @@ def get_specific_product_recommendations(
     # Process available products
     if catalog and "products" in catalog:
         norm_type = appliance_type.lower().replace('_', ' ')
-        filtered_products = [
-            p for p in catalog["products"]
-            if isinstance(p.get("product_type", ""), str) and p.get("product_type", "").lower().replace('_', ' ') == norm_type
-        ]
-        
+        # Adjust filtering logic to handle 'ac' vs 'Air Conditioner'
+        filtered_products = []
+        for p in catalog["products"]:
+            if isinstance(p.get("product_type", ""), str):
+                product_type_norm = p.get("product_type", "").lower().replace('_', ' ')
+                matches = False
+                if norm_type == 'ac':
+                    # Check for both 'ac' and 'air conditioner' if requested type is 'ac'
+                    matches = product_type_norm == 'ac' or product_type_norm == 'air conditioner'
+                else:
+                    # Standard matching for other types
+                    matches = product_type_norm == norm_type
+                
+                if matches:
+                    filtered_products.append(p)
+
+        # Simple debug print after filtering, specific types
+        if appliance_type == 'refrigerator':
+            print(f"[DEBUG] Filtered products count immediately after filtering for '{appliance_type}': {len(filtered_products)}")
+            if not filtered_products:
+                 all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
+                 print(f"[DEBUG] All product types found: {all_product_types}") # Check if 'Refrigerator' is even there
+        elif appliance_type == 'ac': # Add specific check for AC
+            print(f"[DEBUG] Filtered products count immediately after filtering for '{appliance_type}': {len(filtered_products)}")
+            if not filtered_products:
+                 all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
+                 print(f"[DEBUG] All product types found (checking for AC): {all_product_types}")
+
         matching_products_data = [] # Store product data along with scores
         for product in filtered_products:
             # Use retail_price as primary, fallback to price or better_home_price
@@ -542,6 +565,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Process hall requirements
     if user_data['hall'].get('ac', False):
+        print(f"[DEBUG] Hall AC requirement: {user_data['hall'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data)
         final_list['hall']['ac'] = recommendations
@@ -577,6 +601,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Process master bedroom requirements
     if user_data['master_bedroom'].get('ac', False):
+        print(f"[DEBUG] Master Bedroom AC requirement: {user_data['master_bedroom'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
         final_list['master_bedroom']['ac'] = recommendations
@@ -600,6 +625,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Process bedroom 2 requirements
     if user_data['bedroom_2'].get('ac', False):
+        print(f"[DEBUG] Bedroom 2 AC requirement: {user_data['bedroom_2'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
         final_list['bedroom_2']['ac'] = recommendations
@@ -1025,6 +1051,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .product-title {{ font-size: 18px; font-weight: bold; }}
             .product-price {{ color: #e74c3c; }}
             .product-description {{ font-size: 14px; }}
+            .room-description {{ font-style: italic; margin-bottom: 15px; color: #555; }} /* Style for room description */
+            .product img:hover {{ /* Add hover effect for images */
+                transform: scale(1.5); /* Zoom in slightly */
+                transition: transform 0.3s ease; /* Smooth transition */
+            }}
         </style>
     </head>
     <body>
@@ -1065,6 +1096,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         if room == 'summary':
             continue
         html_content += f"<h2>{room.replace('_', ' ').title()}</h2>"
+        
+        # Add room description
+        room_desc = get_room_description(room, user_data)
+        if room_desc:
+             html_content += f'<p class="room-description">{room_desc}</p>' # Add room description with class
+        
         for appliance_type, products in appliances.items():
             for product in products:
                 if not isinstance(product, dict):
