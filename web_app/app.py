@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory
 import pandas as pd
 import subprocess
 from datetime import datetime
@@ -76,37 +76,38 @@ def submit():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Generate a unique filename for the Excel file
-    filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.xlsx"
+    excel_filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.xlsx"
     
     # Save the DataFrame to an Excel file
-    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+    with pd.ExcelWriter(excel_filename, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
     
     # Run the combined script with the Excel filename
-    subprocess.run(['python3', 'combined_script.py', filename])
+    subprocess.run(['python3', 'combined_script.py', excel_filename])
     
     # Check if the recommendation files were created
     pdf_filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.pdf"
-    txt_filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.txt"
-    if os.path.exists(pdf_filename) and os.path.exists(txt_filename):
-        # Read the text file content
-        with open(txt_filename, 'r') as f:
-            txt_content = f.read()
+    html_filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.html"
+    
+    if os.path.exists(pdf_filename) and os.path.exists(html_filename):
+        # Read the HTML file content
+        with open(html_filename, 'r', encoding='utf-8') as f:
+            html_content = f.read()
         
         return render_template('results.html', 
-                             pdf_path=url_for('download_file', filename=os.path.basename(pdf_filename)),
-                             txt_content=txt_content)
+                             html_content=html_content,
+                             pdf_path=url_for('download_file', filename=os.path.basename(pdf_filename)))
     else:
-        # Debugging output to check filenames and their existence
-        print(f"Checking for PDF file: {pdf_filename}")
-        print(f"Checking for TXT file: {txt_filename}")
-        print(f"PDF exists: {os.path.exists(pdf_filename)}")
-        print(f"TXT exists: {os.path.exists(txt_filename)}")
         return "Error generating recommendations. Please try again."
 
 @app.route('/download/<filename>')
 def download_file(filename):
     return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True)
+
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    """Serve files from the uploads directory (for images in HTML)"""
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002) 
