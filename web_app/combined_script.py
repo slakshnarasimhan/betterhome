@@ -12,6 +12,7 @@ import requests
 import os
 from urllib.parse import urlparse
 import re # Add import for regex
+from reportlab.platypus import Image
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -226,7 +227,7 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
         'geyser': {'budget': 10000, 'mid': 20000},
         'ceiling_fan': {'budget': 4000, 'mid': 6000},  # Updated to match actual product prices
         'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
-        'ac': {'budget': 35000, 'mid': 45000, 'premium': 60000},  # Updated AC ranges to match product prices
+        'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
         'dishwasher': {'budget': 30000, 'mid': 50000},
         'dryer': {'budget': 25000, 'mid': 45000},
         'shower_system': {'budget': 30000, 'mid': 50000}
@@ -318,7 +319,7 @@ def get_specific_product_recommendations(
         'geyser': {'budget': 10000, 'mid': 20000},
         'ceiling_fan': {'budget': 4000, 'mid': 6000},
         'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
-        'ac': {'budget': 35000, 'mid': 45000, 'premium': 60000},
+        'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
         'dishwasher': {'budget': 30000, 'mid': 50000},
         'dryer': {'budget': 25000, 'mid': 45000},
         'shower_system': {'budget': 30000, 'mid': 50000},
@@ -356,12 +357,45 @@ def get_specific_product_recommendations(
                  all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
                  print(f"[DEBUG] All product types found: {all_product_types}") # Check if 'Refrigerator' is even there
         elif appliance_type == 'ac': # Add specific check for AC
-            print(f"[DEBUG] Filtered products count immediately after filtering for '{appliance_type}': {len(filtered_products)}")
+            print(f"[DEBUG AC FILTERING] Required features: {required_features}") # Print required features for AC
+            print(f"[DEBUG AC FILTERING] Filtered products count immediately after filtering for '{appliance_type}': {len(filtered_products)}")
             if not filtered_products:
                  all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
-                 print(f"[DEBUG] All product types found (checking for AC): {all_product_types}")
+                 print(f"[DEBUG AC FILTERING] All product types found (checking for AC): {all_product_types}")
 
         matching_products_data = [] # Store product data along with scores
+        
+        # DEBUG: Print initial list of ACs after type filter
+        if appliance_type == 'ac':
+            print("[DEBUG AC DETAILS] Initial AC candidates before budget/feature check:")
+            for idx, p in enumerate(filtered_products):
+                try:
+                    p_tonnage = "Unknown"
+                    # First, try extracting from features
+                    for feat in p.get('features', []):
+                         match = re.search(r'(\d+\.?\d*)\s*ton', feat.lower())
+                         if match:
+                            try:
+                                p_tonnage = float(match.group(1))
+                                break # Found in features, exit loop
+                            except ValueError:
+                                p_tonnage = "Unknown" # Handle potential conversion error
+
+                    # If not found in features, try extracting from the title
+                    if p_tonnage == "Unknown":
+                        title = p.get('title', '')
+                        if title:
+                            match = re.search(r'(\d+\.?\d*)\s*ton', title.lower())
+                            if match:
+                                try:
+                                    p_tonnage = float(match.group(1))
+                                except ValueError:
+                                    p_tonnage = "Unknown" # Handle potential conversion error
+                                    
+                    print(f"  {idx+1}. {p.get('brand', 'N/A')} - {p.get('title', 'N/A')} - Tonnage: {p_tonnage} - Price: {p.get('retail_price', p.get('price', p.get('better_home_price', 0)))}")
+                except Exception as e:
+                     print(f"  Error printing details for product index {idx}: {e}")
+
         for product in filtered_products:
             # Use retail_price as primary, fallback to price or better_home_price
             try:
@@ -382,22 +416,98 @@ def get_specific_product_recommendations(
             if not product_matches_budget:
                 continue
 
+            # --- Determine Actual Product Tonnage (checking features and title) ---
+            actual_product_tonnage = None
+            if appliance_type == 'ac':
+                # Try features first
+                for feat in product.get('features', []):
+                    match = re.search(r'(\d+\.?\d*)\s*ton', feat.lower())
+                    if match:
+                        try:
+                            actual_product_tonnage = float(match.group(1))
+                            break
+                        except ValueError:
+                            pass # Ignore conversion errors in features list
+                # Try title if not found in features
+                if actual_product_tonnage is None:
+                    title = product.get('title', '')
+                    if title:
+                        match = re.search(r'(\d+\.?\d*)\s*ton', title.lower())
+                        if match:
+                            try:
+                                actual_product_tonnage = float(match.group(1))
+                            except ValueError:
+                                pass # Ignore conversion errors in title
+
             # Calculate feature match score
             feature_match_score = 0
             product_features_list = product.get('features', []) # Already a list from json
-            if required_features and product_features_list:
+
+            # DEBUG: Specific check for tonnage feature match
+            tonnage_feature_score = 0
+            product_tonnage_value_for_debug = "N/A" # Keep this for the debug print only
+
+            if required_features: # Check if required_features is not None or empty
                 for req_key, req_value in required_features.items():
                     req_key_norm = req_key.strip().lower()
                     found_match_for_req = False
-                    for feature_str in product_features_list:
-                        parsed_prod_feature = parse_product_feature(feature_str)
-                        if parsed_prod_feature.get('key') == req_key_norm:
-                             if compare_features(req_value, parsed_prod_feature):
-                                 feature_match_score += 5 # Significant boost for matching feature
-                                 found_match_for_req = True
-                                 break # Stop checking this product's features for this required key
-                    if not found_match_for_req:
-                         pass
+
+                    # --- Handle Tonnage Matching Separately ---
+                    if appliance_type == 'ac' and req_key_norm == 'tonnage':
+                        tonnage_requirement_met = False
+                        if actual_product_tonnage is not None:
+                            # Parse required tonnage value (e.g., "1.5 Ton")
+                            req_match = re.match(r"([\d.]+)", str(req_value).strip())
+                            if req_match:
+                                try:
+                                    required_tonnage_num = float(req_match.group(1))
+                                    # Compare with actual product tonnage (allow small tolerance)
+                                    TOLERANCE = 0.01 # Allow very small float differences
+                                    # Allow slightly higher tonnage as well (e.g., 1.5 Ton required, 1.6 Ton product is ok)
+                                    if actual_product_tonnage >= required_tonnage_num - TOLERANCE:
+                                        feature_match_score += 5 # Bonus for matching or exceeding
+                                        tonnage_feature_score = 5
+                                        found_match_for_req = True
+                                        tonnage_requirement_met = True
+                                except ValueError:
+                                    pass # Ignore conversion errors for required value
+                            # Update debug value
+                            product_tonnage_value_for_debug = f"{actual_product_tonnage} Ton"
+                        
+                        # Penalize if tonnage requirement was present but not met
+                        if not tonnage_requirement_met:
+                            penalty = -100 # Define explicit penalty value
+                            feature_match_score += penalty # Apply penalty
+                            tonnage_feature_score = penalty # Set tonnage score to penalty
+                            # --- Temporary Debug Print --- 
+                            print(f"[TEMP DEBUG] Tonnage Mismatch! Product: {product.get('title', 'N/A')[:30]}... Penalty Applied. New FeatScore: {feature_match_score}, New TonnageScore: {tonnage_feature_score}")
+                            # --- End Temporary Debug Print ---
+                            
+                        # Even if no match, we handled the tonnage requirement check
+                        continue # Move to the next required feature
+
+                    # --- Handle Other Feature Matching (using existing logic) ---
+                    if product_features_list: # Only iterate if features list exists
+                        for feature_str in product_features_list:
+                            parsed_prod_feature = parse_product_feature(feature_str)
+
+                            # Extract product tonnage for debug print (only, not for matching logic)
+                            if appliance_type == 'ac' and parsed_prod_feature.get('key') == 'tonnage':
+                                product_tonnage_value_for_debug = parsed_prod_feature.get('raw_value', 'N/A')
+
+                            if parsed_prod_feature.get('key') == req_key_norm:
+                                 if compare_features(req_value, parsed_prod_feature):
+                                     feature_match_score += 5 # Significant boost for matching feature
+                                     found_match_for_req = True
+                                     break # Stop checking this product's features for this required key
+                    # No need for the 'if not found_match_for_req: pass' anymore
+
+            # DEBUG: Print tonnage match result (using the specific debug variable)
+            if appliance_type == 'ac':
+                req_tonnage = required_features.get('tonnage', 'Not Specified') if required_features else 'Not Specified'
+                # Use the actual tonnage if found, otherwise fallback to the debug value from features
+                display_tonnage = f"{actual_product_tonnage} Ton" if actual_product_tonnage is not None else product_tonnage_value_for_debug
+                print(f"[DEBUG AC TONNAGE MATCH] Product: {product.get('brand', 'N/A')} {product.get('title', 'N/A')} - Required: {req_tonnage}, Product has: {display_tonnage}, Tonnage Feature Score: {tonnage_feature_score}")
 
             # Calculate relevance score (existing logic)
             relevance_score = 0
@@ -472,29 +582,39 @@ def get_specific_product_recommendations(
             -float(x.get('price', 0)) # Sort by the price used for budget matching
         ))
 
+        # DEBUG: Print top N products after sorting
+        if appliance_type == 'ac':
+             print("[DEBUG AC SORTING] Top 5 AC candidates after sorting:")
+             for idx, p_data in enumerate(matching_products_data[:5]):
+                 print(f"  {idx+1}. {p_data.get('brand', 'N/A')} - {p_data.get('model', 'N/A')} "
+                       f"(Price: {p_data.get('price', 0):.2f}, FeatScore: {p_data.get('feature_match_score', 0)}, RelScore: {p_data.get('relevance_score', 0)})")
+
         # Group top products by model (using existing logic, but apply to sorted list)
         # Take the top N unique models after sorting
         final_recommendations = []
         seen_models = set()
         limit = 2 # Number of unique models to recommend
         
+        # Select the top 'limit' unique models based on the primary sort order
         for product_data in matching_products_data:
-            # Create a unique key for the product model (use title as fallback)
+            # Ensure product_data is a dictionary before proceeding
+            if not isinstance(product_data, dict):
+                continue
+                
+            # Create a unique key based on brand and title to avoid duplicates of the *same* model
             model_key = f"{product_data.get('brand', 'UnknownBrand')}_{product_data.get('title', 'UnknownModel')}"
             
-            # Create a unique key for brand and tonnage
-            brand_tonnage_key = (product_data.get('brand', 'UnknownBrand'), product_data.get('capacity', ''))
-            
-            if model_key not in seen_models and brand_tonnage_key not in unique_combinations:
-                # Format the recommendation dict as needed by downstream functions
+            # Only add if we haven't seen this exact model key yet
+            if model_key not in seen_models:
+                # Format the recommendation dict (ensure all keys are accessed safely)
                 recommendation = {
                     'brand': product_data.get('brand', 'UnknownBrand'),
                     'model': product_data.get('title', 'UnknownModel'), # Use title for model name
-                    'price': product_data.get('price', 0.0),
-                    'retail_price': product_data.get('retail_price', 0.0),
-                    'better_home_price': product_data.get('better_home_price', 0.0),
+                    'price': float(product_data.get('price', 0.0)),
+                    'retail_price': float(product_data.get('retail_price', 0.0)),
+                    'better_home_price': float(product_data.get('better_home_price', 0.0)),
                     'features': product_data.get('features', []),
-                    'description': f"{product_data.get('type', '')} {product_data.get('capacity', '')}",
+                    'description': f"{product_data.get('type', '')} {product_data.get('capacity', '')}", # Capacity might still be missing here
                     'color_options': product_data.get('color_options', []),
                     'color_match': product_data.get('color_match', False),
                     'warranty': product_data.get('warranty', 'Standard warranty applies'),
@@ -504,7 +624,7 @@ def get_specific_product_recommendations(
                     'relevance_score': product_data.get('relevance_score', 0),
                     'feature_match_score': product_data.get('feature_match_score', 0),
                     'energy_rating': product_data.get('energy_rating', None),
-                    'capacity': product_data.get('capacity', ''),
+                    'capacity': product_data.get('capacity', ''), # Consider populating this from actual_tonnage if AC
                     'type': product_data.get('type', ''),
                     'suction_power': product_data.get('suction_power', ''),
                     'image_src': product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
@@ -512,6 +632,8 @@ def get_specific_product_recommendations(
                 
                 final_recommendations.append(recommendation)
                 seen_models.add(model_key)
+                
+                # Stop once we have enough recommendations
                 if len(final_recommendations) >= limit:
                     break
                     
@@ -953,11 +1075,24 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     doc = SimpleDocTemplate(filename, pagesize=letter)
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import Image
+    
+    # Check if logo exists
+    logo_path = "web_app/better_home_logo.png"
+    logo_exists = os.path.exists(logo_path)
+    
     pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
     styles = getSampleStyleSheet()
     for style_name in styles.byName:
         styles[style_name].fontName = 'DejaVuSans'
     story = []
+
+    # Add logo if it exists
+    if logo_exists:
+        logo = Image(logo_path, width=200, height=60)  # Adjust size as needed
+        logo.hAlign = 'CENTER'
+        story.append(logo)
+        story.append(Spacer(1, 10))
 
     # Add custom styles
     styles.add(ParagraphStyle(fontName='DejaVuSans', 
@@ -1168,7 +1303,7 @@ def download_image(image_url: str, save_dir: str) -> str:
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """Generate an HTML file with user information and product recommendations."""
     # Check if logo exists
-    logo_path = "better_home_logo.png"
+    logo_path = "web_app/better_home_logo.png"
     logo_exists = os.path.exists(logo_path)
     
     html_content = """
