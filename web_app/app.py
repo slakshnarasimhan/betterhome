@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, send_file,
 import pandas as pd
 import subprocess
 from datetime import datetime
+import shutil
 
 app = Flask(__name__)
 
@@ -10,6 +11,26 @@ app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+# Ensure static directory exists for images
+STATIC_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+if not os.path.exists(STATIC_FOLDER):
+    os.makedirs(STATIC_FOLDER)
+
+# Copy the logo to the static directory if it doesn't exist there
+logo_source_paths = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'better_home_logo.png'),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'better_home_logo.png'),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web_app', 'better_home_logo.png'),
+]
+logo_dest_path = os.path.join(STATIC_FOLDER, 'better_home_logo.png')
+
+if not os.path.exists(logo_dest_path):
+    for source_path in logo_source_paths:
+        if os.path.exists(source_path):
+            shutil.copy(source_path, logo_dest_path)
+            print(f"Copied logo from {source_path} to {logo_dest_path}")
+            break
 
 @app.route('/')
 def index():
@@ -83,7 +104,9 @@ def submit():
         df.to_excel(writer, index=False)
     
     # Run the combined script with the Excel filename
-    subprocess.run(['python3', 'combined_script.py', excel_filename])
+    env = os.environ.copy()
+    env['FLASK_APP'] = 'app.py'  # Set Flask environment variable
+    subprocess.run(['python3', 'combined_script.py', excel_filename], env=env)
     
     # Check if the recommendation files were created
     pdf_filename = excel_filename.replace('.xlsx', '.pdf')
