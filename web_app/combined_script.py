@@ -1089,6 +1089,9 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     from reportlab.platypus import Image
     from reportlab.lib.colors import HexColor
     
+    # First check if the script is being run through Flask
+    is_web_app = 'FLASK_ENV' in os.environ or 'FLASK_APP' in os.environ
+    
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
         "web_app/better_home_logo.png",  # Relative to script execution directory
@@ -1487,6 +1490,9 @@ def download_image(image_url: str, save_dir: str) -> str:
 # Function to generate an HTML file with recommendations
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """Generate an HTML file with user information and product recommendations."""
+    # First check if the script is being run through Flask
+    is_web_app = 'FLASK_ENV' in os.environ or 'FLASK_APP' in os.environ
+    
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
         "web_app/better_home_logo.png",  # Relative to script execution directory
@@ -1506,6 +1512,16 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     
     if not logo_exists:
         print("Logo not found in any of the expected locations")
+    
+    # For web app, use a URL path rather than a file path
+    logo_html = ""
+    if logo_exists:
+        if is_web_app:
+            # Use a relative URL path that will be handled by Flask
+            logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+        else:
+            # Use the file path for direct HTML viewing
+            logo_html = f'<img src="{logo_path}" alt="BetterHome Logo" class="logo">'
     
     html_content = """
     <!DOCTYPE html>
@@ -1985,13 +2001,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     <body>
         <div class="container">
             <header>
-"""
-    
-    # Add logo if it exists
-    if logo_exists:
-        html_content += f'                <img src="{logo_path}" alt="BetterHome Logo" class="logo">\n'
-        
-    html_content += f"""
+                {logo_html}
                 <h1>Your Personalized Home Appliance Recommendations</h1>
                 <p>Specially curated for {user_data['name']}</p>
             </header>
