@@ -575,11 +575,12 @@ def get_specific_product_recommendations(
         # Track unique combinations of brand and tonnage (or other relevant features)
         unique_combinations = set()
 
-        # Sort by feature match score, then relevance score, then price (descending)
+        # Sort by feature match score, then is_bestseller flag, then relevance score, then price
         matching_products_data.sort(key=lambda x: (
             -x.get('feature_match_score', 0), 
+            -x.get('is_bestseller', False),  # Prioritize bestsellers after feature match
             -x.get('relevance_score', 0), 
-            -float(x.get('price', 0)) # Sort by the price used for budget matching
+            -float(x.get('price', 0))
         ))
 
         # DEBUG: Print top N products after sorting
@@ -628,6 +629,7 @@ def get_specific_product_recommendations(
                     'type': product_data.get('type', ''),
                     'suction_power': product_data.get('suction_power', ''),
                     'image_src': product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
+                    'is_bestseller': product_data.get('is_bestseller', False), # Preserve bestseller flag
                 }
                 
                 final_recommendations.append(recommendation)
@@ -669,6 +671,7 @@ def get_specific_product_recommendations(
                     'type': top_product_data.get('type', ''),
                     'suction_power': top_product_data.get('suction_power', ''),
                     'image_src': top_product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
+                    'is_bestseller': top_product_data.get('is_bestseller', False), # Preserve bestseller flag
                 }
                 final_recommendations.append(recommendation)
 
@@ -940,6 +943,10 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     reasons = []
     required_features = required_features or {}
     
+    # Check if product is a bestseller
+    if product.get('is_bestseller', False):
+        reasons.append("One of our most popular bestsellers - frequently chosen by other customers")
+        
     # Budget consideration
     budget_saved = product.get('retail_price', 0) - product.get('price', 0)
     if budget_saved > 0:
@@ -1154,6 +1161,12 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
                             product_name = f"<link href='{purchase_url}'>{brand} {model}</link>"
                             story.append(Paragraph(product_name, styles['ProductTitle']))
                             
+                            # Add bestseller badge if applicable
+                            if item.get('is_bestseller', False):
+                                bestseller_text = Paragraph("<font color=\"#ff6b00\"><b>⭐ BESTSELLER</b></font>", styles['Normal'])
+                                story.append(bestseller_text)
+                                story.append(Spacer(1, 5))
+                            
                             # Get recommendation reason with total budget
                             reason = get_product_recommendation_reason(
                                 item, 
@@ -1239,7 +1252,9 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                 warranty = item.get('warranty', 'Standard warranty applies')
                                 delivery_time = item.get('delivery_time', 'Contact store for details')
                                 
-                                f.write(f"{appliance_type.replace('_', ' ').title()}: {brand} {model}\n")
+                                # Add bestseller badge if applicable
+                                bestseller_badge = "🔥 BESTSELLER: " if item.get('is_bestseller', False) else ""
+                                f.write(f"{appliance_type.replace('_', ' ').title()}: {bestseller_badge}{brand} {model}\n")
                                 f.write(f"Price: INR{price:,.2f} (Retail: INR{retail_price:,.2f})\n")
                                 f.write(f"Description: {description}\n")
                                 
@@ -1614,6 +1629,26 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border-left-color: #3498db;
                 box-shadow: 0 2px 12px rgba(0,0,0,0.1);
             }
+            
+            .bestseller-badge {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background-color: #ff6b00;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 0.8rem;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            
+            .product-image-container {
+                position: relative;
+                height: 200px;
+                overflow: hidden;
+                margin-bottom: 10px;
+            }
         </style>
     </head>
     <body>
@@ -1783,10 +1818,16 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 # Parse reasons into a list for better display
                 reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
                 
+                # Check if product is a bestseller
+                bestseller_badge = ""
+                if product.get('is_bestseller', False):
+                    bestseller_badge = '<div class="bestseller-badge">BESTSELLER</div>'
+                
                 html_content += f"""
                     <div class="product-card">
                         <div class="product-image-container">
                             <img src="{image_src}" alt="{brand} {model}" class="product-image">
+                            {bestseller_badge}
                         </div>
                         <div class="product-details">
                             <div class="product-type">{product_type_title}</div>
