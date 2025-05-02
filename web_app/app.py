@@ -103,9 +103,25 @@ def submit():
     with pd.ExcelWriter(excel_filename, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
     
+    # Make sure the logo is in the static folder before running the script
+    source_logo_paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'better_home_logo.png'),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'better_home_logo.png')
+    ]
+    
+    static_logo_path = os.path.join(STATIC_FOLDER, 'better_home_logo.png')
+    
+    if not os.path.exists(static_logo_path):
+        for source_path in source_logo_paths:
+            if os.path.exists(source_path):
+                shutil.copy(source_path, static_logo_path)
+                print(f"Copied logo from {source_path} to {static_logo_path}")
+                break
+    
     # Run the combined script with the Excel filename
     env = os.environ.copy()
     env['FLASK_APP'] = 'app.py'  # Set Flask environment variable
+    env['BETTERHOME_WEB_APP'] = 'true'  # Custom environment variable to indicate web app mode
     subprocess.run(['python3', 'combined_script.py', excel_filename], env=env)
     
     # Check if the recommendation files were created
