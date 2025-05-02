@@ -1090,7 +1090,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     from reportlab.lib.colors import HexColor
     
     # First check if the script is being run through Flask
-    is_web_app = 'FLASK_ENV' in os.environ or 'FLASK_APP' in os.environ
+    is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
@@ -1491,7 +1491,7 @@ def download_image(image_url: str, save_dir: str) -> str:
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """Generate an HTML file with user information and product recommendations."""
     # First check if the script is being run through Flask
-    is_web_app = 'FLASK_ENV' in os.environ or 'FLASK_APP' in os.environ
+    is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
@@ -1523,6 +1523,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             # Use the file path for direct HTML viewing
             logo_html = f'<img src="{logo_path}" alt="BetterHome Logo" class="logo">'
     
+    # Create HTML header (CSS part)
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
@@ -1570,442 +1571,24 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .logo:hover {
                 transform: scale(1.05);
             }
-            
-            h1 {
-                color: #2c3e50;
-                margin-top: 0;
-                font-weight: 400;
-                font-size: 32px;
-                margin-bottom: 10px;
-                text-shadow: 1px 1px 1px rgba(0,0,0,0.05);
-            }
-            
-            h2 {
-                color: #2980b9;
-                font-weight: 500;
-                margin-top: 40px;
-                padding-bottom: 10px;
-                border-bottom: 2px solid #eaeaea;
-                font-size: 24px;
-                position: relative;
-            }
-            
-            h2:after {
-                content: "";
-                position: absolute;
-                bottom: -2px;
-                left: 0;
-                width: 80px;
-                height: 2px;
-                background-color: #3498db;
-            }
-            
-            .client-info {
-                background-color: #fff;
-                padding: 25px;
-                border-radius: 8px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-                margin-bottom: 40px;
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: space-between;
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-            }
-            
-            .client-info:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-            }
-            
-            .client-info-item {
-                flex: 0 0 48%;
-                margin-bottom: 15px;
-            }
-            
-            .client-info-label {
-                color: #7f8c8d;
-                font-size: 14px;
-                margin-bottom: 3px;
-                font-weight: 500;
-            }
-            
-            .client-info-value {
-                font-size: 16px;
-                font-weight: 600;
-                color: #34495e;
-            }
-            
-            .budget-summary {
-                background: linear-gradient(to right, #f1f9ff, #e6f7ff);
-                padding: 25px;
-                border-radius: 8px;
-                margin: 30px 0;
-                border-left: 4px solid #3498db;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-                transition: transform 0.3s ease;
-            }
-            
-            .budget-summary:hover {
-                transform: translateY(-5px);
-            }
-            
-            .budget-summary h2 {
-                margin-top: 0;
-                border-bottom: none;
-                color: #2c3e50;
-            }
-            
-            .budget-summary h2:after {
-                display: none;
-            }
-            
-            .budget-info {
-                display: flex;
-                flex-wrap: wrap;
-                margin-top: 15px;
-            }
-            
-            .budget-item {
-                flex: 1;
-                min-width: 200px;
-                padding: 15px;
-                margin: 5px;
-                background-color: white;
-                border-radius: 6px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-            }
-            
-            .budget-item:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            }
-            
-            .budget-item-label {
-                color: #7f8c8d;
-                font-size: 14px;
-                font-weight: 500;
-            }
-            
-            .budget-item-value {
-                font-size: 22px;
-                font-weight: 600;
-                color: #2c3e50;
-                margin-top: 5px;
-            }
-            
-            .budget-status {
-                margin-top: 20px;
-                padding: 15px;
-                border-radius: 6px;
-                font-weight: 500;
-                text-align: center;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            
-            .budget-status.good {
-                background: linear-gradient(to right, #e8f6e9, #d4f5d9);
-                color: #27ae60;
-                border-left: 4px solid #27ae60;
-            }
-            
-            .budget-status.warning {
-                background: linear-gradient(to right, #fef5e7, #fdebd0);
-                color: #e67e22;
-                border-left: 4px solid #e67e22;
-            }
-            
-            .room-section {
-                margin-bottom: 50px;
-                padding: 20px;
-                background-color: white;
-                border-radius: 8px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-                transition: transform 0.3s ease;
-            }
-            
-            .room-section:hover {
-                transform: translateY(-5px);
-            }
-            
-            .room-description {
-                font-style: italic;
-                margin: 0 0 25px 0;
-                color: #555;
-                background-color: #f8f9fa;
-                padding: 15px 20px;
-                border-radius: 6px;
-                border-left: 4px solid #3498db;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                transition: all 0.3s ease;
-            }
-            
-            .room-description:hover {
-                background-color: #f0f0f0;
-                border-left-color: #2980b9;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            }
-            
-            .products-grid {
-                display: flex;
-                flex-wrap: wrap;
-                margin: 0 -15px;
-                width: 100%;
-            }
-            
-            .product-card {
-                width: calc(50% - 30px);
-                flex: 0 0 calc(50% - 30px);
-                max-width: calc(50% - 30px);
-                margin: 15px;
-                border-radius: 12px;
-                background-color: #fff;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-                overflow: hidden;
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                border: 1px solid #f0f0f0;
-                display: inline-block;
-                vertical-align: top;
-            }
-            
-            .product-card:hover {
-                transform: translateY(-8px);
-                box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-                border-color: #e6e6e6;
-            }
-            
-            .product-image-container {
-                padding: 15px;
-                background: linear-gradient(to bottom right, #f5f7fa, #f1f4f7);
-                text-align: center;
-                border-bottom: 1px solid #eee;
-                height: 180px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                overflow: hidden;
-                position: relative;
-            }
-            
-            .product-image {
-                max-width: 100%;
-                max-height: 180px;
-                transition: transform 0.5s ease;
-            }
-            
-            .product-image:hover {
-                transform: scale(1.15);
-            }
-            
-            .product-details {
-                padding: 12px;
-            }
-            
-            .product-title {
-                font-size: 16px;
-                font-weight: 600;
-                color: #2c3e50;
-                margin-bottom: 8px;
-                line-height: 1.3;
-            }
-            
-            .product-type {
-                display: inline-block;
-                font-size: 11px;
-                font-weight: 600;
-                color: #fff;
-                background: linear-gradient(to right, #3498db, #2980b9);
-                padding: 3px 8px;
-                border-radius: 30px;
-                margin-bottom: 10px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }
-            
-            .price-container {
-                display: flex;
-                align-items: center;
-                margin: 10px 0;
-                flex-wrap: wrap;
-            }
-            
-            
-            .current-price {
-                font-size: 20px;
-                font-weight: 700;
-                color: #e74c3c;
-                margin-right: 8px;
-            }
-            
-            .retail-price {
-                font-size: 14px;
-                text-decoration: line-through;
-                color: #7f8c8d;
-                margin-right: 8px;
-            }
-            
-            .savings {
-                font-size: 13px;
-                color: #27ae60;
-                font-weight: 600;
-                background-color: #e8f6e9;
-                padding: 3px 8px;
-                border-radius: 30px;
-                margin-top: 5px;
-            }
-            
-            .product-info-item {
-                margin-bottom: 8px;
-                font-size: 13px;
-                line-height: 1.4;
-            }
-            
-            .product-info-label {
-                font-weight: 600;
-                display: inline-block;
-                min-width: 100px;
-                color: #555;
-            }
-            
-            .reasons-list {
-                margin-top: 8px;
-                padding-left: 15px;
-            }
-            
-            .reasons-list li {
-                margin-bottom: 5px;
-                font-size: 12px;
-                line-height: 1.3;
-            }
-            
-            .reasons-list li:before {
-                content: "•";
-                color: #3498db;
-                font-weight: bold;
-                display: inline-block;
-                width: 1em;
-                margin-left: -1em;
-            }
-            
-            .buy-button {
-                display: inline-block;
-                margin-top: 15px;
-                padding: 8px 16px;
-                background: linear-gradient(to right, #3498db, #2980b9);
-                color: white;
-                text-decoration: none;
-                border-radius: 30px;
-                font-weight: 600;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
-                text-align: center;
-                font-size: 13px;
-            }
-            
-            .buy-button:hover {
-                background: linear-gradient(to right, #2980b9, #2471a3);
-                transform: translateY(-3px);
-                box-shadow: 0 6px 10px rgba(52, 152, 219, 0.4);
-            }
-            
-            .bestseller-badge {
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                background: linear-gradient(to right, #ff6b00, #ff9800);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 30px;
-                font-weight: bold;
-                font-size: 0.8rem;
-                box-shadow: 0 3px 8px rgba(255,107,0,0.3);
-                animation: pulse 2s infinite;
-                z-index: 10;
-            }
-            
-            @keyframes pulse {
-                0% {
-                    transform: scale(1);
-                    box-shadow: 0 3px 8px rgba(255,107,0,0.3);
-                }
-                50% {
-                    transform: scale(1.05);
-                    box-shadow: 0 5px 15px rgba(255,107,0,0.4);
-                }
-                100% {
-                    transform: scale(1);
-                    box-shadow: 0 3px 8px rgba(255,107,0,0.3);
-                }
-            }
-            
-            footer {
-                text-align: center;
-                margin-top: 50px;
-                padding: 30px;
-                background: linear-gradient(to right, #f8f9fa, #f1f4f7);
-                color: #7f8c8d;
-                font-size: 14px;
-                border-radius: 8px;
-            }
-            
-            @media (max-width: 768px) {
-                .client-info-item {
-                    flex: 0 0 100%;
-                }
-                
-                .product-card {
-                    width: calc(50% - 20px);
-                    flex: 0 0 calc(50% - 20px);
-                    max-width: calc(50% - 20px);
-                    margin: 10px;
-                }
-                
-                .product-image-container {
-                    height: 160px;
-                }
-                
-                .product-details {
-                    padding: 15px;
-                }
-                
-                .product-title {
-                    font-size: 16px;
-                    line-height: 1.3;
-                    margin-bottom: 5px;
-                }
-                
-                .product-type {
-                    font-size: 11px;
-                    padding: 3px 8px;
-                    margin-bottom: 10px;
-                }
-                
-                .current-price {
-                    font-size: 18px;
-                }
-                
-                .product-info-item {
-                    font-size: 13px;
-                    margin-bottom: 5px;
-                }
-            }
-            
-            @media (max-width: 576px) {
-                .product-card {
-                    width: 100%;
-                    flex: 0 0 100%;
-                    max-width: 100%;
-                }
-            }
         </style>
     </head>
     <body>
         <div class="container">
+    """
+    
+    # Add header section with explicit f-string
+    header_section = f"""
             <header>
                 {logo_html}
                 <h1>Your Personalized Home Appliance Recommendations</h1>
                 <p>Specially curated for {user_data['name']}</p>
             </header>
-            
+    """
+    html_content += header_section
+    
+    # Add client info section with explicit f-string
+    client_info_section = f"""
             <div class="client-info">
                 <div class="client-info-item">
                     <div class="client-info-label">Name</div>
@@ -2038,12 +1621,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 </div>
             </div>
     """
-
+    html_content += client_info_section
+    
     # Add budget summary
     total_cost = calculate_total_cost(final_list)
     budget_utilization = (total_cost / user_data['total_budget']) * 100
     
-    html_content += f"""
+    budget_summary_section = f"""
             <div class="budget-summary">
                 <h2>Budget Analysis</h2>
                 <div class="budget-info">
@@ -2063,6 +1647,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     </div>
                 </div>
     """
+    html_content += budget_summary_section
     
     if budget_utilization <= 100:
         html_content += """
