@@ -1094,6 +1094,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         "web_app/better_home_logo.png",  # Relative to script execution directory
         "./web_app/better_home_logo.png",  # Explicit relative path
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
+        "better_home_logo.png",  # Check in current directory as well
     ]
     
     logo_path = None
@@ -1491,6 +1492,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         "web_app/better_home_logo.png",  # Relative to script execution directory
         "./web_app/better_home_logo.png",  # Explicit relative path
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
+        "better_home_logo.png",  # Check in current directory as well
     ]
     
     logo_path = None
