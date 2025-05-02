@@ -1575,34 +1575,23 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             /* Client information styling */
             .client-info {
                 margin: 30px 0;
-                padding: 25px;
+                padding: 20px;
                 border-radius: 8px;
                 background-color: #fff;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            }
-            
-            .client-info h2 {
-                margin-top: 0;
-                margin-bottom: 20px;
-                color: #333;
-                font-weight: 600;
-                font-size: 1.5rem;
-            }
-            
-            .client-info-grid {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 20px;
+                gap: 15px;
             }
             
             @media (min-width: 768px) {
-                .client-info-grid {
+                .client-info {
                     grid-template-columns: repeat(3, 1fr);
                 }
             }
             
             .client-info-item {
-                margin-bottom: 10px;
+                margin-bottom: 0;
             }
             
             .client-info-label {
@@ -1614,6 +1603,265 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .client-info-value {
                 font-weight: 600;
                 color: #333;
+            }
+            
+            /* Product card and grid styling */
+            .products-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 30px;
+                margin-top: 20px;
+            }
+            
+            @media (min-width: 768px) {
+                .products-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            
+            .product-card {
+                background: #fff;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .product-image-container {
+                position: relative;
+                height: 200px;
+                overflow: hidden;
+            }
+            
+            .product-image {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                transition: transform 0.3s ease;
+            }
+            
+            .product-card:hover .product-image {
+                transform: scale(1.05);
+            }
+            
+            /* Bestseller badge styling */
+            .bestseller-badge {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background-color: #ff6b00;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 12px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            
+            .bestseller-badge i {
+                font-size: 14px;
+            }
+            
+            /* Product details styling */
+            .product-details {
+                padding: 20px;
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .product-type {
+                font-size: 12px;
+                text-transform: uppercase;
+                color: #666;
+                margin-bottom: 5px;
+                letter-spacing: 1px;
+            }
+            
+            .product-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin: 0 0 15px;
+                color: #333;
+            }
+            
+            .price-container {
+                margin-bottom: 15px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: baseline;
+            }
+            
+            .current-price {
+                font-size: 20px;
+                font-weight: 700;
+                color: #e74c3c;
+            }
+            
+            .retail-price {
+                font-size: 16px;
+                color: #7f8c8d;
+                text-decoration: line-through;
+            }
+            
+            .savings {
+                font-size: 14px;
+                color: #27ae60;
+                font-weight: 500;
+            }
+            
+            .product-info-item {
+                margin-bottom: 10px;
+                font-size: 14px;
+                color: #555;
+            }
+            
+            .product-info-label {
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .reasons-list {
+                list-style: none;
+                padding: 0;
+                margin: 0 0 20px;
+            }
+            
+            .reasons-list li {
+                margin-bottom: 8px;
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .reasons-list i {
+                color: #3498db;
+                margin-top: 3px;
+            }
+            
+            .buy-button {
+                display: inline-block;
+                background-color: #3498db;
+                color: white;
+                padding: 10px 20px;
+                margin-top: auto;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: 500;
+                transition: background-color 0.3s;
+            }
+            
+            .buy-button:hover {
+                background-color: #2980b9;
+            }
+            
+            /* Budget summary styling */
+            .budget-summary {
+                margin: 30px 0;
+                padding: 25px;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            }
+            
+            .budget-summary h2 {
+                margin-top: 0;
+                margin-bottom: 20px;
+                color: #333;
+                font-weight: 600;
+            }
+            
+            .budget-info {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            
+            @media (min-width: 768px) {
+                .budget-info {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            
+            .budget-item {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-radius: 6px;
+            }
+            
+            .budget-item-label {
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 8px;
+            }
+            
+            .budget-item-value {
+                font-size: 18px;
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .budget-status {
+                padding: 12px 15px;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+            
+            .budget-status.good {
+                background-color: #d4edda;
+                color: #155724;
+            }
+            
+            .budget-status.warning {
+                background-color: #fff3cd;
+                color: #856404;
+            }
+            
+            /* Room styling */
+            .room-section {
+                margin: 40px 0;
+            }
+            
+            .room-section h2 {
+                font-size: 24px;
+                color: #2c3e50;
+                margin-bottom: 10px;
+                position: relative;
+                padding-bottom: 10px;
+            }
+            
+            .room-section h2:after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 50px;
+                height: 3px;
+                background-color: #3498db;
+            }
+            
+            .room-description {
+                font-size: 16px;
+                color: #555;
+                margin-bottom: 20px;
+                line-height: 1.5;
+            }
+            
+            /* Footer styling */
+            footer {
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 1px solid #eaeaea;
+                text-align: center;
+                color: #7f8c8d;
+                font-size: 14px;
             }
         </style>
     </head>
@@ -1634,37 +1882,34 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Add client info section with explicit f-string
     client_info_section = f"""
             <div class="client-info">
-                <h2>Client Information</h2>
-                <div class="client-info-grid">
-                    <div class="client-info-item">
-                        <div class="client-info-label">Name</div>
-                        <div class="client-info-value">{user_data['name']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Mobile</div>
-                        <div class="client-info-value">{user_data['mobile']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Email</div>
-                        <div class="client-info-value">{user_data['email']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Address</div>
-                        <div class="client-info-value">{user_data['address']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Total Budget</div>
-                        <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Family Size</div>
-                        <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
-                    </div>
+                <div class="client-info-item">
+                    <div class="client-info-label">Name</div>
+                    <div class="client-info-value">{user_data['name']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Mobile</div>
+                    <div class="client-info-value">{user_data['mobile']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Email</div>
+                    <div class="client-info-value">{user_data['email']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Address</div>
+                    <div class="client-info-value">{user_data['address']}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Total Budget</div>
+                    <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Family Size</div>
+                    <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
                 </div>
             </div>
     """
