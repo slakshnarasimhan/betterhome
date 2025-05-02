@@ -1571,6 +1571,50 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .logo:hover {
                 transform: scale(1.05);
             }
+            
+            /* Client information styling */
+            .client-info {
+                margin: 30px 0;
+                padding: 25px;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            }
+            
+            .client-info h2 {
+                margin-top: 0;
+                margin-bottom: 20px;
+                color: #333;
+                font-weight: 600;
+                font-size: 1.5rem;
+            }
+            
+            .client-info-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            
+            @media (min-width: 768px) {
+                .client-info-grid {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            
+            .client-info-item {
+                margin-bottom: 10px;
+            }
+            
+            .client-info-label {
+                font-weight: 500;
+                color: #666;
+                margin-bottom: 4px;
+            }
+            
+            .client-info-value {
+                font-weight: 600;
+                color: #333;
+            }
         </style>
     </head>
     <body>
@@ -1590,34 +1634,37 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Add client info section with explicit f-string
     client_info_section = f"""
             <div class="client-info">
-                <div class="client-info-item">
-                    <div class="client-info-label">Name</div>
-                    <div class="client-info-value">{user_data['name']}</div>
-                </div>
-                
-                <div class="client-info-item">
-                    <div class="client-info-label">Mobile</div>
-                    <div class="client-info-value">{user_data['mobile']}</div>
-                </div>
-                
-                <div class="client-info-item">
-                    <div class="client-info-label">Email</div>
-                    <div class="client-info-value">{user_data['email']}</div>
-                </div>
-                
-                <div class="client-info-item">
-                    <div class="client-info-label">Address</div>
-                    <div class="client-info-value">{user_data['address']}</div>
-                </div>
-                
-                <div class="client-info-item">
-                    <div class="client-info-label">Total Budget</div>
-                    <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
-                </div>
-                
-                <div class="client-info-item">
-                    <div class="client-info-label">Family Size</div>
-                    <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
+                <h2>Client Information</h2>
+                <div class="client-info-grid">
+                    <div class="client-info-item">
+                        <div class="client-info-label">Name</div>
+                        <div class="client-info-value">{user_data['name']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Mobile</div>
+                        <div class="client-info-value">{user_data['mobile']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Email</div>
+                        <div class="client-info-value">{user_data['email']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Address</div>
+                        <div class="client-info-value">{user_data['address']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Total Budget</div>
+                        <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Family Size</div>
+                        <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
+                    </div>
                 </div>
             </div>
     """
