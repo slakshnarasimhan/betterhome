@@ -86,26 +86,19 @@ def submit():
     subprocess.run(['python3', 'combined_script.py', excel_filename])
     
     # Check if the recommendation files were created
-    pdf_filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.pdf"
-    html_filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.html"
+    pdf_filename = excel_filename.replace('.xlsx', '.pdf')
+    html_filename = excel_filename.replace('.xlsx', '.html')
     
     if os.path.exists(pdf_filename) and os.path.exists(html_filename):
-        # Read the HTML file content
-        with open(html_filename, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-            
-        # Extract just the body content from the HTML
-        import re
-        body_match = re.search(r'<body.*?>(.*?)</body>', html_content, re.DOTALL)
-        if body_match:
-            html_content = body_match.group(1)
+        # Get the basename for the PDF download link
+        pdf_basename = os.path.basename(pdf_filename)
         
-        # Convert the HTML content to a Markup object to prevent escaping
-        html_content = Markup(html_content)
+        # For the HTML content, we'll simply redirect to a route that serves the HTML file directly
+        html_basename = os.path.basename(html_filename)
         
         return render_template('results.html', 
-                             html_content=html_content,
-                             pdf_path=url_for('download_file', filename=os.path.basename(pdf_filename)))
+                             html_file=html_basename,
+                             pdf_path=url_for('download_file', filename=pdf_basename))
     else:
         return "Error generating recommendations. Please try again."
 
@@ -117,6 +110,11 @@ def download_file(filename):
 def serve_uploads(filename):
     """Serve files from the uploads directory (for images in HTML)"""
     return send_from_directory(UPLOAD_FOLDER, filename)
+
+@app.route('/view_html/<filename>')
+def view_html(filename):
+    """Serve the HTML file with proper content type"""
+    return send_from_directory(UPLOAD_FOLDER, filename, mimetype='text/html')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002) 
