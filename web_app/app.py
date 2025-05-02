@@ -153,7 +153,21 @@ def serve_uploads(filename):
 @app.route('/view_html/<filename>')
 def view_html(filename):
     """Serve the HTML file with proper content type"""
-    return send_from_directory(UPLOAD_FOLDER, filename, mimetype='text/html')
+    # Read the HTML file
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+            
+        # Check if the HTML content contains unprocessed template variables
+        if '{logo_html}' in html_content or "{user_data['name']}" in html_content:
+            # Handle the case where variables weren't substituted
+            return "Error: Template variables not correctly processed. Please check the logs and try again."
+            
+        return send_from_directory(UPLOAD_FOLDER, filename, mimetype='text/html')
+    except Exception as e:
+        print(f"Error serving HTML file: {e}")
+        return f"Error: {str(e)}"
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002) 

@@ -1783,35 +1783,35 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
                 # Create the HTML for the product card
                 product_html = f'''
-                <div class="product-card">
-                    <div class="product-image-container">
+                    <div class="product-card">
+                        <div class="product-image-container">
                         <img class="product-image" src="{image_src}" alt="{brand} {model}">
                         {bestseller_badge}
-                    </div>
-                    <div class="product-details">
+                        </div>
+                        <div class="product-details">
                         <span class="product-type">{appliance_type.replace('_', ' ').upper()}</span>
                         <h3 class="product-title">{brand} {model}</h3>
-                        <div class="price-container">
+                            <div class="price-container">
                             <span class="current-price">{better_home_price}</span>
                             <span class="retail-price">{retail_price}</span>
                             <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
-                        </div>
-                        <div class="product-info-item">
-                            <span class="product-info-label">Description:</span> {description}
-                        </div>
-                        <div class="product-info-item">
+                            </div>
+                            <div class="product-info-item">
+                                <span class="product-info-label">Description:</span> {description}
+                            </div>
+                            <div class="product-info-item">
                             <span class="product-info-label">Delivery:</span> {product.get('delivery_time', 'Contact for details')}
-                        </div>
-                        <div class="product-info-item">
+                            </div>
+                            <div class="product-info-item">
                             <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
-                        </div>
-                        <h4>Why We Recommend This:</h4>
-                        <ul class="reasons-list">
+                            </div>
+                            <h4>Why We Recommend This:</h4>
+                            <ul class="reasons-list">
                             {"".join(reasons_with_icons)}
-                        </ul>
+                            </ul>
                         <a href="{product.get('url', '#')}" class="buy-button" target="_blank">View Details</a>
+                        </div>
                     </div>
-                </div>
                 '''
                 html_content += product_html
         
@@ -1835,6 +1835,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Write the HTML content to a file
     with open(html_filename, 'w', encoding='utf-8') as f:
         f.write(html_content)
+    
+    # Debug: Check if any unprocessed variables remain in the HTML content
+    if '{logo_html}' in html_content or "{user_data['name']}" in html_content:
+        print("WARNING: Some template variables were not properly substituted!")
+        print("Sample of unprocessed content:")
+        sample_start = html_content.find('{logo_html}') if '{logo_html}' in html_content else html_content.find("{user_data")
+        if sample_start >= 0:
+            sample_end = min(sample_start + 200, len(html_content))
+            print(html_content[sample_start:sample_end])
     
     print(f"Generated professional HTML brochure: {html_filename}")
 
