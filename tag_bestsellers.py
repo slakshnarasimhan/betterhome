@@ -85,8 +85,9 @@ def tag_bestsellers():
     bestsellers = get_bestsellers()
     print(f"\nTotal bestsellers found on website: {len(bestsellers)}")
     
-    # Read the product catalog
-    with open('product_catalog.json', 'r') as f:
+    # Read the product catalog from web_app directory
+    catalog_path = 'web_app/product_catalog.json'
+    with open(catalog_path, 'r') as f:
         catalog = json.load(f)
     
     # Clean bestseller URLs by removing variant parameters
@@ -137,10 +138,10 @@ def tag_bestsellers():
     print(f"\nTotal unmatched bestsellers: {unmatched_count}")
     
     # Save updated catalog
-    with open('product_catalog.json', 'w') as f:
+    with open(catalog_path, 'w') as f:
         json.dump(catalog, f, indent=4)
     
-    print(f"Updated catalog saved to product_catalog.json")
+    print(f"Updated catalog saved to {catalog_path}")
 
 if __name__ == "__main__":
     tag_bestsellers() 
