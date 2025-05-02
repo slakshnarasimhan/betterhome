@@ -3,7 +3,7 @@ import json
 import yaml
 from typing import Dict, Any, List
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import sys
@@ -13,6 +13,10 @@ import os
 from urllib.parse import urlparse
 import re # Add import for regex
 from reportlab.platypus import Image
+from reportlab.lib.colors import HexColor
+from reportlab.platypus.flowables import HRFlowable
+from datetime import datetime
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -1083,15 +1087,126 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import Image
+    from reportlab.lib.colors import HexColor
     
-    # Check if logo exists
-    logo_path = "web_app/better_home_logo.png"
-    logo_exists = os.path.exists(logo_path)
+    # Check if logo exists in multiple possible locations
+    possible_logo_paths = [
+        "web_app/better_home_logo.png",  # Relative to script execution directory
+        "./web_app/better_home_logo.png",  # Explicit relative path
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
+    ]
     
-    pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
+    logo_path = None
+    logo_exists = False
+    for path in possible_logo_paths:
+        if os.path.exists(path):
+            logo_path = path
+            logo_exists = True
+            print(f"Found logo at: {path}")
+            break
+    
+    if not logo_exists:
+        print("Logo not found in any of the expected locations")
+    
+    # Try to register DejaVuSans font if available, otherwise use default fonts
+    try:
+        pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
+        default_font = 'DejaVuSans'
+    except:
+        print("Using default fonts - DejaVuSans.ttf not found")
+        default_font = 'Helvetica'
+    
     styles = getSampleStyleSheet()
     for style_name in styles.byName:
-        styles[style_name].fontName = 'DejaVuSans'
+        styles[style_name].fontName = default_font
+    
+    # Create custom styles for a more professional look
+    title_style = ParagraphStyle(
+        'Title',
+        parent=styles['Title'],
+        fontSize=24,
+        leading=28,
+        textColor=HexColor('#2c3e50'),
+        spaceAfter=12,
+        fontName=default_font
+    )
+    
+    heading1_style = ParagraphStyle(
+        'Heading1',
+        parent=styles['Heading1'],
+        fontSize=18,
+        leading=22,
+        textColor=HexColor('#2980b9'),
+        spaceAfter=10,
+        spaceBefore=15,
+        fontName=default_font
+    )
+    
+    heading2_style = ParagraphStyle(
+        'Heading2',
+        parent=styles['Heading2'],
+        fontSize=14,
+        leading=18,
+        textColor=HexColor('#3498db'),
+        spaceAfter=8,
+        spaceBefore=12,
+        fontName=default_font
+    )
+    
+    normal_style = ParagraphStyle(
+        'Normal',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        textColor=HexColor('#333333'),
+        spaceAfter=8
+    )
+    
+    info_label_style = ParagraphStyle(
+        'InfoLabel',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        textColor=HexColor('#7f8c8d'),
+        fontName=default_font
+    )
+    
+    info_value_style = ParagraphStyle(
+        'InfoValue',
+        parent=styles['Normal'],
+        fontSize=12,
+        leading=16,
+        textColor=HexColor('#2c3e50')
+    )
+    
+    price_style = ParagraphStyle(
+        'Price',
+        parent=styles['Normal'],
+        fontSize=14,
+        leading=18,
+        textColor=HexColor('#e74c3c'),
+        fontName=default_font
+    )
+    
+    savings_style = ParagraphStyle(
+        'Savings',
+        parent=styles['Normal'],
+        fontSize=11,
+        leading=15,
+        textColor=HexColor('#27ae60'),
+        fontName=default_font
+    )
+    
+    bestseller_style = ParagraphStyle(
+        'Bestseller',
+        parent=styles['Normal'],
+        fontSize=12,
+        leading=15,
+        textColor=HexColor('#ffffff'),
+        fontName=default_font,
+        backColor=HexColor('#ff6b00')
+    )
+    
     story = []
 
     # Add logo if it exists
@@ -1099,111 +1214,165 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         logo = Image(logo_path, width=200, height=60)  # Adjust size as needed
         logo.hAlign = 'CENTER'
         story.append(logo)
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 20))
 
-    # Add custom styles
-    styles.add(ParagraphStyle(fontName='DejaVuSans', 
-        name='RoomTitle',
-        parent=styles['Heading1'],
-        fontSize=16,
-        spaceAfter=20
-    ))
-    styles.add(ParagraphStyle(fontName='DejaVuSans', 
-        name='ProductTitle',
-        parent=styles['Heading2'],
-        fontSize=14,
-        spaceAfter=10
-    ))
-    styles.add(ParagraphStyle(fontName='DejaVuSans', 
-        name='Description',
-        parent=styles['Normal'],
-        fontSize=12,
+    # Title and date
+    story.append(Paragraph("BetterHome Recommendations", title_style))
+    story.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y')}", normal_style))
+    story.append(Spacer(1, 15))
+
+    # Create a horizontal line
+    story.append(HRFlowable(
+        color=HexColor('#3498db'),
+        width="100%",
+        thickness=2,
+        spaceBefore=5,
         spaceAfter=15
     ))
 
-    # Cover page with user information
-    story.append(Paragraph("BetterHome Product Recommendations", styles['Title']))
-    story.append(Spacer(1, 20))
-    story.append(Paragraph(f"Name: {user_data['name']}", styles['Normal']))
-    story.append(Paragraph(f"Mobile: {user_data['mobile']}", styles['Normal']))
-    story.append(Paragraph(f"Email: {user_data['email']}", styles['Normal']))
-    story.append(Paragraph(f"Address: {user_data['address']}", styles['Normal']))
-    story.append(Paragraph(f"Total Budget: ₹{user_data['total_budget']:,.2f}", styles['Normal']))
-    story.append(Paragraph(f"Family Size: {sum(user_data['demographics'].values())} members", styles['Normal']))
-    story.append(PageBreak())
+    # Client Information Section
+    story.append(Paragraph("Client Information", heading1_style))
+    
+    # Create a table for client info
+    data = []
+    data.append([Paragraph("<b>Name:</b>", info_label_style), 
+                 Paragraph(user_data.get('name', 'Not provided'), info_value_style)])
+    data.append([Paragraph("<b>Email:</b>", info_label_style), 
+                 Paragraph(user_data.get('email', 'Not provided'), info_value_style)])
+    data.append([Paragraph("<b>Phone:</b>", info_label_style), 
+                 Paragraph(user_data.get('phone', 'Not provided'), info_value_style)])
+    data.append([Paragraph("<b>Address:</b>", info_label_style), 
+                 Paragraph(user_data.get('address', 'Not provided'), info_value_style)])
+    
+    if 'demographics' in user_data:
+        data.append([Paragraph("<b>Number of Bedrooms:</b>", info_label_style), 
+                     Paragraph(str(user_data['demographics'].get('bedrooms', 'Not provided')), info_value_style)])
+        data.append([Paragraph("<b>Number of People:</b>", info_label_style), 
+                     Paragraph(str(user_data['demographics'].get('num_people', 'Not provided')), info_value_style)])
+    
+    client_table = Table(data, colWidths=[150, 350])
+    client_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f8f9fa')),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dddddd')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 8),
+        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [HexColor('#ffffff'), HexColor('#f4f6f9')])
+    ]))
+    
+    story.append(client_table)
+    story.append(Spacer(1, 15))
+    
+    # Budget Information
+    story.append(Paragraph("Budget Information", heading1_style))
+    
+    # Create a table for budget info
+    budget_data = []
+    budget_data.append([Paragraph("<b>Total Budget:</b>", info_label_style), 
+                       Paragraph(f"₹{user_data.get('total_budget', 0):,.2f}", price_style)])
+    
+    if 'used_budget' in user_data:
+        budget_data.append([Paragraph("<b>Used Budget:</b>", info_label_style), 
+                           Paragraph(f"₹{user_data.get('used_budget', 0):,.2f}", info_value_style)])
+        budget_data.append([Paragraph("<b>Remaining Budget:</b>", info_label_style), 
+                           Paragraph(f"₹{user_data.get('total_budget', 0) - user_data.get('used_budget', 0):,.2f}", 
+                                    savings_style if user_data.get('total_budget', 0) >= user_data.get('used_budget', 0) else price_style)])
+    
+    budget_table = Table(budget_data, colWidths=[150, 350])
+    budget_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f1f9ff')),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#b3d7ff')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 8),
+        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [HexColor('#e6f7ff'), HexColor('#f1f9ff')])
+    ]))
+    
+    story.append(budget_table)
+    story.append(Spacer(1, 15))
 
-    total_cost = calculate_total_cost(recommendations)
-    
-    # Process each room
-    for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
-        if room in recommendations and recommendations[room]:
-            story.append(Paragraph(room.replace('_', ' ').title(), styles['RoomTitle']))
+    # Add room by room recommendations
+    if 'rooms' in user_data:
+        story.append(Paragraph("Room by Room Recommendations", heading1_style))
+        story.append(Spacer(1, 10))
+
+        for room, room_data in user_data['rooms'].items():
+            # Room header with blue background
+            room_title = Paragraph(f"{room.replace('_', ' ').title()} Room", heading2_style)
+            story.append(room_title)
             
-            # Add room description
-            room_desc = get_room_description(room, user_data)
-            story.append(Paragraph(room_desc, styles['Description']))
+            # Add room description in a styled box
+            room_description = room_data.get('description', '')
+            if room_description:
+                story.append(Paragraph(room_description, normal_style))
+                story.append(Spacer(1, 10))
             
-            # Add products for the room
-            for appliance_type, items in recommendations[room].items():
-                if isinstance(items, list) and items:  # Check if items is a non-empty list
-                    for item in items:
-                        if isinstance(item, dict):  # Check if item is a dictionary
-                            # Get product details
-                            brand = item.get('brand', 'Unknown Brand')
-                            model = item.get('model', 'Unknown Model')
-                            price = float(item.get('retail_price', item.get('price', item.get('better_home_price', 0))))
-                            description = item.get('description', 'No description available')
-                            retail_price = price * 1.2  # 20% markup for retail price
+            # Add appliance recommendations for this room
+            if room in recommendations:
+                for appliance_type, appliances in recommendations[room].items():
+                    appliance_title = appliance_type.replace('_', ' ').title()
+                    story.append(Paragraph(f"{appliance_title} Recommendations", heading2_style))
+                    
+                    # Add each recommended appliance
+                    for item in appliances:
+                        if not isinstance(item, dict):
+                            continue
+                            
+                        # Get product details
+                        brand = item.get('brand', 'Unknown Brand')
+                        model = item.get('model', 'Unknown Model')
+                        price = float(item.get('better_home_price', item.get('price', 0)))
+                        retail_price = float(item.get('retail_price', price * 1.2))
+                        
+                        # Add bestseller badge if applicable
+                        if item.get('is_bestseller', False):
+                            bestseller_text = Paragraph("<font color='white' backColor='#ff6b00'><b>BESTSELLER</b></font>", bestseller_style)
+                            story.append(bestseller_text)
+                            story.append(Spacer(1, 5))
+                        
+                        # Add product title
+                        story.append(Paragraph(f"{brand} {model}", heading2_style))
+                        
+                        # Add product price with formatting
+                        price_text = f"Price: ₹{price:,.2f}"
+                        if retail_price > price:
                             savings = retail_price - price
-                            
-                            # Correctly access the nested URL field
-                            purchase_url = item.get('url', 'https://betterhomeapp.com')
-                            product_name = f"<link href='{purchase_url}'>{brand} {model}</link>"
-                            story.append(Paragraph(product_name, styles['ProductTitle']))
-                            
-                            # Add bestseller badge if applicable
-                            if item.get('is_bestseller', False):
-                                bestseller_text = Paragraph("<font color=\"#ff6b00\"><b>⭐ BESTSELLER</b></font>", styles['Normal'])
-                                story.append(bestseller_text)
-                                story.append(Spacer(1, 5))
-                            
-                            # Get recommendation reason with total budget
-                            reason = get_product_recommendation_reason(
-                                item, 
-                                appliance_type, 
-                                room, 
-                                user_data['demographics'],
-                                user_data['total_budget'],
-                                required_features  # Pass the correct dictionary
-                            )
-                            
-                            details = f"""
-                            Price: ₹{price:,.2f}<br/>
-                            Retail Price: ₹{retail_price:,.2f}<br/>
-                            You Save: ₹{savings:,.2f}<br/>
-                            Description: {description}<br/>
-                            Reason: {reason}<br/>
-                            """
-                            story.append(Paragraph(details, styles['Normal']))
-                            story.append(Spacer(1, 15))
+                            price_text += f" (Retail: ₹{retail_price:,.2f}, Save: ₹{savings:,.2f})"
+                        story.append(Paragraph(price_text, normal_style))
+                        
+                        # Add key features with bullet points
+                        features = item.get('features', [])
+                        if features:
+                            story.append(Paragraph("Key Features:", heading2_style))
+                            features_list = [f"• {feature}" for feature in features[:5]]  # Limit to 5 features
+                            for feature in features_list:
+                                story.append(Paragraph(feature, normal_style))
+                            if len(features) > 5:
+                                story.append(Paragraph("• ...", normal_style))
+                        
+                        # Add recommendation reasons
+                        reason = item.get('reason', '')
+                        if reason:
+                            story.append(Paragraph("Why We Recommend This:", heading2_style))
+                            reasons = [r.strip() for r in reason.split('•') if r.strip()]
+                            for r in reasons[:3]:  # Limit to 3 reasons
+                                story.append(Paragraph(f"• {r}", normal_style))
+                            if len(reasons) > 3:
+                                story.append(Paragraph("• ...", normal_style))
+                        
+                        # Add a divider between products
+                        story.append(Spacer(1, 10))
+                        story.append(HRFlowable(color=HexColor('#dddddd'), width="90%", thickness=1))
+                        story.append(Spacer(1, 10))
             
-            story.append(PageBreak())
+            # Add space between rooms
+            story.append(Spacer(1, 20))
+            
+    # Add a footer
+    story.append(HRFlowable(color=HexColor('#3498db'), width="100%", thickness=1))
+    story.append(Spacer(1, 10))
+    footer_text = "Thank you for choosing BetterHome! For any questions, please contact support@betterhome.com"
+    story.append(Paragraph(footer_text, normal_style))
     
-    # Add budget summary
-    budget_utilization = (total_cost / user_data['total_budget']) * 100
-    summary = f"""
-    Total Cost of Recommended Products: ₹{total_cost:,.2f}<br/>
-    Your Budget: ₹{user_data['total_budget']:,.2f}<br/>
-    Budget Utilization: {budget_utilization:.1f}%<br/>
-    """
-    if budget_utilization <= 100:
-        summary += "Your selected products fit within your budget!"
-    else:
-        summary += "Note: The total cost exceeds your budget. You may want to consider alternative options."
-    
-    story.append(Paragraph("Budget Summary", styles['RoomTitle']))
-    story.append(Paragraph(summary, styles['Normal']))
-    
+    # Build the PDF
     doc.build(story)
 
 def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], txt_filename: str) -> None:
@@ -1317,9 +1486,24 @@ def download_image(image_url: str, save_dir: str) -> str:
 # Function to generate an HTML file with recommendations
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """Generate an HTML file with user information and product recommendations."""
-    # Check if logo exists
-    logo_path = "web_app/better_home_logo.png"
-    logo_exists = os.path.exists(logo_path)
+    # Check if logo exists in multiple possible locations
+    possible_logo_paths = [
+        "web_app/better_home_logo.png",  # Relative to script execution directory
+        "./web_app/better_home_logo.png",  # Explicit relative path
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
+    ]
+    
+    logo_path = None
+    logo_exists = False
+    for path in possible_logo_paths:
+        if os.path.exists(path):
+            logo_path = path
+            logo_exists = True
+            print(f"Found logo at: {path}")
+            break
+    
+    if not logo_exists:
+        print("Logo not found in any of the expected locations")
     
     html_content = """
     <!DOCTYPE html>
@@ -1328,10 +1512,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>BetterHome Product Recommendations</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>
             /* Modern typography and base styles */
             body {
-                font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+                font-family: 'Poppins', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
                 margin: 0;
                 padding: 0;
                 line-height: 1.6;
@@ -1350,39 +1538,65 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 margin-bottom: 40px;
                 border-bottom: 1px solid #eaeaea;
                 padding-bottom: 30px;
+                background: linear-gradient(to right, #f8f9fa, #e9ecef);
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             }
             
             .logo {
                 max-width: 200px;
                 margin-bottom: 15px;
+                transition: transform 0.3s ease;
+            }
+            
+            .logo:hover {
+                transform: scale(1.05);
             }
             
             h1 {
                 color: #2c3e50;
                 margin-top: 0;
-                font-weight: 300;
+                font-weight: 400;
                 font-size: 32px;
                 margin-bottom: 10px;
+                text-shadow: 1px 1px 1px rgba(0,0,0,0.05);
             }
             
             h2 {
                 color: #2980b9;
-                font-weight: 400;
+                font-weight: 500;
                 margin-top: 40px;
                 padding-bottom: 10px;
-                border-bottom: 1px solid #eaeaea;
+                border-bottom: 2px solid #eaeaea;
                 font-size: 24px;
+                position: relative;
+            }
+            
+            h2:after {
+                content: "";
+                position: absolute;
+                bottom: -2px;
+                left: 0;
+                width: 80px;
+                height: 2px;
+                background-color: #3498db;
             }
             
             .client-info {
                 background-color: #fff;
                 padding: 25px;
                 border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
                 margin-bottom: 40px;
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: space-between;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            
+            .client-info:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 6px 20px rgba(0,0,0,0.1);
             }
             
             .client-info-item {
@@ -1394,25 +1608,37 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 color: #7f8c8d;
                 font-size: 14px;
                 margin-bottom: 3px;
+                font-weight: 500;
             }
             
             .client-info-value {
                 font-size: 16px;
-                font-weight: 500;
+                font-weight: 600;
+                color: #34495e;
             }
             
             .budget-summary {
-                background-color: #f1f9ff;
+                background: linear-gradient(to right, #f1f9ff, #e6f7ff);
                 padding: 25px;
                 border-radius: 8px;
                 margin: 30px 0;
                 border-left: 4px solid #3498db;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                transition: transform 0.3s ease;
+            }
+            
+            .budget-summary:hover {
+                transform: translateY(-5px);
             }
             
             .budget-summary h2 {
                 margin-top: 0;
                 border-bottom: none;
                 color: #2c3e50;
+            }
+            
+            .budget-summary h2:after {
+                display: none;
             }
             
             .budget-info {
@@ -1424,84 +1650,118 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .budget-item {
                 flex: 1;
                 min-width: 200px;
-                padding: 10px 15px;
+                padding: 15px;
                 margin: 5px;
                 background-color: white;
                 border-radius: 6px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            
+            .budget-item:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             }
             
             .budget-item-label {
                 color: #7f8c8d;
                 font-size: 14px;
+                font-weight: 500;
             }
             
             .budget-item-value {
-                font-size: 18px;
-                font-weight: 500;
+                font-size: 22px;
+                font-weight: 600;
                 color: #2c3e50;
                 margin-top: 5px;
             }
             
             .budget-status {
                 margin-top: 20px;
-                padding: 10px 15px;
-                border-radius: 4px;
+                padding: 15px;
+                border-radius: 6px;
                 font-weight: 500;
+                text-align: center;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             }
             
             .budget-status.good {
-                background-color: #e8f6e9;
+                background: linear-gradient(to right, #e8f6e9, #d4f5d9);
                 color: #27ae60;
+                border-left: 4px solid #27ae60;
             }
             
             .budget-status.warning {
-                background-color: #fef5e7;
+                background: linear-gradient(to right, #fef5e7, #fdebd0);
                 color: #e67e22;
+                border-left: 4px solid #e67e22;
             }
             
             .room-section {
                 margin-bottom: 50px;
+                padding: 20px;
+                background-color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                transition: transform 0.3s ease;
+            }
+            
+            .room-section:hover {
+                transform: translateY(-5px);
             }
             
             .room-description {
                 font-style: italic;
                 margin: 0 0 25px 0;
                 color: #555;
-                background-color: #fff;
+                background-color: #f8f9fa;
                 padding: 15px 20px;
                 border-radius: 6px;
-                border-left: 4px solid #ddd;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                border-left: 4px solid #3498db;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                transition: all 0.3s ease;
+            }
+            
+            .room-description:hover {
+                background-color: #f0f0f0;
+                border-left-color: #2980b9;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             }
             
             .products-grid {
                 display: flex;
                 flex-wrap: wrap;
                 margin: 0 -15px;
+                width: 100%;
             }
             
             .product-card {
+                width: calc(50% - 30px);
                 flex: 0 0 calc(50% - 30px);
+                max-width: calc(50% - 30px);
                 margin: 15px;
-                border-radius: 8px;
+                border-radius: 12px;
                 background-color: #fff;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
                 overflow: hidden;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                border: 1px solid #f0f0f0;
+                display: inline-block;
+                vertical-align: top;
             }
             
             .product-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                transform: translateY(-8px);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+                border-color: #e6e6e6;
             }
             
             .product-image-container {
-                padding: 20px;
-                background-color: #fafafa;
+                padding: 15px;
+                background: linear-gradient(to bottom right, #f5f7fa, #f1f4f7);
                 text-align: center;
                 border-bottom: 1px solid #eee;
-                height: 200px;
+                height: 180px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -1512,7 +1772,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .product-image {
                 max-width: 100%;
                 max-height: 180px;
-                transition: transform 0.3s ease;
+                transition: transform 0.5s ease;
             }
             
             .product-image:hover {
@@ -1520,55 +1780,65 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             }
             
             .product-details {
-                padding: 20px;
+                padding: 12px;
             }
             
             .product-title {
-                font-size: 18px;
+                font-size: 16px;
                 font-weight: 600;
                 color: #2c3e50;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
+                line-height: 1.3;
             }
             
             .product-type {
                 display: inline-block;
-                font-size: 12px;
-                font-weight: 500;
+                font-size: 11px;
+                font-weight: 600;
                 color: #fff;
-                background-color: #3498db;
+                background: linear-gradient(to right, #3498db, #2980b9);
                 padding: 3px 8px;
-                border-radius: 4px;
+                border-radius: 30px;
                 margin-bottom: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             }
             
             .price-container {
                 display: flex;
                 align-items: center;
-                margin: 15px 0;
+                margin: 10px 0;
+                flex-wrap: wrap;
             }
             
+            
             .current-price {
-                font-size: 22px;
+                font-size: 20px;
                 font-weight: 700;
                 color: #e74c3c;
+                margin-right: 8px;
             }
             
             .retail-price {
-                font-size: 16px;
+                font-size: 14px;
                 text-decoration: line-through;
                 color: #7f8c8d;
-                margin-left: 10px;
+                margin-right: 8px;
             }
             
             .savings {
-                font-size: 14px;
+                font-size: 13px;
                 color: #27ae60;
-                margin-left: 10px;
+                font-weight: 600;
+                background-color: #e8f6e9;
+                padding: 3px 8px;
+                border-radius: 30px;
+                margin-top: 5px;
             }
             
             .product-info-item {
                 margin-bottom: 8px;
-                font-size: 14px;
+                font-size: 13px;
+                line-height: 1.4;
             }
             
             .product-info-label {
@@ -1579,75 +1849,134 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             }
             
             .reasons-list {
-                margin-top: 15px;
-                padding-left: 20px;
+                margin-top: 8px;
+                padding-left: 15px;
             }
             
             .reasons-list li {
                 margin-bottom: 5px;
-                color: #444;
+                font-size: 12px;
+                line-height: 1.3;
+            }
+            
+            .reasons-list li:before {
+                content: "•";
+                color: #3498db;
+                font-weight: bold;
+                display: inline-block;
+                width: 1em;
+                margin-left: -1em;
             }
             
             .buy-button {
                 display: inline-block;
                 margin-top: 15px;
-                padding: 10px 20px;
-                background-color: #3498db;
+                padding: 8px 16px;
+                background: linear-gradient(to right, #3498db, #2980b9);
                 color: white;
                 text-decoration: none;
-                border-radius: 4px;
-                font-weight: 500;
-                transition: background-color 0.2s ease;
+                border-radius: 30px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+                text-align: center;
+                font-size: 13px;
             }
             
             .buy-button:hover {
-                background-color: #2980b9;
-            }
-            
-            footer {
-                text-align: center;
-                margin-top: 50px;
-                padding-top: 20px;
-                border-top: 1px solid #eaeaea;
-                color: #7f8c8d;
-                font-size: 14px;
-            }
-            
-            @media (max-width: 768px) {
-                .client-info-item,
-                .product-card {
-                    flex: 0 0 100%;
-                }
-                
-                .product-image-container {
-                    height: 180px;
-                }
-            }
-            
-            .room-description:hover {
-                background-color: #f0f0f0;
-                border-left-color: #3498db;
-                box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+                background: linear-gradient(to right, #2980b9, #2471a3);
+                transform: translateY(-3px);
+                box-shadow: 0 6px 10px rgba(52, 152, 219, 0.4);
             }
             
             .bestseller-badge {
                 position: absolute;
                 top: 10px;
                 right: 10px;
-                background-color: #ff6b00;
+                background: linear-gradient(to right, #ff6b00, #ff9800);
                 color: white;
-                padding: 5px 10px;
-                border-radius: 4px;
+                padding: 8px 12px;
+                border-radius: 30px;
                 font-weight: bold;
                 font-size: 0.8rem;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                box-shadow: 0 3px 8px rgba(255,107,0,0.3);
+                animation: pulse 2s infinite;
+                z-index: 10;
             }
             
-            .product-image-container {
-                position: relative;
-                height: 200px;
-                overflow: hidden;
-                margin-bottom: 10px;
+            @keyframes pulse {
+                0% {
+                    transform: scale(1);
+                    box-shadow: 0 3px 8px rgba(255,107,0,0.3);
+                }
+                50% {
+                    transform: scale(1.05);
+                    box-shadow: 0 5px 15px rgba(255,107,0,0.4);
+                }
+                100% {
+                    transform: scale(1);
+                    box-shadow: 0 3px 8px rgba(255,107,0,0.3);
+                }
+            }
+            
+            footer {
+                text-align: center;
+                margin-top: 50px;
+                padding: 30px;
+                background: linear-gradient(to right, #f8f9fa, #f1f4f7);
+                color: #7f8c8d;
+                font-size: 14px;
+                border-radius: 8px;
+            }
+            
+            @media (max-width: 768px) {
+                .client-info-item {
+                    flex: 0 0 100%;
+                }
+                
+                .product-card {
+                    width: calc(50% - 20px);
+                    flex: 0 0 calc(50% - 20px);
+                    max-width: calc(50% - 20px);
+                    margin: 10px;
+                }
+                
+                .product-image-container {
+                    height: 160px;
+                }
+                
+                .product-details {
+                    padding: 15px;
+                }
+                
+                .product-title {
+                    font-size: 16px;
+                    line-height: 1.3;
+                    margin-bottom: 5px;
+                }
+                
+                .product-type {
+                    font-size: 11px;
+                    padding: 3px 8px;
+                    margin-bottom: 10px;
+                }
+                
+                .current-price {
+                    font-size: 18px;
+                }
+                
+                .product-info-item {
+                    font-size: 13px;
+                    margin-bottom: 5px;
+                }
+            }
+            
+            @media (max-width: 576px) {
+                .product-card {
+                    width: 100%;
+                    flex: 0 0 100%;
+                    max-width: 100%;
+                }
             }
         </style>
     </head>
@@ -1821,50 +2150,73 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 # Check if product is a bestseller
                 bestseller_badge = ""
                 if product.get('is_bestseller', False):
-                    bestseller_badge = '<div class="bestseller-badge">BESTSELLER</div>'
+                    bestseller_badge = '<div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>'
                 
-                html_content += f"""
-                    <div class="product-card">
-                        <div class="product-image-container">
-                            <img src="{image_src}" alt="{brand} {model}" class="product-image">
-                            {bestseller_badge}
-                        </div>
-                        <div class="product-details">
-                            <div class="product-type">{product_type_title}</div>
-                            <div class="product-title">{brand} {model}</div>
-                            
-                            <div class="price-container">
-                                <div class="current-price">₹{better_home_price:,.2f}</div>
-                                <div class="retail-price">₹{retail_price:,.2f}</div>
-                                <div class="savings">Save ₹{savings:,.2f}</div>
-                            </div>
-                            
-                            <div class="product-info-item">
-                                <span class="product-info-label">Description:</span> {description}
-                            </div>
-                            
-                            <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> {warranty}
-                            </div>
-                            
-                            <div class="product-info-item">
-                                <span class="product-info-label">Delivery:</span> {delivery_time}
-                            </div>
-                            
-                            <h4>Why We Recommend This:</h4>
-                            <ul class="reasons-list">
-                """
+                # Format prices for display
+                better_home_price_num = float(better_home_price)
+                retail_price_num = float(retail_price)
                 
+                better_home_price = f"₹{better_home_price_num:,.2f}"
+                retail_price = f"₹{retail_price_num:,.2f}"
+                savings = f"₹{retail_price_num - better_home_price_num:,.2f}"
+                
+                # Calculate savings percentage
+                savings_pct = 0
+                if retail_price_num > 0:
+                    savings_pct = ((retail_price_num - better_home_price_num) / retail_price_num) * 100
+                
+                # Add an icon for the reason text
+                reasons_with_icons = []
                 for reason in reasons:
-                    html_content += f"                                <li>{reason}</li>\n"
+                    icon = "check-circle"  # Default icon
+                    
+                    # Choose different icons based on keywords in the reason
+                    if any(keyword in reason.lower() for keyword in ["save", "budget", "price"]):
+                        icon = "money-bill-wave"
+                    elif any(keyword in reason.lower() for keyword in ["energy", "efficient", "power", "consumption"]):
+                        icon = "leaf"
+                    elif any(keyword in reason.lower() for keyword in ["feature", "advanced", "smart"]):
+                        icon = "cogs"
+                    elif any(keyword in reason.lower() for keyword in ["quality", "durable", "reliable"]):
+                        icon = "medal"
+                    elif any(keyword in reason.lower() for keyword in ["popular", "bestseller", "best-selling"]):
+                        icon = "star"
+                    
+                    reasons_with_icons.append(f'<li><i class="fas fa-{icon}"></i> {reason}</li>')
                 
-                html_content += f"""
-                            </ul>
-                            
-                            <a href="{purchase_url}" target="_blank" class="buy-button">View Product</a>
-                        </div>
+                # Create the HTML for the product card
+                product_html = f'''
+                <div class="product-card">
+                    <div class="product-image-container">
+                        <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                        {bestseller_badge}
                     </div>
-                """
+                    <div class="product-details">
+                        <span class="product-type">{appliance_type.replace('_', ' ').upper()}</span>
+                        <h3 class="product-title">{brand} {model}</h3>
+                        <div class="price-container">
+                            <span class="current-price">{better_home_price}</span>
+                            <span class="retail-price">{retail_price}</span>
+                            <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
+                        </div>
+                        <div class="product-info-item">
+                            <span class="product-info-label">Description:</span> {description}
+                        </div>
+                        <div class="product-info-item">
+                            <span class="product-info-label">Delivery:</span> {product.get('delivery_time', 'Contact for details')}
+                        </div>
+                        <div class="product-info-item">
+                            <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
+                        </div>
+                        <h4>Why We Recommend This:</h4>
+                        <ul class="reasons-list">
+                            {"".join(reasons_with_icons)}
+                        </ul>
+                        <a href="{product.get('url', '#')}" class="buy-button" target="_blank">View Details</a>
+                    </div>
+                </div>
+                '''
+                html_content += product_html
         
         html_content += """
                 </div>
