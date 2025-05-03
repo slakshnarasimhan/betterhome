@@ -657,7 +657,7 @@ def get_specific_product_recommendations(
                     'retail_price': float(product_data.get('retail_price', 0.0)),
                     'better_home_price': float(product_data.get('better_home_price', 0.0)),
                     'features': product_data.get('features', []),
-                    'description': f"{product_data.get('type', '')} {product_data.get('capacity', '')}", # Capacity might still be missing here
+                    'description': product_data.get('description', 'No description available'), # Use actual description from product data
                     'color_options': product_data.get('color_options', []),
                     'color_match': product_data.get('color_match', False),
                     'warranty': product_data.get('warranty', 'Standard warranty applies'),
@@ -915,6 +915,12 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         budget_category = get_budget_category(user_data['total_budget'], 'dryer')
         recommendations = get_specific_product_recommendations('dryer', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data)
         final_list['laundry']['dryer'] = recommendations
+    
+    if "hob_top" in final_list["kitchen"]:
+        print("[DEBUG FINAL_LIST] Hob top recommendations:")
+        for hob in final_list["kitchen"]["hob_top"]:
+            print(f"  - {hob.get('title', 'No title')}")
+            print(f"    [FULL DICT] {hob}")
     
     return final_list
 
@@ -1573,7 +1579,8 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                     f.write(" • Advanced washing technology ensures thorough cleaning while being gentle on clothes\n")
                                 
                                 f.write(f"Warranty: {warranty}\n")
-                                f.write(f"Delivery: {delivery_time}\n\n")
+                                # Removed Delivery line from TXT output
+                                f.write("\n")
             
         # Add budget summary
         f.write("\nBUDGET SUMMARY\n")
@@ -1608,6 +1615,52 @@ def download_image(image_url: str, save_dir: str) -> str:
 # Function to generate an HTML file with recommendations
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """Generate an HTML file with user information and product recommendations."""
+    
+    # Add the generate_concise_description function
+    def generate_concise_description(product):
+        """
+        Generate a concise 2-3 line description for a product.
+        If description is NaN, create a meaningful description from available data.
+        """
+        description = product.get('description', '')
+        
+        # If description is NaN or empty, create one from available data
+        if pd.isna(description) or not description.strip():
+            product_type = product.get('appliance_type', '')
+            brand = product.get('brand', '')
+            features = product.get('features', '')
+            
+            # Create a meaningful description from available data
+            description_parts = []
+            
+            # Add product type and brand
+            if product_type and brand:
+                description_parts.append(f"{brand} {product_type}")
+            
+            # Add key features if available
+            if features and isinstance(features, str):
+                # Take first 2-3 key features
+                features_list = [f.strip() for f in features.split(',') if f.strip()]
+                if features_list:
+                    description_parts.append(f"Key features: {', '.join(features_list[:3])}")
+            
+            # Add capacity if available
+            capacity = product.get('capacity', '')
+            if capacity:
+                description_parts.append(f"Capacity: {capacity}")
+            
+            description = '. '.join(description_parts)
+        
+        # If we still have a description, make it concise (2-3 sentences)
+        if description:
+            # Split into sentences
+            sentences = [s.strip() for s in description.split('.') if s.strip()]
+            if len(sentences) > 3:
+                # Take first 3 sentences and join them
+                description = '. '.join(sentences[:3]) + '.'
+        
+        return description
+
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
@@ -2219,10 +2272,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
                             </div>
                             <div class="product-info-item">
-                                <span class="product-info-label">Description:</span> {description}
-                            </div>
-                            <div class="product-info-item">
-                            <span class="product-info-label">Delivery:</span> {product.get('delivery_time', 'Contact for details')}
+                                <span class="product-info-label">Description:</span> {generate_concise_description(product)}
                             </div>
                             <div class="product-info-item">
                             <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
