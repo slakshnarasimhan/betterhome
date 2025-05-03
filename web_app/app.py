@@ -131,7 +131,7 @@ def submit():
     if os.path.exists(pdf_filename) and os.path.exists(html_filename):
         # Get the basename for the PDF download link
         pdf_basename = os.path.basename(pdf_filename)
-        
+            
         # For the HTML content, we'll simply redirect to a route that serves the HTML file directly
         html_basename = os.path.basename(html_filename)
         
