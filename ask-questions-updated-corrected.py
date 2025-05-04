@@ -1221,6 +1221,50 @@ def match_user_profile_with_products(user_profile, product_embeddings, product_m
     
     return pd.DataFrame(top_products)
 
+def generate_concise_description(row):
+    """
+    Generate a concise 2-3 line description for a product.
+    If description is NaN, create a meaningful description from available data.
+    """
+    description = row.get('Description', '')
+    
+    # If description is NaN or empty, create one from available data
+    if pd.isna(description) or not description.strip():
+        product_type = row.get('Product Type', '')
+        brand = row.get('Brand', '')
+        features = row.get('Features', '')
+        
+        # Create a meaningful description from available data
+        description_parts = []
+        
+        # Add product type and brand
+        if product_type and brand:
+            description_parts.append(f"{brand} {product_type}")
+        
+        # Add key features if available
+        if features and isinstance(features, str):
+            # Take first 2-3 key features
+            features_list = [f.strip() for f in features.split(',') if f.strip()]
+            if features_list:
+                description_parts.append(f"Key features: {', '.join(features_list[:3])}")
+        
+        # Add capacity if available
+        capacity = row.get('Capacity', '')
+        if capacity:
+            description_parts.append(f"Capacity: {capacity}")
+        
+        description = '. '.join(description_parts)
+    
+    # If we still have a description, make it concise (2-3 sentences)
+    if description:
+        # Split into sentences
+        sentences = [s.strip() for s in description.split('.') if s.strip()]
+        if len(sentences) > 3:
+            # Take first 3 sentences and join them
+            description = '. '.join(sentences[:3]) + '.'
+    
+    return description
+
 def get_personalized_recommendations(query, df, user_profile=None):
     """
     Get personalized product recommendations based on user profile.
@@ -1253,7 +1297,7 @@ def get_personalized_recommendations(query, df, user_profile=None):
                 'Brand': row.get('Brand', 'Not Available'),
                 'Better Home Price': row.get('Better Home Price', 'Not Available'),
                 'url': row.get('url', '#'),
-                'Description': row.get('Description', 'Not Available')
+                'Description': generate_concise_description(row)
             }
             product_metadata.append(metadata)
         
