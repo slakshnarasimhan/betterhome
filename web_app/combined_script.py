@@ -1836,10 +1836,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             @media (min-width: 768px) {
                 .products-grid {
-                    grid-template-columns: repeat(2, 1fr);
+                    grid-template-columns: repeat(3, 1fr);  // Change to 3 columns
                 }
             }
-            
+
             .product-card {
                 background: #fff;
                 border-radius: 8px;
@@ -1847,21 +1847,27 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 box-shadow: 0 3px 10px rgba(0,0,0,0.1);
                 display: flex;
                 flex-direction: column;
+                transition: transform 0.3s ease;
             }
-            
+
+            .product-card.best-product {
+                border: 2px solid #3498db;  // Emphasize the best product
+                transform: scale(1.05);  // Slightly enlarge the best product
+            }
+
             .product-image-container {
                 position: relative;
                 height: 200px;
                 overflow: hidden;
             }
-            
+
             .product-image {
                 width: 100%;
                 height: 100%;
                 object-fit: contain;
                 transition: transform 0.3s ease;
             }
-            
+
             .product-card:hover .product-image {
                 transform: scale(1.05);
             }
@@ -2182,6 +2188,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Debug: Print the final list for kitchen before generating HTML
     print("[DEBUG FINAL LIST] Kitchen hob tops:", final_list['kitchen']['hob_top'])
 
+    # Add logic to ensure at least three recommendations are displayed
+    def ensure_three_recommendations(products):
+        if len(products) < 3:
+            products.extend(products[:3 - len(products)])  # Duplicate some products if less than 3
+        return products
+
     # Process each room
     for room, appliances in final_list.items():
         if room == 'summary':
@@ -2222,40 +2234,55 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         """
         
         for appliance_type, products in appliances.items():
-            for product in products:
+            # Ensure products is a list
+            if not isinstance(products, list):
+                continue
+            products = ensure_three_recommendations(products)  # Ensure at least 3 products
+            # Check if products list is not empty
+            if not products:
+                continue
+            # Sort products to find the best one
+            products.sort(key=lambda x: -x.get('feature_match_score', 0))
+            best_product = products[0]  # Assume the first one is the best after sorting
+
+            # Reorder products to place the best product in the middle
+            if len(products) >= 3:
+                products = [products[1], best_product, products[2]]
+
+            for idx, product in enumerate(products):
                 if not isinstance(product, dict):
                     continue
-                
+
                 # Ensure required data is available
                 brand = product.get('brand', 'Unknown Brand')
                 model = product.get('model', product.get('title', 'Unknown Model'))
                 image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                 description = product.get('description', 'No description available')
-                
+
                 # Use the correct pricing fields - better_home_price as the current price and retail_price as the original price
                 better_home_price = float(product.get('better_home_price', 0.0))
                 retail_price = float(product.get('retail_price', 0.0))
-                
+
                 # If better_home_price is missing or 0, use price as fallback
                 if better_home_price <= 0:
                     better_home_price = float(product.get('price', retail_price * 0.8))  # Estimate if missing
-                
+
                 # If retail_price is missing or 0, estimate from better_home_price
                 if retail_price <= 0:
                     retail_price = better_home_price * 1.25  # Estimate a 25% markup if missing
-                
+
                 # Ensure retail price is higher than better home price for proper display
                 if retail_price <= better_home_price:
                     retail_price = better_home_price * 1.25  # Ensure a reasonable markup
-                
+
                 savings = retail_price - better_home_price
                 warranty = product.get('warranty', 'Standard warranty applies')
                 delivery_time = product.get('delivery_time', 'Contact store for details')
                 purchase_url = product.get('url', '#')
-                
+
                 # Get formatted product type for display
                 product_type_title = appliance_type.replace('_', ' ').title()
-                
+
                 # Get recommendation reason
                 reason_text = get_product_recommendation_reason(
                     product, 
@@ -2265,33 +2292,33 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     user_data['total_budget'],
                     {}  # Required features
                 )
-                
+
                 # Parse reasons into a list for better display
                 reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
-                
+
                 # Check if product is a bestseller
                 bestseller_badge = ""
                 if product.get('is_bestseller', False):
                     bestseller_badge = '<div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>'
-                
+
                 # Format prices for display
                 better_home_price_num = float(better_home_price)
                 retail_price_num = float(retail_price)
-                
+
                 better_home_price = f"₹{better_home_price_num:,.2f}"
                 retail_price = f"₹{retail_price_num:,.2f}"
                 savings = f"₹{retail_price_num - better_home_price_num:,.2f}"
-                
+
                 # Calculate savings percentage
                 savings_pct = 0
                 if retail_price_num > 0:
                     savings_pct = ((retail_price_num - better_home_price_num) / retail_price_num) * 100
-                
+
                 # Add an icon for the reason text
                 reasons_with_icons = []
                 for reason in reasons:
                     icon = "check-circle"  # Default icon
-                    
+
                     # Choose different icons based on keywords in the reason
                     if any(keyword in reason.lower() for keyword in ["save", "budget", "price"]):
                         icon = "money-bill-wave"
@@ -2303,12 +2330,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         icon = "medal"
                     elif any(keyword in reason.lower() for keyword in ["popular", "bestseller", "best-selling"]):
                         icon = "star"
-                    
+
                     reasons_with_icons.append(f'<li><i class="fas fa-{icon}"></i> {reason}</li>')
-                
+
+                # Determine if this is the best product and apply special styling
+                best_class = " best-product" if product == best_product else ""
+
                 # Create the HTML for the product card
                 product_html = f'''
-                    <div class="product-card">
+                    <div class="product-card{best_class}">
                         <div class="product-image-container">
                         <img class="product-image" src="{image_src}" alt="{brand} {model}">
                         {bestseller_badge}
