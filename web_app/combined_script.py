@@ -663,7 +663,7 @@ def get_specific_product_recommendations(
         # Take the top N unique models after sorting
         final_recommendations = []
         seen_models = set()
-        limit = 2 # Number of unique models to recommend
+        limit = 3 # Number of unique models to recommend
         
         # Select the top 'limit' unique models based on the primary sort order
         for product_data in matching_products_data:
