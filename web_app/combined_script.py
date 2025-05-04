@@ -388,6 +388,33 @@ def get_specific_product_recommendations(
                 if matches:
                     filtered_products.append(p)
 
+        # For hob tops, filter by number of burners right after initial type filtering
+        if appliance_type == 'hob_top':
+            print(f"[DEBUG HOB] required_features: {required_features}")
+            print(f"[DEBUG HOB] Titles before burner filter:")
+            for p in filtered_products:
+                print(f"  - {p.get('title', 'No title')}")
+            
+            # Filter by number of burners in title
+            num_burners = None
+            if required_features and 'burners' in required_features:
+                try:
+                    num_burners = int(required_features['burners'])
+                except Exception:
+                    num_burners = None
+            
+            if num_burners:
+                def has_burner_count(p):
+                    title = p.get('title', '').lower().replace('-', ' ')
+                    return f'{num_burners} burner' in title
+                
+                # Apply the filter
+                filtered_products = [p for p in filtered_products if has_burner_count(p)]
+                
+                print(f"[DEBUG HOB] Titles after burner filter:")
+                for p in filtered_products:
+                    print(f"  - {p.get('title', 'No title')}")
+
         # Simple debug prints after filtering, specific types
         if appliance_type == 'refrigerator':
             print(f"[DEBUG] Filtered products count immediately after filtering for '{appliance_type}': {len(filtered_products)}")
@@ -652,7 +679,8 @@ def get_specific_product_recommendations(
                 # Format the recommendation dict (ensure all keys are accessed safely)
                 recommendation = {
                     'brand': product_data.get('brand', 'UnknownBrand'),
-                    'model': product_data.get('title', 'UnknownModel'), # Use title for model name
+                    'model': product_data.get('title', 'UnknownModel'),
+                    'title': product_data.get('title', 'UnknownModel'),  # <-- Add this line
                     'price': float(product_data.get('price', 0.0)),
                     'retail_price': float(product_data.get('retail_price', 0.0)),
                     'better_home_price': float(product_data.get('better_home_price', 0.0)),
@@ -695,6 +723,7 @@ def get_specific_product_recommendations(
                 recommendation = {
                     'brand': top_product_data.get('brand', 'UnknownBrand'),
                     'model': top_product_data.get('title', 'UnknownModel'),
+                    'title': top_product_data.get('title', 'UnknownModel'),  # <-- Add this line
                     'price': top_product_data.get('price', 0.0),
                     'retail_price': top_product_data.get('retail_price', 0.0),
                     'better_home_price': top_product_data.get('better_home_price', 0.0),
@@ -716,6 +745,26 @@ def get_specific_product_recommendations(
                     'is_bestseller': top_product_data.get('is_bestseller', False), # Preserve bestseller flag
                 }
                 final_recommendations.append(recommendation)
+
+        if appliance_type == 'hob_top':
+            print(f"[DEBUG HOB] required_features: {required_features}")
+            print(f"[DEBUG HOB] Titles before burner filter:")
+            for p in filtered_products:
+                print(f"  - {p.get('title', 'No title')}")
+            num_burners = None
+            if required_features and 'burners' in required_features:
+                try:
+                    num_burners = int(required_features['burners'])
+                except Exception:
+                    num_burners = None
+            if num_burners:
+                def has_burner_count(p):
+                    title = p.get('title', '').lower().replace('-', ' ')
+                    return f'{num_burners} burner' in title
+                filtered_products = [p for p in filtered_products if has_burner_count(p)]
+                print(f"[DEBUG HOB] Titles after burner filter:")
+                for p in filtered_products:
+                    print(f"  - {p.get('title', 'No title')}")
 
         return final_recommendations
 
@@ -822,6 +871,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                                                                  user_data['kitchen'].get('color_theme'), user_data, required_features)
             print(f"[DEBUG GAS STOVE] Got {len(recommendations)} hob_top recommendations")
             final_list['kitchen']['hob_top'] = recommendations
+            print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
             # Clear gas_stove as we're using hob_top instead
             final_list['kitchen']['gas_stove'] = []
             
