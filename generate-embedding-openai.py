@@ -7,6 +7,7 @@ import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 import faiss
 from typing import Dict, List
+import unicodedata
 
 # ==========================
 # Configuration
@@ -105,6 +106,12 @@ def parse_features(features_str: str) -> List[str]:
     return [feature.strip() for feature in features_str.split('|') if feature.strip()]
 
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
+    def clean_text(text):
+        if not isinstance(text, str):
+            return text
+        # Normalize and encode to ASCII, ignoring errors
+        return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+
     catalog = []
     for _, row in df.iterrows():
         # Debug: Print 'Features' field before parsing
@@ -112,27 +119,29 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
 
         # Parse features
         parsed_features = parse_features(row.get('Features', ''))
+        # Clean features
+        parsed_features = [clean_text(f) for f in parsed_features]
 
         # Debug: Print parsed features
         print(f"[DEBUG] Parsed Features: {parsed_features}")
 
         product = {
-            'product_type': row.get('Product Type', 'Not Available'),
-            'brand': row.get('Brand', 'Not Available'),
-            'title': row.get('title', 'Not Available'),
+            'product_type': clean_text(row.get('Product Type', 'Not Available')),
+            'brand': clean_text(row.get('Brand', 'Not Available')),
+            'title': clean_text(row.get('title', 'Not Available')),
             'better_home_price': row.get('Better Home Price', 'Not Available'),
             'retail_price': row.get('Retail Price', 'Not Available'),
-            'warranty': row.get('Warranty', 'Not Available'),
-            'features': parsed_features,  # Use parsed features
-            'description': row.get('Description', 'Not Available'),
-            'url': row.get('url', 'Not Available'),
-            'image_src': row.get('Image Src', 'Not Available')
+            'warranty': clean_text(row.get('Warranty', 'Not Available')),
+            'features': parsed_features,  # Use cleaned features
+            'description': clean_text(row.get('Description', 'Not Available')),
+            'url': clean_text(row.get('url', 'Not Available')),
+            'image_src': clean_text(row.get('Image Src', 'Not Available'))
         }
         # Debug statement to print Features data before writing to JSON
         print(f"[DEBUG] Features to JSON: {product['features']}")
         catalog.append(product)
-    with open(file_path, 'w') as f:
-        json.dump({'products': catalog}, f, indent=2)
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump({'products': catalog}, f, indent=2, ensure_ascii=True)
     print(f"Product catalog saved successfully to {file_path}.")
 
 # ==========================

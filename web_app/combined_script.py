@@ -126,6 +126,12 @@ def analyze_user_requirements(excel_file: str):
                 'dryer_type': df.iloc[0]['Laundry: Dryer?'],
                 'color_theme': None,  # No color theme specified for laundry
                 'size_sqft': float(df.iloc[0].get('Laundry: Size (square feet)', 50.0))  # Default to 50 sq ft if not specified
+            },
+            'dining': {
+                'fans': int(df.iloc[0].get('Dining: Fan(s)?', 0)),
+                'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
+                'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
+                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0))  # Default to 120 sq ft if not specified
             }
         }
         
@@ -812,6 +818,10 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             'washing_machine': [],
             'dryer': []
         },
+        'dining': {
+            'fans': [],
+            'ac': []
+        },
         'summary': {
             'total_budget': user_data['total_budget'],
             'family_size': sum(user_data['demographics'].values()),
@@ -972,6 +982,17 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             print(f"  - {hob.get('title', 'No title')}")
             print(f"    [FULL DICT] {hob}")
     
+    # Process dining room requirements
+    if user_data['dining'].get('fans'):
+        budget_category = get_budget_category(total_budget, 'ceiling_fan')
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, demographics, user_data['dining'].get('color_theme'))
+        final_list['dining']['fans'] = recommendations
+
+    if user_data['dining'].get('ac'):
+        budget_category = get_budget_category(total_budget, 'ac')
+        recommendations = get_specific_product_recommendations('ac', budget_category, demographics, user_data['dining'].get('color_theme'))
+        final_list['dining']['ac'] = recommendations
+
     return final_list
 
 def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
@@ -1452,7 +1473,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         story.append(Paragraph("Room by Room Recommendations", heading1_style))
         story.append(Spacer(1, 10))
         # Only include known room keys
-        room_keys = ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']
+        room_keys = ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry', 'dining']
         rooms_iter = ((room, user_data.get(room, {})) for room in room_keys if room in user_data)
     for room, room_data in rooms_iter:
         room_title = Paragraph(f"{room.replace('_', ' ').title()} Room", heading2_style)
@@ -1544,75 +1565,177 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         f.write(f"Total Budget: INR{user_data['total_budget']:,.2f}\n")
         f.write(f"Family Size: {sum(user_data['demographics'].values())} members\n\n")
         
+        # Write room-wise recommendations
         f.write("ROOM-WISE RECOMMENDATIONS\n")
         f.write("========================\n\n")
+
+        # Hall
+        f.write("HALL\n")
+        f.write("----\n")
+        for fan in final_list['hall']['ceiling_fans']:
+            f.write(f"Ceiling Fan: {fan['brand']} {fan['model']}\n")
+            f.write(f"Price: {format_currency(fan['price'])} (Retail: {format_currency(fan['retail_price'])})\n")
+            f.write(f"Features: {', '.join(fan['features'])}\n")
+            if fan.get('color_match', False):
+                f.write(f"Color Options: {', '.join(fan.get('color_options', []))} - Matches your room's color theme!\n")
+            reason = get_product_recommendation_reason(fan, 'ceiling_fan', 'hall', user_data['demographics'], final_list['summary']['total_budget'])
+            f.write(f"Why we recommend this:\n{reason}\n\n")
+
+        # Dining Room
+        f.write("DINING ROOM\n")
+        f.write("-----------\n")
+        for fan in final_list['dining']['fans']:
+            f.write(f"Ceiling Fan: {fan['brand']} {fan['model']}\n")
+            f.write(f"Price: {format_currency(fan['price'])} (Retail: {format_currency(fan['retail_price'])})\n")
+            f.write(f"Features: {', '.join(fan['features'])}\n")
+            if fan.get('color_match', False):
+                f.write(f"Color Options: {', '.join(fan.get('color_options', []))} - Matches your room's color theme!\n")
+            reason = get_product_recommendation_reason(fan, 'ceiling_fan', 'dining', user_data['demographics'], final_list['summary']['total_budget'])
+            f.write(f"Why we recommend this:\n{reason}\n\n")
+
+        for ac in final_list['dining']['ac']:
+            f.write(f"Air Conditioner: {ac['brand']} {ac['model']}\n")
+            f.write(f"Price: {format_currency(ac['price'])} (Retail: {format_currency(ac['retail_price'])})\n")
+            f.write(f"Features: {', '.join(ac['features'])}\n")
+            if ac.get('color_match', False):
+                f.write(f"Color Options: {', '.join(ac.get('color_options', []))} - Matches your room's color theme!\n")
+            reason = get_product_recommendation_reason(ac, 'ac', 'dining', user_data['demographics'], final_list['summary']['total_budget'])
+            f.write(f"Why we recommend this:\n{reason}\n\n")
+
+        # Kitchen
+        if user_data['kitchen'].get('chimney_width'):
+            budget_category = get_budget_category(user_data['total_budget'], 'chimney')
+            required_features = {'dimensions': user_data['kitchen'].get('chimney_width')}
+            recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
+            final_list['kitchen']['chimney'] = recommendations
         
-        total_cost = calculate_total_cost(final_list)
+        if user_data['kitchen'].get('refrigerator_capacity'):
+            budget_category = get_budget_category(user_data['total_budget'], 'refrigerator')
+            required_features = {'capacity': user_data['kitchen'].get('refrigerator_capacity')}
+            recommendations = get_specific_product_recommendations('refrigerator', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
+            final_list['kitchen']['refrigerator'] = recommendations
         
-        # Process each room
-        for room in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']:
-            if room in final_list and final_list[room]:
-                f.write(f"{room.replace('_', ' ').upper()}\n")
-                f.write("-" * len(room) + "\n")
-                
-                # Add room description
-                room_desc = get_room_description(room, user_data)
-                f.write(f"{room_desc}\n\n")
-                
-                # Add products for the room
-                for appliance_type, items in final_list[room].items():
-                    if isinstance(items, list) and items:
-                        for item in items:
-                            if isinstance(item, dict):
-                                # Get product details
-                                brand = item.get('brand', 'Unknown Brand')
-                                model = item.get('model', 'Unknown Model')
-                                price = float(item.get('retail_price', item.get('price', item.get('better_home_price', 0))))
-                                description = item.get('description', 'No description available')
-                                retail_price = float(item.get('retail_price', price * 1.2))
-                                savings = retail_price - price
-                                warranty = item.get('warranty', 'Standard warranty applies')
-                                delivery_time = item.get('delivery_time', 'Contact store for details')
-                                
-                                # Add bestseller badge if applicable
-                                bestseller_badge = "🔥 BESTSELLER: " if item.get('is_bestseller', False) else ""
-                                f.write(f"{appliance_type.replace('_', ' ').title()}: {bestseller_badge}{brand} {model}\n")
-                                f.write(f"Price: INR{price:,.2f} (Retail: INR{retail_price:,.2f})\n")
-                                f.write(f"Description: {description}\n")
-                                
-                                if item.get('color_options'):
-                                    f.write(f"Color Options: {', '.join(item['color_options'])}")
-                                    if item.get('color_match'):
-                                        f.write(" - Matches your room's color theme!")
-                                    f.write("\n")
-                                
-                                f.write("Why we recommend this:\n")
-                                if savings > 0:
-                                    f.write(f" • Offers excellent value with savings of INR{savings:,.2f} compared to retail price\n")
-                                
-                                if item.get('color_match'):
-                                    f.write(" • Color options complement your room's color theme\n")
-                                
-                                # Add specific features based on appliance type
-                                if appliance_type == 'ceiling_fan':
-                                    f.write(" • BLDC motor technology ensures high energy efficiency and silent operation - perfect for Chennai's climate\n")
-                                elif appliance_type == 'bathroom_exhaust':
-                                    f.write(" • Essential for Chennai's humid climate to prevent mold and maintain bathroom freshness\n")
-                                elif appliance_type == 'refrigerator':
-                                    f.write(" • Energy-efficient design helps reduce electricity bills\n")
-                                elif appliance_type == 'washing_machine':
-                                    f.write(" • Advanced washing technology ensures thorough cleaning while being gentle on clothes\n")
-                                
-                                f.write(f"Warranty: {warranty}\n")
-                                # Removed Delivery line from TXT output
-                                f.write("\n")
+        if user_data['kitchen'].get('gas_stove_type'):
+            # Debug: Print the gas stove type from user data
+            print(f"[DEBUG GAS STOVE TYPE] User data gas stove type: {user_data['kitchen'].get('gas_stove_type')}")
+            # Check for specific gas stove type
+            gas_stove_type = user_data['kitchen'].get('gas_stove_type', '').strip()
+            print(f"[DEBUG GAS STOVE] Processing gas stove type: '{gas_stove_type}'")
             
+            # Case 1: If gas stove type is "Hob (built-in)", recommend a Hob Top
+            if "hob (built-in)" in gas_stove_type.lower():
+                print(f"[DEBUG GAS STOVE] Recommending Hob Top for built-in requirement: '{gas_stove_type}'")
+            budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
+                required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
+                print(f"[DEBUG GAS STOVE] Budget category: {budget_category}, Features: {required_features}")
+                # Debug: Print user data and required features before calling recommendation function
+                print(f"[DEBUG HOB TOP INPUT] User data: {user_data}")
+                print(f"[DEBUG HOB TOP INPUT] Required features: {required_features}")
+                recommendations = get_specific_product_recommendations('hob_top', budget_category, user_data['demographics'], 
+                                                                     user_data['kitchen'].get('color_theme'), user_data, required_features)
+                print(f"[DEBUG GAS STOVE] Got {len(recommendations)} hob_top recommendations")
+                final_list['kitchen']['hob_top'] = recommendations
+                print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
+                # Clear gas_stove as we're using hob_top instead
+                final_list['kitchen']['gas_stove'] = []
+                
+            # Case 2: Skip recommendation if "Not needed"
+            elif "not needed" in gas_stove_type.lower():
+                print(f"[DEBUG GAS STOVE] Skipping gas stove recommendation for: '{gas_stove_type}'")
+                final_list['kitchen']['gas_stove'] = []
+                final_list['kitchen']['hob_top'] = []
+                
+            # Case 3: For all other types, recommend normal gas stove
+            else:
+                print(f"[DEBUG GAS STOVE] Recommending regular gas stove for: '{gas_stove_type}'")
+                budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
+                required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
+                recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], 
+                                                                     user_data['kitchen'].get('color_theme'), user_data, required_features)
+                print(f"[DEBUG GAS STOVE] Got {len(recommendations)} gas_stove recommendations")
+            final_list['kitchen']['gas_stove'] = recommendations
+        
+        if user_data['kitchen'].get('small_fan', False):
+            budget_category = get_budget_category(user_data['total_budget'], 'small_fan')
+            recommendations = get_specific_product_recommendations('small_fan', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
+            final_list['kitchen']['small_fan'] = recommendations
+        
+        # Process master bedroom requirements
+        if user_data['master_bedroom'].get('ac', False):
+            print(f"[DEBUG] Master Bedroom AC requirement: {user_data['master_bedroom'].get('ac', False)}") # DEBUG
+            budget_category = get_budget_category(user_data['total_budget'], 'ac')
+            # Calculate the recommended AC tonnage based on room size
+            master_size = user_data['master_bedroom'].get('size_sqft', 140.0)  # Default to 140 sq ft if not specified
+            recommended_tonnage = determine_ac_tonnage(master_size, 'master_bedroom')
+            print(f"[DEBUG] Master bedroom AC tonnage recommendation: {recommended_tonnage} Ton for {master_size} sq ft")
+            required_features = {'tonnage': f"{recommended_tonnage} Ton"}
+            recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
+            final_list['master_bedroom']['ac'] = recommendations
+        
+        budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        final_list['master_bedroom']['fans'] = recommendations
+        
+        # Process master bedroom bathroom requirements
+        if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('water_heater_type'):
+            budget_category = get_budget_category(user_data['total_budget'], 'geyser')
+            required_features = {'type': user_data['master_bedroom']['bathroom'].get('water_heater_type')}
+            recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
+            final_list['master_bedroom']['bathroom']['water_heater'] = recommendations
+        
+        if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'):
+            budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+            required_features = {'dimensions': user_data['master_bedroom']['bathroom'].get('exhaust_fan_size')}
+            recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
+            final_list['master_bedroom']['bathroom']['exhaust_fan'] = recommendations
+        
+        # Process bedroom 2 requirements
+        if user_data['bedroom_2'].get('ac', False):
+            print(f"[DEBUG] Bedroom 2 AC requirement: {user_data['bedroom_2'].get('ac', False)}") # DEBUG
+            budget_category = get_budget_category(user_data['total_budget'], 'ac')
+            # Calculate the recommended AC tonnage based on room size
+            bedroom2_size = user_data['bedroom_2'].get('size_sqft', 120.0)  # Default to 120 sq ft if not specified
+            recommended_tonnage = determine_ac_tonnage(bedroom2_size, 'bedroom_2')
+            print(f"[DEBUG] Bedroom 2 AC tonnage recommendation: {recommended_tonnage} Ton for {bedroom2_size} sq ft")
+            required_features = {'tonnage': f"{recommended_tonnage} Ton"}
+            recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
+            final_list['bedroom_2']['ac'] = recommendations
+        
+        budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        final_list['bedroom_2']['fans'] = recommendations
+        
+        # Process bedroom 2 bathroom requirements
+        if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('water_heater_type'):
+            budget_category = get_budget_category(user_data['total_budget'], 'geyser')
+            required_features = {'type': user_data['bedroom_2']['bathroom'].get('water_heater_type')}
+            recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
+            final_list['bedroom_2']['bathroom']['water_heater'] = recommendations
+        
+        if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
+            budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+            required_features = {'dimensions': user_data['bedroom_2']['bathroom'].get('exhaust_fan_size')}
+            recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
+            final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
+        
+        # Process laundry requirements
+        if str(user_data['laundry'].get('washing_machine_type', '')).strip().lower() == 'yes':
+            budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
+            required_features = {'capacity': estimate_washing_machine_capacity(user_data['demographics'])}
+            recommendations = get_specific_product_recommendations('washing_machine', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data, required_features)
+            final_list['laundry']['washing_machine'] = recommendations
+        
+        if user_data['laundry'].get('dryer_type', '').lower() == 'yes':
+            budget_category = get_budget_category(user_data['total_budget'], 'dryer')
+            recommendations = get_specific_product_recommendations('dryer', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data)
+            final_list['laundry']['dryer'] = recommendations
+        
         # Add budget summary
         f.write("\nBUDGET SUMMARY\n")
         f.write("=============\n")
-        f.write(f"Total Cost of Recommended Products: INR{total_cost:,.2f}\n")
+        f.write(f"Total Cost of Recommended Products: INR{calculate_total_cost(final_list):,.2f}\n")
         f.write(f"Your Budget: INR{user_data['total_budget']:,.2f}\n")
-        budget_utilization = (total_cost / user_data['total_budget']) * 100
+        budget_utilization = (calculate_total_cost(final_list) / user_data['total_budget']) * 100
         f.write(f"Budget Utilization: {budget_utilization:.1f}%\n")
         if budget_utilization <= 100:
             f.write("Your selected products fit within your budget!\n")
