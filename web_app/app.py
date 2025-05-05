@@ -87,7 +87,11 @@ def submit():
         'Laundry: Washing Machine?': request.form.get('laundry_washing'),
         'Laundry: Dryer?': request.form.get('laundry_dryer'),
         'Any other information?': request.form.get('other_info'),
-        'Questions and comments': request.form.get('questions_comments')
+        'Questions and comments': request.form.get('questions_comments'),
+        'Dining: Fan(s)?': request.form.get('dining_fans'),
+        'Dining: Air Conditioner (AC)?': request.form.get('dining_ac'),
+        'Dining: Colour theme?': request.form.get('dining_color'),
+        'Dining: What is the square feet?': request.form.get('dining_square_feet'),
     }
 
     # Create a DataFrame from the form data
