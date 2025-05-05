@@ -446,7 +446,7 @@ def get_specific_product_recommendations(
                          match = re.search(r'(\d+\.?\d*)\s*ton', feat.lower())
                          if match:
                             try:
-                                p_tonnage = float(match.group(1))
+                            p_tonnage = float(match.group(1))
                                 break # Found in features, exit loop
                             except ValueError:
                                 p_tonnage = "Unknown" # Handle potential conversion error
@@ -558,18 +558,18 @@ def get_specific_product_recommendations(
 
                     # --- Handle Other Feature Matching (using existing logic) ---
                     if product_features_list: # Only iterate if features list exists
-                        for feature_str in product_features_list:
-                            parsed_prod_feature = parse_product_feature(feature_str)
-                            
+                    for feature_str in product_features_list:
+                        parsed_prod_feature = parse_product_feature(feature_str)
+                        
                             # Extract product tonnage for debug print (only, not for matching logic)
-                            if appliance_type == 'ac' and parsed_prod_feature.get('key') == 'tonnage':
+                        if appliance_type == 'ac' and parsed_prod_feature.get('key') == 'tonnage':
                                 product_tonnage_value_for_debug = parsed_prod_feature.get('raw_value', 'N/A')
 
-                            if parsed_prod_feature.get('key') == req_key_norm:
-                                if compare_features(req_value, parsed_prod_feature):
-                                    feature_match_score += 5 # Significant boost for matching feature
-                                    found_match_for_req = True
-                                    break # Stop checking this product's features for this required key
+                        if parsed_prod_feature.get('key') == req_key_norm:
+                             if compare_features(req_value, parsed_prod_feature):
+                                 feature_match_score += 5 # Significant boost for matching feature
+                                 found_match_for_req = True
+                                 break # Stop checking this product's features for this required key
 
             # DEBUG: Print tonnage match result (using the specific debug variable)
             if appliance_type == 'ac':
@@ -861,7 +861,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # Case 1: If gas stove type is "Hob (built-in)", recommend a Hob Top
         if "hob (built-in)" in gas_stove_type.lower():
             print(f"[DEBUG GAS STOVE] Recommending Hob Top for built-in requirement: '{gas_stove_type}'")
-            budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
+        budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
             required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
             print(f"[DEBUG GAS STOVE] Budget category: {budget_category}, Features: {required_features}")
             # Debug: Print user data and required features before calling recommendation function
@@ -889,7 +889,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], 
                                                                  user_data['kitchen'].get('color_theme'), user_data, required_features)
             print(f"[DEBUG GAS STOVE] Got {len(recommendations)} gas_stove recommendations")
-            final_list['kitchen']['gas_stove'] = recommendations
+        final_list['kitchen']['gas_stove'] = recommendations
     
     if user_data['kitchen'].get('small_fan', False):
         budget_category = get_budget_category(user_data['total_budget'], 'small_fan')
@@ -1151,13 +1151,13 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     elif appliance_type == 'refrigerator':
         # Robust handling for capacity
         capacity_str = str(product.get('capacity', '')).strip().lower()
-        family_size = sum(demographics.values())
+            family_size = sum(demographics.values())
         capacity_found = False
         if capacity_str.endswith('l'):
             try:
                 capacity = int(re.sub(r'[^\d]', '', capacity_str))
                 capacity_found = True
-                if capacity >= family_size * 100:
+            if capacity >= family_size * 100:
                     reasons.append(f"Spacious {product.get('capacity', '')} capacity - ideal for your family of {family_size}")
                 else:
                     reasons.append(f"{product.get('capacity', '')} capacity - suitable for your family of {family_size}")
@@ -1178,11 +1178,9 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
         family_size = sum(demographics.values())
         if product.get('capacity', '').lower().endswith('kg'):
             capacity = float(product.get('capacity', '0kg')[:-2])
-            if capacity >= family_size * 1.5:
-                reasons.append(f"Large {product['capacity']} capacity - perfect for family laundry")
-        if demographics.get('kids', 0) > 0:
-            if any('anti-allergen' in f.lower() for f in product.get('features', [])):
-                reasons.append("Anti-allergen technology - gentle on sensitive skin")
+            reasons.append(f"Large {product['capacity']} capacity - perfect for family laundry")
+        if any('anti-allergen' in f.lower() for f in product.get('features', [])):
+            reasons.append("Anti-allergen technology - gentle on sensitive skin")
     
     elif appliance_type == 'chimney':
         if 'auto-clean' in product.get('type', '').lower():
@@ -1265,7 +1263,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     
     # Try to register DejaVuSans font if available, otherwise use default fonts
     try:
-        pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
+    pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
         default_font = 'DejaVuSans'
     except:
         print("Using default fonts - DejaVuSans.ttf not found")
@@ -1448,79 +1446,79 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     if 'rooms' in user_data:
         story.append(Paragraph("Room by Room Recommendations", heading1_style))
         story.append(Spacer(1, 10))
-
-        for room, room_data in user_data['rooms'].items():
-            # Room header with blue background
-            room_title = Paragraph(f"{room.replace('_', ' ').title()} Room", heading2_style)
-            story.append(room_title)
-            
-            # Add room description in a styled box
-            room_description = room_data.get('description', '')
-            if room_description:
-                story.append(Paragraph(room_description, normal_style))
-                story.append(Spacer(1, 10))
-            
-            # Add appliance recommendations for this room
-            if room in recommendations:
-                for appliance_type, appliances in recommendations[room].items():
-                    appliance_title = appliance_type.replace('_', ' ').title()
-                    story.append(Paragraph(f"{appliance_title} Recommendations", heading2_style))
-                    
-                    # Add each recommended appliance
-                    for item in appliances:
-                        if not isinstance(item, dict):
-                            continue
-                            
-                            # Get product details
+        rooms_iter = user_data['rooms'].items()
+    else:
+        # Fallback: use top-level room keys
+        story.append(Paragraph("Room by Room Recommendations", heading1_style))
+        story.append(Spacer(1, 10))
+        # Only include known room keys
+        room_keys = ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'laundry']
+        rooms_iter = ((room, user_data.get(room, {})) for room in room_keys if room in user_data)
+    for room, room_data in rooms_iter:
+        room_title = Paragraph(f"{room.replace('_', ' ').title()} Room", heading2_style)
+        story.append(room_title)
+        # Add room description in a styled box
+        room_description = room_data.get('description', '') if isinstance(room_data, dict) else ''
+        if not room_description:
+            try:
+                room_description = get_room_description(room, user_data)
+            except Exception:
+                room_description = ''
+        if room_description:
+            story.append(Paragraph(room_description, normal_style))
+            story.append(Spacer(1, 10))
+        # Add appliance recommendations for this room
+        if room in recommendations:
+            for appliance_type, appliances in recommendations[room].items():
+                appliance_title = appliance_type.replace('_', ' ').title()
+                story.append(Paragraph(f"{appliance_title} Recommendations", heading2_style))
+                for item in appliances:
+                    if not isinstance(item, dict):
+                        continue
                             brand = item.get('brand', 'Unknown Brand')
                             model = item.get('model', 'Unknown Model')
-                        price = float(item.get('better_home_price', item.get('price', 0)))
-                        retail_price = float(item.get('retail_price', price * 1.2))
-                        
-                        # Add bestseller badge if applicable
-                        if item.get('is_bestseller', False):
-                            bestseller_text = Paragraph("<font color='white' backColor='#ff6b00'><b>BESTSELLER</b></font>", bestseller_style)
-                            story.append(bestseller_text)
-                            story.append(Spacer(1, 5))
-                        
-                        # Add product title
-                        story.append(Paragraph(f"{brand} {model}", heading2_style))
-                        
-                        # Add product price with formatting
-                        price_text = f"Price: ₹{price:,.2f}"
-                        if retail_price > price:
+                    price = float(item.get('better_home_price', item.get('price', 0)))
+                    retail_price = float(item.get('retail_price', price * 1.2))
+                    # Add bestseller badge if applicable
+                    if item.get('is_bestseller', False):
+                        bestseller_text = Paragraph("<font color='white' backColor='#ff6b00'><b>BESTSELLER</b></font>", bestseller_style)
+                        story.append(bestseller_text)
+                        story.append(Spacer(1, 5))
+                    story.append(Paragraph(f"{brand} {model}", heading2_style))
+                    price_text = f"Price: ₹{price:,.2f}"
+                    if retail_price > price:
                             savings = retail_price - price
-                            price_text += f" (Retail: ₹{retail_price:,.2f}, Save: ₹{savings:,.2f})"
-                        story.append(Paragraph(price_text, normal_style))
-                        
-                        # Add key features with bullet points
-                        features = item.get('features', [])
-                        if features:
-                            story.append(Paragraph("Key Features:", heading2_style))
-                            features_list = [f"• {feature}" for feature in features[:5]]  # Limit to 5 features
-                            for feature in features_list:
-                                story.append(Paragraph(feature, normal_style))
-                            if len(features) > 5:
-                                story.append(Paragraph("• ...", normal_style))
-                        
-                        # Add recommendation reasons
-                        reason = item.get('reason', '')
-                        if reason:
-                            story.append(Paragraph("Why We Recommend This:", heading2_style))
-                            reasons = [r.strip() for r in reason.split('•') if r.strip()]
-                            for r in reasons[:3]:  # Limit to 3 reasons
-                                story.append(Paragraph(f"• {r}", normal_style))
-                            if len(reasons) > 3:
-                                story.append(Paragraph("• ...", normal_style))
-                        
-                        # Add a divider between products
-                        story.append(Spacer(1, 10))
-                        story.append(HRFlowable(color=HexColor('#dddddd'), width="90%", thickness=1))
-                        story.append(Spacer(1, 10))
-            
-            # Add space between rooms
-            story.append(Spacer(1, 20))
-            
+                        price_text += f" (Retail: ₹{retail_price:,.2f}, Save: ₹{savings:,.2f})"
+                    story.append(Paragraph(price_text, normal_style))
+                    features = item.get('features', [])
+                    if features:
+                        story.append(Paragraph("Key Features:", heading2_style))
+                        features_list = [f"• {feature}" for feature in features[:5]]
+                        for feature in features_list:
+                            story.append(Paragraph(feature, normal_style))
+                        if len(features) > 5:
+                            story.append(Paragraph("• ...", normal_style))
+                    # Always call get_product_recommendation_reason for the reason
+                            reason = get_product_recommendation_reason(
+                                item, 
+                                appliance_type, 
+                                room, 
+                        user_data.get('demographics', {}),
+                        user_data.get('total_budget', 0),
+                        {}  # required_features
+                    )
+                    if reason:
+                        story.append(Paragraph("Why We Recommend This:", heading2_style))
+                        reasons = [r.strip() for r in reason.split('•') if r.strip()]
+                        for r in reasons[:3]:
+                            story.append(Paragraph(f"• {r}", normal_style))
+                        if len(reasons) > 3:
+                            story.append(Paragraph("• ...", normal_style))
+                    story.append(Spacer(1, 10))
+                    story.append(HRFlowable(color=HexColor('#dddddd'), width="90%", thickness=1))
+                    story.append(Spacer(1, 10))
+        story.append(Spacer(1, 20))
+
     # Add a footer
     story.append(HRFlowable(color=HexColor('#3498db'), width="100%", thickness=1))
     story.append(Spacer(1, 10))
@@ -1816,7 +1814,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     grid-template-columns: repeat(3, 1fr);  // Change to 3 columns
                 }
             }
-
+            
             .product-card {
                 background: #fff;
                 border-radius: 8px;
@@ -1831,20 +1829,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border: 2px solid #3498db;  // Emphasize the best product
                 transform: scale(1.05);  // Slightly enlarge the best product
             }
-
+            
             .product-image-container {
                 position: relative;
                 height: 200px;
                 overflow: hidden;
             }
-
+            
             .product-image {
                 width: 100%;
                 height: 100%;
                 object-fit: contain;
                 transition: transform 0.3s ease;
             }
-
+            
             .product-card:hover .product-image {
                 transform: scale(1.05);
             }
@@ -2194,7 +2192,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         
         if not has_products:
             continue
-        
+            
         room_title = room.replace('_', ' ').title()
         html_content += f"""
             <div class="room-section">
@@ -2229,37 +2227,37 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             for idx, product in enumerate(products):
                 if not isinstance(product, dict):
                     continue
-
+                
                 # Ensure required data is available
                 brand = product.get('brand', 'Unknown Brand')
                 model = product.get('model', product.get('title', 'Unknown Model'))
                 image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                 description = product.get('description', 'No description available')
-
+                
                 # Use the correct pricing fields - better_home_price as the current price and retail_price as the original price
                 better_home_price = float(product.get('better_home_price', 0.0))
                 retail_price = float(product.get('retail_price', 0.0))
-
+                
                 # If better_home_price is missing or 0, use price as fallback
                 if better_home_price <= 0:
                     better_home_price = float(product.get('price', retail_price * 0.8))  # Estimate if missing
-
+                
                 # If retail_price is missing or 0, estimate from better_home_price
                 if retail_price <= 0:
                     retail_price = better_home_price * 1.25  # Estimate a 25% markup if missing
-
+                
                 # Ensure retail price is higher than better home price for proper display
                 if retail_price <= better_home_price:
                     retail_price = better_home_price * 1.25  # Ensure a reasonable markup
-
+                
                 savings = retail_price - better_home_price
                 warranty = product.get('warranty', 'Standard warranty applies')
                 delivery_time = product.get('delivery_time', 'Contact store for details')
                 purchase_url = product.get('url', '#')
-
+                
                 # Get formatted product type for display
                 product_type_title = appliance_type.replace('_', ' ').title()
-
+                
                 # Get recommendation reason
                 reason_text = get_product_recommendation_reason(
                     product, 
@@ -2269,10 +2267,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     user_data['total_budget'],
                     {}  # Required features
                 )
-
+                
                 # Parse reasons into a list for better display
                 reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
-
+                
                 # Check if product is a bestseller
                 bestseller_badge = ""
                 if product.get('is_bestseller', False):
