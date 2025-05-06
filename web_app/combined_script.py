@@ -785,7 +785,11 @@ def get_specific_product_recommendations(
                 color_val = required_features['color'].strip().lower()
                 filtered_products = [p for p in filtered_products if color_val in (p.get('color', '').lower() + ' ' + ' '.join(p.get('features', [])).lower())]
             if 'dimensions' in required_features and required_features['dimensions']:
-                size_val = required_features['dimensions'].strip().lower()
+                # Check if 'dimensions' is a string before calling strip()
+                if isinstance(required_features['dimensions'], str):
+                    size_val = required_features['dimensions'].strip().lower()
+                else:
+                    size_val = str(required_features['dimensions']).strip().lower()
                 filtered_products = [p for p in filtered_products if size_val in (p.get('dimensions', '').lower() + ' ' + ' '.join(p.get('features', [])).lower())]
 
         return final_recommendations
