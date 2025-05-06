@@ -160,11 +160,29 @@
                 </div>
                 <div class="mb-3">
                     <label for="kitchen_burners" class="form-label required">Kitchen: Number of burners?</label>
-                    <input type="number" class="form-control" id="kitchen_burners" name="kitchen_burners" required>
+                    <div>
+                        <input type="radio" id="kitchen_burners_3" name="kitchen_burners" value="3" required>
+                        <label for="kitchen_burners_3">3</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="kitchen_burners_4" name="kitchen_burners" value="4">
+                        <label for="kitchen_burners_4">4</label>
+                    </div>
                 </div>
                 <div class="mb-3">
-                    <label for="kitchen_stove_width" class="form-label">Kitchen: Stove width?</label>
-                    <input type="text" class="form-control" id="kitchen_stove_width" name="kitchen_stove_width">
+                    <label class="form-label">Kitchen: Stove width?</label>
+                    <div>
+                        <input type="radio" id="kitchen_stove_width_60" name="kitchen_stove_width" value="60 cm">
+                        <label for="kitchen_stove_width_60">60 cm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="kitchen_stove_width_75" name="kitchen_stove_width" value="75 cm">
+                        <label for="kitchen_stove_width_75">75 cm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="kitchen_stove_width_90" name="kitchen_stove_width" value="90 cm">
+                        <label for="kitchen_stove_width_90">90 cm</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="kitchen_fan" class="form-label required">Kitchen: Do you need a small fan?</label>
@@ -437,17 +455,6 @@
                         <option value="3">3</option>
                         <option value="4">4</option>
                     </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label required">Dining: Fan Size (It is good to use the same model and colour of the fan used in the living room for the dining area for uniformity)</label>
-                    <div>
-                        <input type="radio" id="dining_fan_small" name="dining_fan_size" value="Small - 60 CM" required>
-                        <label for="dining_fan_small">Small - 60 CM</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="dining_fan_large" name="dining_fan_size" value="Large - 120 CM">
-                        <label for="dining_fan_large">Large - 120 CM</label>
-                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="dining_ac" class="form-label required">Dining: Air Conditioner (AC)?</label>
