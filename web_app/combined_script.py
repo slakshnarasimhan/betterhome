@@ -779,6 +779,15 @@ def get_specific_product_recommendations(
                 # for p in filtered_products:
                 #     print(f"  - {p.get('title', 'No title')}")
 
+        # After initial filtering for type, add this for bathroom_exhaust:
+        if appliance_type == 'bathroom_exhaust' and required_features:
+            if 'color' in required_features and required_features['color']:
+                color_val = required_features['color'].strip().lower()
+                filtered_products = [p for p in filtered_products if color_val in (p.get('color', '').lower() + ' ' + ' '.join(p.get('features', [])).lower())]
+            if 'dimensions' in required_features and required_features['dimensions']:
+                size_val = required_features['dimensions'].strip().lower()
+                filtered_products = [p for p in filtered_products if size_val in (p.get('dimensions', '').lower() + ' ' + ' '.join(p.get('features', [])).lower())]
+
         return final_recommendations
 
     else: # No catalog loaded or no products key
@@ -944,13 +953,14 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # print(f"[DEBUG][Geyser] (Ceiling) Number of geyser products returned: {len(geyser_recommendations)}")
     final_list['master_bedroom']['bathroom']['water_heater'] = geyser_recommendations
 
-    # Process exhaust fan for master (unchanged)
+    # Process exhaust fan for master (updated to use color)
     if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'):
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
-        required_features = {'dimensions': user_data['master_bedroom']['bathroom'].get('exhaust_fan_size')}
-        # print(f"[DEBUG] Calling get_specific_product_recommendations for exhaust fan (master): budget_category={budget_category}, required_features={required_features}")
+        required_features = {
+            'dimensions': user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'),
+            'color': user_data['master_bedroom']['bathroom'].get('exhaust_fan_color')
+        }
         recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
-        # print(f"[DEBUG] Exhaust fan recommendations (master): {len(recommendations)} found")
         final_list['master_bedroom']['bathroom']['exhaust_fan'] = recommendations
 
     # Process bedroom 2 requirements
@@ -976,23 +986,27 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     geyser_recommendations_2 = []
     if str(bedroom2_bath_type).strip().lower() == 'yes':
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
+        # If ceiling is also yes, prefer horizontal
         if str(bedroom2_bath_ceiling).strip().lower() == 'yes':
-            # print(f"[DEBUG] Prefer horizontal geyser for bedroom2 bathroom")
-            geyser_recommendations_2 = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, {'type': 'horizontal'})
-            # print(f"[DEBUG] Horizontal geyser recommendations (bedroom2): {len(geyser_recommendations_2)} found")
-        if not geyser_recommendations_2:
-            # print(f"[DEBUG] Fallback to any geyser for bedroom2 bathroom")
+            # First, try to get only horizontal water heaters
+            all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+            horizontal_geysers = [g for g in all_geysers if 'horizontal' in g.get('title', '').lower() or any('horizontal' in f.lower() for f in g.get('features', []))]
+            if horizontal_geysers:
+                geyser_recommendations_2 = horizontal_geysers
+            else:
+                geyser_recommendations_2 = all_geysers
+        else:
             geyser_recommendations_2 = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
-            # print(f"[DEBUG] Any geyser recommendations (bedroom2): {len(geyser_recommendations_2)} found")
         final_list['bedroom_2']['bathroom']['water_heater'] = geyser_recommendations_2
 
-    # Process exhaust fan for bedroom 2 (unchanged)
+    # Process exhaust fan for bedroom 2 (updated to use color)
     if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
-        required_features = {'dimensions': user_data['bedroom_2']['bathroom'].get('exhaust_fan_size')}
-        # print(f"[DEBUG] Calling get_specific_product_recommendations for exhaust fan (bedroom2): budget_category={budget_category}, required_features={required_features}")
+        required_features = {
+            'dimensions': user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'),
+            'color': user_data['bedroom_2']['bathroom'].get('exhaust_fan_color')
+        }
         recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
-        # print(f"[DEBUG] Exhaust fan recommendations (bedroom2): {len(recommendations)} found")
         final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
     
     # Process laundry requirements
