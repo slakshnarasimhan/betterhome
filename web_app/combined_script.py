@@ -449,10 +449,10 @@ def get_specific_product_recommendations(
                     p_tonnage = "Unknown"
                     # First, try extracting from features
                     for feat in p.get('features', []):
-                         match = re.search(r'(\d+\.?\d*)\s*ton', feat.lower())
-                         if match:
+                        match = re.search(r'(\d+\.?\d*)\s*ton', feat.lower())
+                        if match:
                             try:
-                            p_tonnage = float(match.group(1))
+                                p_tonnage = float(match.group(1))
                                 break # Found in features, exit loop
                             except ValueError:
                                 p_tonnage = "Unknown" # Handle potential conversion error
@@ -563,19 +563,17 @@ def get_specific_product_recommendations(
                         continue # Move to the next required feature
 
                     # --- Handle Other Feature Matching (using existing logic) ---
-                    if product_features_list: # Only iterate if features list exists
-                    for feature_str in product_features_list:
-                        parsed_prod_feature = parse_product_feature(feature_str)
-                        
+                    if product_features_list:  # Only iterate if features list exists
+                        for feature_str in product_features_list:
+                            parsed_prod_feature = parse_product_feature(feature_str)
                             # Extract product tonnage for debug print (only, not for matching logic)
-                        if appliance_type == 'ac' and parsed_prod_feature.get('key') == 'tonnage':
+                            if appliance_type == 'ac' and parsed_prod_feature.get('key') == 'tonnage':
                                 product_tonnage_value_for_debug = parsed_prod_feature.get('raw_value', 'N/A')
-
-                        if parsed_prod_feature.get('key') == req_key_norm:
-                             if compare_features(req_value, parsed_prod_feature):
-                                 feature_match_score += 5 # Significant boost for matching feature
-                                 found_match_for_req = True
-                                 break # Stop checking this product's features for this required key
+                            if parsed_prod_feature.get('key') == req_key_norm:
+                                if compare_features(req_value, parsed_prod_feature):
+                                    feature_match_score += 5  # Significant boost for matching feature
+                                    found_match_for_req = True
+                                    break  # Stop checking this product's features for this required key
 
             # DEBUG: Print tonnage match result (using the specific debug variable)
             if appliance_type == 'ac':
@@ -871,7 +869,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # Case 1: If gas stove type is "Hob (built-in)", recommend a Hob Top
         if "hob (built-in)" in gas_stove_type.lower():
             print(f"[DEBUG GAS STOVE] Recommending Hob Top for built-in requirement: '{gas_stove_type}'")
-        budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
+            budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
             required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
             print(f"[DEBUG GAS STOVE] Budget category: {budget_category}, Features: {required_features}")
             # Debug: Print user data and required features before calling recommendation function
@@ -884,13 +882,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
             # Clear gas_stove as we're using hob_top instead
             final_list['kitchen']['gas_stove'] = []
-            
         # Case 2: Skip recommendation if "Not needed"
         elif "not needed" in gas_stove_type.lower():
             print(f"[DEBUG GAS STOVE] Skipping gas stove recommendation for: '{gas_stove_type}'")
             final_list['kitchen']['gas_stove'] = []
             final_list['kitchen']['hob_top'] = []
-            
         # Case 3: For all other types, recommend normal gas stove
         else:
             print(f"[DEBUG GAS STOVE] Recommending regular gas stove for: '{gas_stove_type}'")
@@ -984,13 +980,13 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Process dining room requirements
     if user_data['dining'].get('fans'):
-        budget_category = get_budget_category(total_budget, 'ceiling_fan')
-        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, demographics, user_data['dining'].get('color_theme'))
+        budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['dining'].get('color_theme'))
         final_list['dining']['fans'] = recommendations
 
     if user_data['dining'].get('ac'):
-        budget_category = get_budget_category(total_budget, 'ac')
-        recommendations = get_specific_product_recommendations('ac', budget_category, demographics, user_data['dining'].get('color_theme'))
+        budget_category = get_budget_category(user_data['total_budget'], 'ac')
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['dining'].get('color_theme'))
         final_list['dining']['ac'] = recommendations
 
     return final_list
@@ -1172,13 +1168,13 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     elif appliance_type == 'refrigerator':
         # Robust handling for capacity
         capacity_str = str(product.get('capacity', '')).strip().lower()
-            family_size = sum(demographics.values())
+        family_size = sum(demographics.values())
         capacity_found = False
         if capacity_str.endswith('l'):
             try:
                 capacity = int(re.sub(r'[^\d]', '', capacity_str))
                 capacity_found = True
-            if capacity >= family_size * 100:
+                if capacity >= family_size * 100:
                     reasons.append(f"Spacious {product.get('capacity', '')} capacity - ideal for your family of {family_size}")
                 else:
                     reasons.append(f"{product.get('capacity', '')} capacity - suitable for your family of {family_size}")
@@ -1284,7 +1280,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     
     # Try to register DejaVuSans font if available, otherwise use default fonts
     try:
-    pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
+        pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
         default_font = 'DejaVuSans'
     except:
         print("Using default fonts - DejaVuSans.ttf not found")
@@ -1496,8 +1492,8 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
                 for item in appliances:
                     if not isinstance(item, dict):
                         continue
-                            brand = item.get('brand', 'Unknown Brand')
-                            model = item.get('model', 'Unknown Model')
+                    brand = item.get('brand', 'Unknown Brand')
+                    model = item.get('model', 'Unknown Model')
                     price = float(item.get('better_home_price', item.get('price', 0)))
                     retail_price = float(item.get('retail_price', price * 1.2))
                     # Add bestseller badge if applicable
@@ -1509,7 +1505,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
                     price_text = f"Price: ₹{price:,.2f}"
                     if retail_price > price:
                             savings = retail_price - price
-                        price_text += f" (Retail: ₹{retail_price:,.2f}, Save: ₹{savings:,.2f})"
+                    price_text += f" (Retail: ₹{retail_price:,.2f}, Save: ₹{savings:,.2f})"
                     story.append(Paragraph(price_text, normal_style))
                     features = item.get('features', [])
                     if features:
@@ -1625,7 +1621,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             # Case 1: If gas stove type is "Hob (built-in)", recommend a Hob Top
             if "hob (built-in)" in gas_stove_type.lower():
                 print(f"[DEBUG GAS STOVE] Recommending Hob Top for built-in requirement: '{gas_stove_type}'")
-            budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
+                budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
                 required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
                 print(f"[DEBUG GAS STOVE] Budget category: {budget_category}, Features: {required_features}")
                 # Debug: Print user data and required features before calling recommendation function
@@ -1638,14 +1634,10 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                 print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
                 # Clear gas_stove as we're using hob_top instead
                 final_list['kitchen']['gas_stove'] = []
-                
-            # Case 2: Skip recommendation if "Not needed"
             elif "not needed" in gas_stove_type.lower():
                 print(f"[DEBUG GAS STOVE] Skipping gas stove recommendation for: '{gas_stove_type}'")
                 final_list['kitchen']['gas_stove'] = []
                 final_list['kitchen']['hob_top'] = []
-                
-            # Case 3: For all other types, recommend normal gas stove
             else:
                 print(f"[DEBUG GAS STOVE] Recommending regular gas stove for: '{gas_stove_type}'")
                 budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
@@ -1653,7 +1645,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                 recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], 
                                                                      user_data['kitchen'].get('color_theme'), user_data, required_features)
                 print(f"[DEBUG GAS STOVE] Got {len(recommendations)} gas_stove recommendations")
-            final_list['kitchen']['gas_stove'] = recommendations
+                final_list['kitchen']['gas_stove'] = recommendations
         
         if user_data['kitchen'].get('small_fan', False):
             budget_category = get_budget_category(user_data['total_budget'], 'small_fan')
