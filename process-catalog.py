@@ -47,13 +47,17 @@ def clean_data(file_path, output_file):
 
     # Standardize column names
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+    
+    # Debug: Print all column names after standardization
+    print("\nColumns after standardization:")
+    print(df.columns.tolist())
 
     # Display all columns read for verification
-    print("Columns found in the CSV file:", df.columns.tolist())
+    print("\nColumns found in the CSV file:", df.columns.tolist())
 
     # Clean all text fields except image URLs and features
     for column in df.columns:
-        if column not in ['image_src', 'Features (product.metafields.custom.features)']:  # Skip cleaning image URLs and features
+        if column not in ['image_src', 'features_(product.metafields.custom.features)']:  # Skip cleaning image URLs and features
             df[column] = df[column].apply(clean_text)
 
     # Generate URLs using handle
@@ -61,15 +65,19 @@ def clean_data(file_path, output_file):
         df['url'] = 'https://betterhomeapp.com/products/' + df['handle']
 
     # Parse and expand features into separate columns
-    if 'Features (product.metafields.custom.features)' in df.columns:
+    features_column = 'features_(product.metafields.custom.features)'
+    if features_column in df.columns:
         # Debug: Print raw features before parsing
-        print("Raw Features before parsing:")
-        print(df['Features (product.metafields.custom.features)'].head())
+        print("\nRaw Features before parsing:")
+        print(df[features_column].head())
 
-        df['Features'] = df['Features (product.metafields.custom.features)'].apply(parse_features_to_columns)
+        df['features'] = df[features_column].apply(parse_features_to_columns)
         # Debug: Print parsed features
-        print("Parsed Features:")
-        print(df['Features'].head())
+        print("\nParsed Features:")
+        print(df['features'].head())
+    else:
+        print("\nWARNING: Features column not found in DataFrame!")
+        print("Available columns:", df.columns.tolist())
 
     # Rename columns
     rename_mapping = {
@@ -81,7 +89,7 @@ def clean_data(file_path, output_file):
         'variant_price': 'Better Home Price',
         'variant_compare_at_price': 'Retail Price',
         'seo_description': 'Description',
-        'Features (product.metafields.custom.features)': 'Features',
+        'features': 'Features',  # This will rename the parsed features column
         'product.metafields.custom.material': 'Material',
         'returns_(product.metafields.custom.returns)': 'Returns Policy',
         'warranty_(product.metafields.custom.warranty)': 'Warranty',
@@ -90,11 +98,15 @@ def clean_data(file_path, output_file):
         'image_alt_text': 'Image Alt Text'
     }
 
+    # Debug: Print rename mapping
+    print("\nRename mapping:")
+    print(rename_mapping)
+
     # Apply renaming directly without filtering
     df.rename(columns=rename_mapping, inplace=True)
 
     # Log renamed columns and check if 'Product Type' is present
-    print("Columns after renaming:", df.columns.tolist())
+    print("\nColumns after renaming:", df.columns.tolist())
     if 'Product Type' not in df.columns:
         print("Error: 'Product Type' was not renamed properly. Double-check column names.")
     else:
@@ -103,8 +115,11 @@ def clean_data(file_path, output_file):
 
     # Debug: Print 'Features' column after renaming
     if 'Features' in df.columns:
-        print("Features column after renaming:")
+        print("\nFeatures column after renaming:")
         print(df['Features'].head())
+    else:
+        print("\nWARNING: Features column not found after renaming!")
+        print("Available columns:", df.columns.tolist())
 
     # Handle duplicate SKUs if SKU column exists
     if 'SKU' in df.columns:
