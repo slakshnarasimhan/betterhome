@@ -1316,25 +1316,8 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
-    # Check if logo exists in multiple possible locations
-    possible_logo_paths = [
-        "web_app/better_home_logo.png",  # Relative to script execution directory
-        "./web_app/better_home_logo.png",  # Explicit relative path
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
-        "better_home_logo.png",  # Check in current directory as well
-    ]
-    
-    logo_path = None
-    logo_exists = False
-    for path in possible_logo_paths:
-        if os.path.exists(path):
-            logo_path = path
-            logo_exists = True
-            print(f"Found logo at: {path}")
-            break
-    
-    if not logo_exists:
-        print("Logo not found in any of the expected locations")
+    # Always use the CDN URL for the logo
+    logo_html = '<img src="https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300" alt="BetterHome Logo" class="logo">'
     
     # Try to register DejaVuSans font if available, otherwise use default fonts
     try:
@@ -1438,10 +1421,8 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     story = []
 
     # Add logo if it exists
-    if logo_exists:
-        logo = Image(logo_path, width=200, height=60)  # Adjust size as needed
-        logo.hAlign = 'CENTER'
-        story.append(logo)
+    if is_web_app:
+        story.append(Paragraph(logo_html, normal_style))
         story.append(Spacer(1, 20))
 
     # Title and date
@@ -1872,35 +1853,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
-    # Check if logo exists in multiple possible locations
-    possible_logo_paths = [
-        "web_app/better_home_logo.png",  # Relative to script execution directory
-        "./web_app/better_home_logo.png",  # Explicit relative path
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
-        "better_home_logo.png",  # Check in current directory as well
-    ]
-    
-    logo_path = None
-    logo_exists = False
-    for path in possible_logo_paths:
-        if os.path.exists(path):
-            logo_path = path
-            logo_exists = True
-            print(f"Found logo at: {path}")
-            break
-    
-    if not logo_exists:
-        print("Logo not found in any of the expected locations")
-    
-    # For web app, use a URL path rather than a file path
-    logo_html = ""
-    if logo_exists:
-        if is_web_app:
-            # Use a relative URL path that will be handled by Flask
-            logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
-        else:
-            # Use the file path for direct HTML viewing
-            logo_html = f'<img src="{logo_path}" alt="BetterHome Logo" class="logo">'
+    # Always use the CDN URL for the logo
+    logo_html = '<img src="https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300" alt="BetterHome Logo" class="logo">'
     
     # Create HTML header (CSS part)
     html_content = """
@@ -2262,19 +2216,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <p>Specially curated for {user_data['name']}</p>
             </header>
     """
-    # Render geysers from master bedroom
-    if 'bathroom' in final_list.get('master_bedroom', {}) and 'water_heater' in final_list['master_bedroom']['bathroom']:
-        html_content += "<h2>Water Heaters - Master Bedroom</h2>"
-        for product in final_list['master_bedroom']['bathroom']['water_heater']:
-            html_content += f"<p>{product.get('title', 'No Title')} - {product.get('brand', '')} - {product.get('price', '')} INR</p>"
-
-    # Render geysers from bedroom 2
-    if 'bathroom' in final_list.get('bedroom_2', {}) and 'water_heater' in final_list['bedroom_2']['bathroom']:
-        html_content += "<h2>Water Heaters - Bedroom 2</h2>"
-        for product in final_list['bedroom_2']['bathroom']['water_heater']:
-            html_content += f"<p>{product.get('title', 'No Title')} - {product.get('brand', '')} - {product.get('price', '')} INR</p>"
     
-    html_content += header_section
             
     # Add client info section with explicit f-string
     client_info_section = f"""
