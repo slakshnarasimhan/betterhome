@@ -53,7 +53,7 @@ def clean_data(file_path, output_file):
 
     # Clean all text fields except image URLs and features
     for column in df.columns:
-        if column not in ['image_src', 'features']:  # Skip cleaning image URLs and features
+        if column not in ['image_src', 'Features (product.metafields.custom.features)']:  # Skip cleaning image URLs and features
             df[column] = df[column].apply(clean_text)
 
     # Generate URLs using handle
@@ -61,15 +61,15 @@ def clean_data(file_path, output_file):
         df['url'] = 'https://betterhomeapp.com/products/' + df['handle']
 
     # Parse and expand features into separate columns
-    if 'features' in df.columns:
+    if 'Features (product.metafields.custom.features)' in df.columns:
         # Debug: Print raw features before parsing
         print("Raw Features before parsing:")
-        print(df['features'].head())
+        print(df['Features (product.metafields.custom.features)'].head())
 
-        df['features'] = df['features'].apply(parse_features_to_columns)
+        df['Features'] = df['Features (product.metafields.custom.features)'].apply(parse_features_to_columns)
         # Debug: Print parsed features
         print("Parsed Features:")
-        print(df['features'].head())
+        print(df['Features'].head())
 
     # Rename columns
     rename_mapping = {
@@ -81,7 +81,7 @@ def clean_data(file_path, output_file):
         'variant_price': 'Better Home Price',
         'variant_compare_at_price': 'Retail Price',
         'seo_description': 'Description',
-        'features': 'Features',
+        'Features (product.metafields.custom.features)': 'Features',
         'product.metafields.custom.material': 'Material',
         'returns_(product.metafields.custom.returns)': 'Returns Policy',
         'warranty_(product.metafields.custom.warranty)': 'Warranty',
@@ -147,12 +147,19 @@ def clean_data(file_path, output_file):
         print("Features column after final processing (skipped clean_text):")
         print(df['Features'].head())
 
+    # Add bestseller field based on tags
+    if 'tags' in df.columns:
+        print("\nProcessing tags for bestseller identification:")
+        df['best_seller'] = df['tags'].apply(lambda x: 'Yes' if isinstance(x, str) and 'Best Seller' in x else 'No')
+        print("Sample of bestseller identification:")
+        print(df[['title', 'tags', 'best_seller']].head())
+
     # Keep only necessary columns
     columns_to_keep = [
         'handle', 'title', 'Product Type', 'Category', 'tags', 'SKU', 'Weight', 'Better Home Price',
         'Retail Price', 'Description', 'Brand', 'Features', 'Material', 'Returns Policy',
         'Manufacturer URL', 'Warranty', 'url', 'Color', 'Finish', 'Material', 'Style',
-        'Image Src', 'Image Alt Text'
+        'Image Src', 'Image Alt Text', 'best_seller'  # Added best_seller to columns
     ]
 
     existing_columns_in_df = [col for col in columns_to_keep if col in df.columns]
@@ -174,8 +181,8 @@ def clean_data(file_path, output_file):
 
 
 if __name__ == "__main__":
-    input_file = 'products_export_1 2.csv'  # Replace with your input file
+    input_file = 'products_export_1 4.csv'  # Replace with your input file
     #input_file = 'test.csv'  # Replace with your input file
-    output_file = 'cleaned_products.csv'  # Replace with your desired output file name
+    output_file = 'cleaned_products_new.csv'  # Replace with your desired output file name
     clean_data(input_file, output_file)
 

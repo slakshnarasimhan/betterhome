@@ -717,10 +717,10 @@ def get_specific_product_recommendations(
         # Track unique combinations of brand and tonnage (or other relevant features)
         unique_combinations = set()
 
-        # Sort by feature match score, then is_bestseller flag, then relevance score, then price
+        # Sort by feature match score, then bestseller status, then relevance score, then price
         matching_products_data.sort(key=lambda x: (
             -x.get('feature_match_score', 0), 
-            -x.get('is_bestseller', False),  # Prioritize bestsellers after feature match
+            -1 if x.get('best_seller', 'No') == 'Yes' else 0,  # Prioritize bestsellers after feature match
             -x.get('relevance_score', 0), 
             -float(x.get('price', 0))
         ))
@@ -772,7 +772,7 @@ def get_specific_product_recommendations(
                     'type': product_data.get('type', ''),
                     'suction_power': product_data.get('suction_power', ''),
                     'image_src': product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
-                    'is_bestseller': product_data.get('is_bestseller', False), # Preserve bestseller flag
+                    'best_seller': product_data.get('best_seller', 'No'), # Use best_seller field from catalog
                 }
                 
                 final_recommendations.append(recommendation)
@@ -816,7 +816,7 @@ def get_specific_product_recommendations(
                     'type': top_product_data.get('type', ''),
                     'suction_power': top_product_data.get('suction_power', ''),
                     'image_src': top_product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
-                    'is_bestseller': top_product_data.get('is_bestseller', False), # Preserve bestseller flag
+                    'best_seller': top_product_data.get('best_seller', 'No'), # Use best_seller field from catalog
                 }
                 final_recommendations.append(recommendation)
 
@@ -1290,8 +1290,8 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     reasons = []
     required_features = required_features or {}
     
-    # Check if product is a bestseller
-    if product.get('is_bestseller', False):
+    # Check if product is a bestseller using the best_seller field
+    if product.get('best_seller', 'No') == 'Yes':
         reasons.append("Top-rated bestseller with excellent customer reviews")
     
     # Budget consideration
@@ -2564,7 +2564,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
                 # Check if product is a bestseller
                 bestseller_badge = ""
-                if product.get('is_bestseller', False):
+                if product.get('best_seller', 'No') == 'Yes':
                     bestseller_badge = '<div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>'
 
                 # Format prices for display
@@ -2681,7 +2681,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     )
                     reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
                     bestseller_badge = ""
-                    if product.get('is_bestseller', False):
+                    if product.get('best_seller', 'No') == 'Yes':
                         bestseller_badge = '<div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>'
                     better_home_price_num = float(better_home_price)
                     retail_price_num = float(retail_price)

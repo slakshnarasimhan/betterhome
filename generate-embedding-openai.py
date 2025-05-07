@@ -13,15 +13,17 @@ import unicodedata
 # Configuration
 # ==========================
 MODEL_NAME = "text-embedding-3-small"
-CSV_FILE_PATH = 'cleaned_products.csv'
+CSV_FILE_PATH = 'cleaned_products_new.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 PRODUCT_CATALOG_PATH = 'web_app/product_catalog.json'
 
 # FAISS index output files
+"""
 INDEX_FILE_PRODUCT = 'faiss_index.index_product'
 INDEX_FILE_TYPE = 'faiss_index.index_type'
 INDEX_FILE_BRAND = 'faiss_index.index_brand'
 INDEX_FILE_IMAGE = 'faiss_index.index_image'
+"""
 
 # ==========================
 # Step 1: Load Product Catalog
@@ -44,6 +46,7 @@ def load_product_catalog(file_path):
 
     return df
 
+"""
 # ==========================
 # Step 2: Prepare Entries
 # ==========================
@@ -93,6 +96,7 @@ def prepare_entries(df):
             brand_entries.append(f"Brand: {row.get('Brand')}")
 
     return entries, product_type_entries, brand_entries, image_entries
+"""
 
 # ==========================
 # Step 3: Save Product Catalog
@@ -135,7 +139,8 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             'features': parsed_features,  # Use cleaned features
             'description': clean_text(row.get('Description', 'Not Available')),
             'url': clean_text(row.get('url', 'Not Available')),
-            'image_src': clean_text(row.get('Image Src', 'Not Available'))
+            'image_src': clean_text(row.get('Image Src', 'Not Available')),
+            'best_seller': row.get('best_seller', 'No')  # Add bestseller field
         }
         # Debug statement to print Features data before writing to JSON
         print(f"[DEBUG] Features to JSON: {product['features']}")
@@ -144,6 +149,7 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
         json.dump({'products': catalog}, f, indent=2, ensure_ascii=True)
     print(f"Product catalog saved successfully to {file_path}.")
 
+"""
 # ==========================
 # Step 4: Generate Embeddings using OpenAI
 # ==========================
@@ -196,6 +202,7 @@ def build_faiss_index(embeddings, index_file_path):
     except Exception as e:
         print(f"Error building FAISS index: {str(e)}")
         return None
+"""
 
 # ==========================
 # Main Execution
@@ -210,6 +217,7 @@ def main():
     print("Saving product catalog...")
     save_product_catalog(df)
 
+    """
     # Prepare all entries
     print("Preparing entries...")
     product_entries, product_type_entries, brand_entries, image_entries = prepare_entries(df)
@@ -242,8 +250,9 @@ def main():
     build_faiss_index(product_type_embeddings, INDEX_FILE_TYPE)
     build_faiss_index(brand_embeddings, INDEX_FILE_BRAND)
     build_faiss_index(image_embeddings, INDEX_FILE_IMAGE)
+    """
 
-    print("\nEmbedding generation completed successfully!")
+    print("\nProduct catalog generation completed successfully!")
 
 if __name__ == "__main__":
     main()
