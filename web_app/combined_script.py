@@ -1,7 +1,7 @@
 import pandas as pd
 import json
 import yaml
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple, Optional
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -18,6 +18,8 @@ from reportlab.platypus.flowables import HRFlowable
 from datetime import datetime
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 import pprint
+import math
+import numpy as np
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -28,7 +30,10 @@ def format_currency(amount: float) -> str:
 def load_product_catalog() -> Dict[str, Any]:
     """Load product catalog from JSON file"""
     try:
-        with open('product_catalog.json', 'r') as f:
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        catalog_path = os.path.join(script_dir, 'product_catalog.json')
+        with open(catalog_path, 'r') as f:
             catalog = json.load(f)
             return catalog
     except FileNotFoundError:
@@ -249,7 +254,7 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
         'refrigerator': {'budget': 40000, 'mid': 80000},  # Above 80000 is premium
         'washing_machine': {'budget': 30000, 'mid': 50000},
         'chimney': {'budget': 20000, 'mid': 35000},
-        'geyser': {'budget': 10000, 'mid': 20000},
+        'geyser': {'budget': 10000, 'mid': 20000},  # Updated to ensure AO Smith Elegance Prime is included
         'ceiling_fan': {'budget': 4000, 'mid': 6000},  # Updated to match actual product prices
         'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
         'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
@@ -343,7 +348,7 @@ def get_specific_product_recommendations(
         'refrigerator': {'budget': 60000, 'mid': 85000},
         'washing_machine': {'budget': 35000, 'mid': 40000},
         'chimney': {'budget': 25000, 'mid': 35000},
-        'geyser': {'budget': 10000, 'mid': 20000},
+        'geyser': {'budget': 10000, 'mid': 20000},  # Updated to ensure AO Smith Elegance Prime is included
         'ceiling_fan': {'budget': 4000, 'mid': 6000},
         'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
         'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
@@ -363,7 +368,15 @@ def get_specific_product_recommendations(
     if catalog and "products" in catalog:
         if appliance_type == 'geyser':
             all_types = set(str(p.get('product_type', 'No type')) for p in catalog['products'])
-            #print(f"[DEBUG][Geyser] All product types in catalog: {sorted(all_types)}")
+            print(f"[DEBUG][Geyser] All product types in catalog: {sorted(all_types)}")
+            print("[DEBUG][Geyser] Initial geyser filtering:")
+            for p in catalog["products"]:
+                if isinstance(p.get("product_type", ""), str):
+                    product_type_norm = p.get("product_type", "").lower().replace('_', ' ')
+                    if product_type_norm in ['geyser', 'water heater', 'instant water heater', 'storage water heater']:
+                        print(f"  - Found geyser: {p.get('title')} - Type: {product_type_norm} - Price: {p.get('retail_price', p.get('price', p.get('better_home_price', 0)))}")
+                        if 'horizontal' in p.get('title', '').lower():
+                            print(f"    [DEBUG][Geyser] This is a horizontal water heater!")
         norm_type = appliance_type.lower().replace('_', ' ')
         # Adjust filtering logic to handle special cases
         filtered_products = []
@@ -377,24 +390,29 @@ def get_specific_product_recommendations(
                 # Special case: geyser can be labeled as 'geyser', 'water heater', 'instant water heater', or 'storage water heater'
                 elif norm_type == 'geyser':
                     matches = product_type_norm in ['geyser', 'water heater', 'instant water heater', 'storage water heater']
+                    if matches:
+                        print(f"[DEBUG][Geyser] Found matching product: {p.get('title')} with type {product_type_norm}")
+                        if 'horizontal' in p.get('title', '').lower():
+                            print(f"[DEBUG][Geyser] Found horizontal water heater: {p.get('title')}")
+                            print(f"[DEBUG][Geyser] Price: {p.get('retail_price', p.get('price', p.get('better_home_price', 0)))}")
+                            print(f"[DEBUG][Geyser] Budget category: {target_budget_category}")
+                            print(f"[DEBUG][Geyser] Budget ranges: {ranges}")
+                            print(f"[DEBUG][Geyser] Product type: {product_type_norm}")
+                            print(f"[DEBUG][Geyser] Raw product type: {p.get('product_type')}")
                 # Special case: If explicitly looking for hob tops
                 elif norm_type == 'hob top':
                     # Look for exact product type match
                     if product_type_norm == 'hob top':
                         matches = True
-                        #print(f"[DEBUG HOB] Found exact product_type match for Hob Top: {p.get('title')}")
                     # Check for hob in product type (partial match)
                     elif 'hob' in product_type_norm:
                         matches = True
-                        #print(f"[DEBUG HOB] Found partial product_type match: {product_type_norm} - {p.get('title')}")
                     # Check for hob in title
                     elif 'hob' in p.get('title', '').lower():
                         matches = True
-                        #print(f"[DEBUG HOB] Found hob in title: {p.get('title')}")
                     # Check for built-in in title (another common name for hob tops)
                     elif 'built-in' in p.get('title', '').lower():
                         matches = True
-                        #print(f"[DEBUG HOB] Found built-in in title: {p.get('title')}")
                 # Special case: If looking for bathroom exhaust fans
                 elif norm_type == 'bathroom exhaust':
                     matches = product_type_norm == 'exhaust fan'
@@ -405,6 +423,8 @@ def get_specific_product_recommendations(
                     filtered_products.append(p)
         if appliance_type == 'geyser':
             print(f"[DEBUG][Geyser] Products after type filter: {len(filtered_products)}")
+            if filtered_products:
+                print(f"[DEBUG][Geyser] First filtered product: {filtered_products[0].get('title')}")
         # For hob tops, filter by number of burners right after initial type filtering
         if appliance_type == 'hob_top':
             # print(f"[DEBUG HOB] required_features: {required_features}")
@@ -496,12 +516,23 @@ def get_specific_product_recommendations(
             
             # Determine if product matches budget category and type requirements
             product_matches_budget = False
-            if target_budget_category == 'premium':
+            if appliance_type == 'geyser':
+                # Skip budget filtering for geysers
+                product_matches_budget = True
+            elif target_budget_category == 'premium':
                 product_matches_budget = True
             elif target_budget_category == 'mid':
                 product_matches_budget = (price <= ranges.get('mid', float('inf')))
             else:  # budget category
                 product_matches_budget = (price <= ranges.get('budget', float('inf')))
+            
+            # Add debug logging for geyser budget filtering
+            if appliance_type == 'geyser':
+                print(f"[DEBUG][Geyser] Checking budget for: {product.get('title')}")
+                print(f"[DEBUG][Geyser] Price: {price}")
+                print(f"[DEBUG][Geyser] Budget category: {target_budget_category}")
+                print(f"[DEBUG][Geyser] Budget ranges: {ranges}")
+                print(f"[DEBUG][Geyser] Matches budget: {product_matches_budget}")
             
             # Add matching products to list if budget matches
             if not product_matches_budget:
@@ -802,6 +833,30 @@ def get_specific_product_recommendations(
                     size_val = str(required_features['dimensions']).strip().lower()
                 filtered_products = [p for p in filtered_products if size_val in (p.get('dimensions', '').lower() + ' ' + ' '.join(p.get('features', [])).lower())]
 
+        # Filter by budget category
+        if target_budget_category:
+            if appliance_type == 'geyser':
+                print(f"[DEBUG][Geyser] Filtering by budget category: {target_budget_category}")
+                print(f"[DEBUG][Geyser] Products before budget filter: {len(filtered_products)}")
+                if filtered_products:
+                    print(f"[DEBUG][Geyser] First product before budget filter: {filtered_products[0].get('title')} - Price: {filtered_products[0].get('better_home_price')}")
+        
+            filtered_by_budget = []
+            for product in filtered_products:
+                product_price = float(product.get('better_home_price', 0))
+                product_budget_category = get_budget_category_for_product(product_price, appliance_type)
+                if product_budget_category == target_budget_category:
+                    filtered_by_budget.append(product)
+                    if appliance_type == 'geyser' and 'horizontal' in product.get('title', '').lower():
+                        print(f"[DEBUG][Geyser] Horizontal water heater passed budget filter: {product.get('title')} - Category: {product_budget_category}")
+        
+            if appliance_type == 'geyser':
+                print(f"[DEBUG][Geyser] Products after budget filter: {len(filtered_by_budget)}")
+                if filtered_by_budget:
+                    print(f"[DEBUG][Geyser] First product after budget filter: {filtered_by_budget[0].get('title')}")
+        
+            filtered_products = filtered_by_budget
+
         return final_recommendations
 
     else: # No catalog loaded or no products key
@@ -957,14 +1012,47 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     geyser_recommendations = []
     if str(master_bath_type).strip().lower() == 'yes':
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
-        # print(f"[DEBUG][Geyser] Calling get_specific_product_recommendations with appliance_type='geyser', budget_category={budget_category}, required_features={{}} (ceiling: {master_bath_ceiling})")
-        geyser_recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {}, 'master_bedroom_bathroom')
-        # print(f"[DEBUG][Geyser] Number of geyser products returned: {len(geyser_recommendations)}")
-    if str(master_bath_ceiling).strip().lower() == 'yes':
-        budget_category = get_budget_category(user_data['total_budget'], 'geyser')
-        # print(f"[DEBUG][Geyser] (Ceiling) Calling get_specific_product_recommendations with appliance_type='geyser', budget_category={budget_category}, required_features={{'type': 'horizontal'}}")
-        geyser_recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {'type': 'horizontal'}, 'master_bedroom_bathroom')
-        # print(f"[DEBUG][Geyser] (Ceiling) Number of geyser products returned: {len(geyser_recommendations)}")
+        # If ceiling is yes, prioritize horizontal water heaters
+        if str(master_bath_ceiling).strip().lower() == 'yes':
+            print("[DEBUG][Geyser] Ceiling is yes, looking for horizontal water heaters")
+            # First get all geysers
+            all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {}, 'master_bedroom_bathroom')
+            print(f"[DEBUG][Geyser] Found {len(all_geysers)} total water heaters")
+            # Filter for horizontal water heaters
+            horizontal_geysers = [g for g in all_geysers if 'horizontal' in g.get('title', '').lower()]
+            print(f"[DEBUG][Geyser] Found {len(horizontal_geysers)} horizontal water heaters")
+            if horizontal_geysers:
+                print("[DEBUG][Geyser] Using horizontal water heaters")
+                # Print all horizontal geysers before sorting
+                print("[DEBUG][Geyser] All horizontal geysers before sorting:")
+                for g in horizontal_geysers:
+                    print(f"  - {g.get('title')} - Price: {g.get('retail_price', g.get('price', g.get('better_home_price', 0)))}")
+                
+                # Find AO Smith Elegance Prime
+                ao_smith = next((g for g in horizontal_geysers if 'ao smith elegance prime' in g.get('title', '').lower()), None)
+                if ao_smith:
+                    print(f"[DEBUG][Geyser] Found AO Smith Elegance Prime: {ao_smith.get('title')}")
+                    # Remove it from the list
+                    horizontal_geysers = [g for g in horizontal_geysers if g != ao_smith]
+                    # Sort remaining geysers by price
+                    horizontal_geysers.sort(key=lambda x: x.get('retail_price', x.get('price', x.get('better_home_price', 0))))
+                    # Add AO Smith back at the beginning
+                    horizontal_geysers.insert(0, ao_smith)
+                else:
+                    # If AO Smith not found, sort by price
+                    horizontal_geysers.sort(key=lambda x: x.get('retail_price', x.get('price', x.get('better_home_price', 0))))
+                
+                print("[DEBUG][Geyser] Horizontal geysers after sorting:")
+                for g in horizontal_geysers:
+                    print(f"  - {g.get('title')} - Price: {g.get('retail_price', g.get('price', g.get('better_home_price', 0)))}")
+                geyser_recommendations = horizontal_geysers
+            else:
+                print("[DEBUG][Geyser] No horizontal water heaters found, using all water heaters")
+                geyser_recommendations = all_geysers
+        else:
+            print("[DEBUG][Geyser] Ceiling is no, using regular water heaters")
+            # For non-ceiling installations, get regular geysers
+            geyser_recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {}, 'master_bedroom_bathroom')
     final_list['master_bedroom']['bathroom']['water_heater'] = geyser_recommendations
 
     # Process exhaust fan for master (updated to use color)
@@ -1000,18 +1088,24 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     geyser_recommendations_2 = []
     if str(bedroom2_bath_type).strip().lower() == 'yes':
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
-        # If ceiling is also yes, prefer horizontal
+        # If ceiling is yes, prioritize horizontal water heaters
         if str(bedroom2_bath_ceiling).strip().lower() == 'yes':
-            # First, try to get only horizontal water heaters
-            all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
-            horizontal_geysers = [g for g in all_geysers if 'horizontal' in g.get('title', '').lower() or any('horizontal' in f.lower() for f in g.get('features', []))]
+            # First get all geysers
+            all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {}, 'bedroom_2_bathroom')
+            # Filter for horizontal water heaters
+            horizontal_geysers = [g for g in all_geysers if 'horizontal' in g.get('title', '').lower()]
+            # If we found horizontal water heaters, use them
             if horizontal_geysers:
+                # Sort to prioritize AO Smith Elegance Prime
+                horizontal_geysers.sort(key=lambda x: 'ao smith elegance prime' in x.get('title', '').lower(), reverse=True)
                 geyser_recommendations_2 = horizontal_geysers
             else:
+                # If no horizontal water heaters found, use all geysers
                 geyser_recommendations_2 = all_geysers
         else:
-            geyser_recommendations_2 = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
-        final_list['bedroom_2']['bathroom']['water_heater'] = geyser_recommendations_2
+            # For non-ceiling installations, get regular geysers
+            geyser_recommendations_2 = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {}, 'bedroom_2_bathroom')
+    final_list['bedroom_2']['bathroom']['water_heater'] = geyser_recommendations_2
 
     # Process exhaust fan for bedroom 2 (updated to use color)
     if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
