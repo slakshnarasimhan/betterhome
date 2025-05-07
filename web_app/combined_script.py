@@ -114,7 +114,8 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?']
+                    'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
+                    'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'] == 'Yes'
                 },
                 'color_theme': df.iloc[0]['Master: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?', 140.0))  # Updated column name
@@ -124,7 +125,8 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?']
+                    'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
+                    'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'] == 'Yes'
                 },
                 'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
@@ -262,7 +264,8 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
         'dryer': {'budget': 25000, 'mid': 45000},
         'shower_system': {'budget': 30000, 'mid': 50000},
         'gas_stove': {'budget': 15000, 'mid': 25000}, # Add gas stove
-        'hob_top': {'budget': 20000, 'mid': 40000}    # Add hob top
+        'hob_top': {'budget': 20000, 'mid': 40000},    # Add hob top
+        'led_mirror': {'budget': 4000, 'mid': 6000}  # Add LED mirror budget ranges
     }
     
     # Default ranges if appliance type is not in the categories
@@ -357,7 +360,8 @@ def get_specific_product_recommendations(
         'shower_system': {'budget': 30000, 'mid': 50000},
         'gas_stove': {'budget': 15000, 'mid': 25000},
         'hob_top': {'budget': 20000, 'mid': 40000},  # Added budget ranges for hob tops
-        'small_fan': {'budget': 2000, 'mid': 4000}
+        'small_fan': {'budget': 2000, 'mid': 4000},
+        'led_mirror': {'budget': 4000, 'mid': 6000}  # Add LED mirror budget ranges
     }
     
     # Default ranges if appliance type is not in the budget_ranges
@@ -367,6 +371,7 @@ def get_specific_product_recommendations(
     # Process available products
     if catalog and "products" in catalog:
         if appliance_type == 'geyser':
+            print(f"[DEBUG][Geyser] Total products in catalog: {len(catalog['products'])}")
             all_types = set(str(p.get('product_type', 'No type')) for p in catalog['products'])
             print(f"[DEBUG][Geyser] All product types in catalog: {sorted(all_types)}")
             print("[DEBUG][Geyser] Initial geyser filtering:")
@@ -377,6 +382,8 @@ def get_specific_product_recommendations(
                         print(f"  - Found geyser: {p.get('title')} - Type: {product_type_norm} - Price: {p.get('retail_price', p.get('price', p.get('better_home_price', 0)))}")
                         if 'horizontal' in p.get('title', '').lower():
                             print(f"    [DEBUG][Geyser] This is a horizontal water heater!")
+        elif appliance_type == 'led_mirror':
+            pass  # Debug prints moved to after filtered_products is initialized
         norm_type = appliance_type.lower().replace('_', ' ')
         # Adjust filtering logic to handle special cases
         filtered_products = []
@@ -416,6 +423,11 @@ def get_specific_product_recommendations(
                 # Special case: If looking for bathroom exhaust fans
                 elif norm_type == 'bathroom exhaust':
                     matches = product_type_norm == 'exhaust fan'
+                # Special case: If looking for LED mirrors
+                elif norm_type == 'led mirror':
+                    matches = (product_type_norm == 'led mirror' or 
+                             product_type_norm == 'bathroom accessories' or 
+                             'led mirror' in p.get('title', '').lower())
                 else:
                     # Standard matching for other types
                     matches = product_type_norm == norm_type
@@ -425,6 +437,14 @@ def get_specific_product_recommendations(
             print(f"[DEBUG][Geyser] Products after type filter: {len(filtered_products)}")
             if filtered_products:
                 print(f"[DEBUG][Geyser] First filtered product: {filtered_products[0].get('title')}")
+        if appliance_type == 'led_mirror':
+            print(f"[DEBUG][LED Mirror] Total products in catalog: {len(catalog['products'])}")
+            print(f"[DEBUG][LED Mirror] All product types in catalog: {sorted(set(str(p.get('product_type', 'No type')) for p in catalog['products']))}")
+            print(f"[DEBUG][LED Mirror] Products after type filter: {len(filtered_products)}")
+            if filtered_products:
+                print(f"[DEBUG][LED Mirror] Found LED mirrors:")
+                for lp in filtered_products:
+                    print(f"  - {lp.get('title')} - Price: {lp.get('retail_price', lp.get('price', lp.get('better_home_price', 0)))}")
         # For hob tops, filter by number of burners right after initial type filtering
         if appliance_type == 'hob_top':
             # print(f"[DEBUG HOB] required_features: {required_features}")
@@ -887,7 +907,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             'bathroom': {
                 'water_heater': [],
                 'exhaust_fan': [],
-                'shower': []
+                'shower': [],
+                'led_mirror': []  # Add LED mirror array
             }
         },
         'bedroom_2': {
@@ -896,7 +917,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             'bathroom': {
                 'water_heater': [],
                 'exhaust_fan': [],
-                'shower': []
+                'shower': [],
+                'led_mirror': []  # Add LED mirror array
             }
         },
         'laundry': {
@@ -1010,6 +1032,20 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     master_bath_type = master_bath.get('water_heater_type', '')
     master_bath_ceiling = master_bath.get('water_heater_ceiling', '')
     geyser_recommendations = []
+    
+    # Check for LED Mirror requirement in master bathroom
+    if master_bath.get('led_mirror', False):
+        print("[DEBUG][LED Mirror] Master bathroom requires LED mirror")
+        budget_category = get_budget_category(user_data['total_budget'], 'led_mirror')
+        print(f"[DEBUG][LED Mirror] Budget category: {budget_category}")
+        led_mirror_recommendations = get_specific_product_recommendations('led_mirror', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, {}, 'master_bedroom_bathroom')
+        print(f"[DEBUG][LED Mirror] Found {len(led_mirror_recommendations)} LED mirrors for master bathroom")
+        if led_mirror_recommendations:
+            print("[DEBUG][LED Mirror] LED mirror recommendations:")
+            for mirror in led_mirror_recommendations:
+                print(f"  - {mirror.get('title')} - Price: {mirror.get('retail_price', mirror.get('price', mirror.get('better_home_price', 0)))}")
+        final_list['master_bedroom']['bathroom']['led_mirror'] = led_mirror_recommendations
+    
     if str(master_bath_type).strip().lower() == 'yes':
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         # If ceiling is yes, prioritize horizontal water heaters
@@ -1086,6 +1122,13 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     bedroom2_bath_type = bedroom2_bath.get('water_heater_type', '')
     bedroom2_bath_ceiling = bedroom2_bath.get('water_heater_ceiling', '')
     geyser_recommendations_2 = []
+    
+    # Check for LED Mirror requirement in bedroom 2 bathroom
+    if bedroom2_bath.get('led_mirror', False):
+        budget_category = get_budget_category(user_data['total_budget'], 'led_mirror')
+        led_mirror_recommendations = get_specific_product_recommendations('led_mirror', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, {}, 'bedroom_2_bathroom')
+        final_list['bedroom_2']['bathroom']['led_mirror'] = led_mirror_recommendations
+    
     if str(bedroom2_bath_type).strip().lower() == 'yes':
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         # If ceiling is yes, prioritize horizontal water heaters
@@ -1744,6 +1787,14 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write(f"Features: {', '.join(exhaust['features'])}\n")
             reason = get_product_recommendation_reason(exhaust, 'bathroom_exhaust', 'master_bedroom', user_data['demographics'], final_list['summary']['total_budget'])
             f.write(f"Why we recommend this:\n{reason}\n\n")
+        # Add LED Mirror recommendations for master bathroom
+        if 'led_mirror' in final_list['master_bedroom']['bathroom']:
+            for mirror in final_list['master_bedroom']['bathroom']['led_mirror']:
+                f.write(f"LED Mirror: {mirror['brand']} {mirror['model']}\n")
+                f.write(f"Price: {format_currency(mirror['price'])} (Retail: {format_currency(mirror['retail_price'])})\n")
+                f.write(f"Features: {', '.join(mirror['features'])}\n")
+                reason = get_product_recommendation_reason(mirror, 'led_mirror', 'master_bedroom', user_data['demographics'], final_list['summary']['total_budget'])
+                f.write(f"Why we recommend this:\n{reason}\n\n")
 
         # Bedroom 2
         f.write("BEDROOM 2\n")
@@ -1774,6 +1825,14 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write(f"Features: {', '.join(exhaust['features'])}\n")
             reason = get_product_recommendation_reason(exhaust, 'bathroom_exhaust', 'bedroom_2', user_data['demographics'], final_list['summary']['total_budget'])
             f.write(f"Why we recommend this:\n{reason}\n\n")
+        # Add LED Mirror recommendations for bedroom 2 bathroom
+        if 'led_mirror' in final_list['bedroom_2']['bathroom']:
+            for mirror in final_list['bedroom_2']['bathroom']['led_mirror']:
+                f.write(f"LED Mirror: {mirror['brand']} {mirror['model']}\n")
+                f.write(f"Price: {format_currency(mirror['price'])} (Retail: {format_currency(mirror['retail_price'])})\n")
+                f.write(f"Features: {', '.join(mirror['features'])}\n")
+                reason = get_product_recommendation_reason(mirror, 'led_mirror', 'bedroom_2', user_data['demographics'], final_list['summary']['total_budget'])
+                f.write(f"Why we recommend this:\n{reason}\n\n")
 
         # Dining Room
         f.write("DINING ROOM\n")
