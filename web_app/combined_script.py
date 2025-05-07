@@ -395,6 +395,9 @@ def get_specific_product_recommendations(
                     elif 'built-in' in p.get('title', '').lower():
                         matches = True
                         #print(f"[DEBUG HOB] Found built-in in title: {p.get('title')}")
+                # Special case: If looking for bathroom exhaust fans
+                elif norm_type == 'bathroom exhaust':
+                    matches = product_type_norm == 'exhaust fan'
                 else:
                     # Standard matching for other types
                     matches = product_type_norm == norm_type
@@ -443,6 +446,13 @@ def get_specific_product_recommendations(
             if not filtered_products:
                  all_product_types = sorted(set([p.get('product_type', 'No type') for p in catalog.get('products', [])]))
                  # print(f"[DEBUG HOB] All product types found: {all_product_types}")
+        elif appliance_type == 'bathroom_exhaust':
+            print(f"[DEBUG][Exhaust] Total products in catalog: {len(catalog['products'])}")
+            print(f"[DEBUG][Exhaust] All product types in catalog: {sorted(set(str(p.get('product_type', 'No type')) for p in catalog['products']))}")
+            print(f"[DEBUG][Exhaust] Products after type filter: {len(filtered_products)}")
+            if filtered_products:
+                print(f"[DEBUG][Exhaust] First filtered product type: {filtered_products[0].get('product_type')}")
+                print(f"[DEBUG][Exhaust] First filtered product price: {filtered_products[0].get('better_home_price', filtered_products[0].get('price', 0))}")
 
         matching_products_data = [] # Store product data along with scores
         
