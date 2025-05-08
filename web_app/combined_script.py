@@ -1488,7 +1488,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     doc = SimpleDocTemplate(filename, pagesize=letter)
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import Image
+    from reportlab.platypus import Image, Spacer
     from reportlab.lib.colors import HexColor
     import requests
     from io import BytesIO
@@ -1609,11 +1609,6 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         fontName=default_font,
         backColor=HexColor('#ff6b00')
     )
-    
-    # Add logo if it exists
-    if is_web_app:
-        story.append(Paragraph(logo_html, normal_style))
-        story.append(Spacer(1, 20))
     
     # Title and date
     story.append(Paragraph("BetterHome Recommendations", heading1_style))
