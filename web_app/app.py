@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory, Markup
+from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory
+from markupsafe import Markup
 import pandas as pd
 import subprocess
 from datetime import datetime
