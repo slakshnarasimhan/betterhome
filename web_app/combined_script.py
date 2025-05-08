@@ -1493,8 +1493,8 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
-    # Always use the CDN URL for the logo with only supported attributes
-    logo_html = '<img src="https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300" width="300" height="auto">'
+    # Always use the CDN URL for the logo with only supported attributes and specific height
+    logo_html = '<img src="https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300" width="300" height="100">'
     
     # Try to register DejaVuSans font if available, otherwise use default fonts
     try:
