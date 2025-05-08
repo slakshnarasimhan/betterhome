@@ -22,6 +22,7 @@ import math
 import numpy as np
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from io import BytesIO
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -1489,12 +1490,26 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import Image
     from reportlab.lib.colors import HexColor
+    import requests
+    from io import BytesIO
     
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
-    # Always use the CDN URL for the logo with only supported attributes and specific height
-    logo_html = '<img src="https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300" width="300" height="100">'
+    story = []
+    
+    # Add logo if it exists
+    if is_web_app:
+        try:
+            # Download the logo image
+            response = requests.get("https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300")
+            if response.status_code == 200:
+                img_data = BytesIO(response.content)
+                logo = Image(img_data, width=300, height=100)
+                story.append(logo)
+                story.append(Spacer(1, 20))
+        except Exception as e:
+            print(f"Warning: Could not load logo: {str(e)}")
     
     # Try to register DejaVuSans font if available, otherwise use default fonts
     try:
@@ -1595,8 +1610,6 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         backColor=HexColor('#ff6b00')
     )
     
-    story = []
-
     # Add logo if it exists
     if is_web_app:
         story.append(Paragraph(logo_html, normal_style))
