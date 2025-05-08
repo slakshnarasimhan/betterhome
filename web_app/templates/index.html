@@ -446,15 +446,16 @@
             <div class="form-section">
                 <h3>Dining Room Requirements</h3>
                 <div class="mb-3">
-                    <label for="dining_fans" class="form-label required">Dining: Fan(s)?</label>
-                    <select class="form-select" id="dining_fans" name="dining_fans" required>
-                        <option value="">Select number of fans</option>
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                    </select>
+                    <label for="dining_fan" class="form-label required">Dining: Fan</label>
+                    <p class="text-muted">It is good to use the same model and colour of the fan used in the living room for the dining area for uniformity.</p>
+                    <div>
+                        <input type="radio" id="dining_fan_small" name="dining_fan" value="60 CM" required>
+                        <label for="dining_fan_small">Small - 60 CM</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="dining_fan_large" name="dining_fan" value="120 CM">
+                        <label for="dining_fan_large">Large - 120 CM</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="dining_ac" class="form-label required">Dining: Air Conditioner (AC)?</label>
