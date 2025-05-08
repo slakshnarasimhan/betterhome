@@ -163,6 +163,10 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
                 print(f"Title: {row.get('title', 'N/A')}")
                 print(f"Raw features value: {row.get('Features', 'N/A')}")
 
+        # Check if product is a best seller by looking at Tags
+        tags = str(row.get('tags', '')).split(',')
+        is_best_seller = 'Best Seller' in [tag.strip() for tag in tags]
+
         product = {
             'sku': clean_text(row.get('SKU', 'Not Available')),
             'product_type': clean_text(row.get('Product Type', 'Not Available')),
@@ -175,11 +179,12 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             'description': clean_text(row.get('Description', 'Not Available')),
             'url': clean_text(row.get('url', 'Not Available')),
             'image_src': clean_text(row.get('Image Src', 'Not Available')),
-            'best_seller': row.get('best_seller', 'No')
+            'best_seller': 'Yes' if is_best_seller else 'No'
         }
         catalog.append(product)
 
     print(f"\nTotal products with empty features: {empty_features_count}")
+    print(f"Total best seller products: {sum(1 for p in catalog if p['best_seller'] == 'Yes')}")
     
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump({'products': catalog}, f, indent=2, ensure_ascii=True)
