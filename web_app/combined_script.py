@@ -325,6 +325,28 @@ def get_specific_product_recommendations(
     catalog = load_product_catalog()
     recommendations = []
     
+    # Define budget ranges for each appliance type
+    budget_ranges = {
+        'refrigerator': {'budget': 60000, 'mid': 85000},
+        'washing_machine': {'budget': 35000, 'mid': 40000},
+        'chimney': {'budget': 25000, 'mid': 35000},
+        'geyser': {'budget': 10000, 'mid': 20000},  # Updated to ensure AO Smith Elegance Prime is included
+        'ceiling_fan': {'budget': 4000, 'mid': 6000},
+        'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
+        'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
+        'dishwasher': {'budget': 30000, 'mid': 50000},
+        'dryer': {'budget': 25000, 'mid': 45000},
+        'shower_system': {'budget': 30000, 'mid': 50000},
+        'gas_stove': {'budget': 15000, 'mid': 25000},
+        'hob_top': {'budget': 20000, 'mid': 40000},  # Added budget ranges for hob tops
+        'small_fan': {'budget': 2000, 'mid': 4000},
+        'led_mirror': {'budget': 4000, 'mid': 6000}  # Add LED mirror budget ranges
+    }
+    
+    # Default ranges if appliance type is not in the budget_ranges
+    default_ranges = {'budget': 20000, 'mid': 40000}
+    ranges = budget_ranges.get(appliance_type, default_ranges)
+    
     # Add fan size to required features for dining room fans or kitchen small fans
     if appliance_type == 'ceiling_fan':
         if room == 'dining' and user_data and 'dining' in user_data:
