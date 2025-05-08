@@ -55,23 +55,15 @@ def load_config() -> Dict[str, Any]:
 
 # Function to analyze user requirements
 def analyze_user_requirements(excel_file: str):
+    """Analyze user requirements from Excel file"""
     try:
-        # Read the Excel file
         df = pd.read_excel(excel_file)
-        
-        # Clean up column names by removing newlines and extra spaces
-        df.columns = [col.split('\n')[0].strip() for col in df.columns]
-        row = df.iloc[0]
-        
-        # Convert DataFrame to dictionary
         user_data = {
             'name': df.iloc[0]['Name'],
             'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
             'email': df.iloc[0]['E-mail'],
-            'address': df.iloc[0]['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)'],
+            'address': df.iloc[0]['Apartment Address'],
             'total_budget': float(df.iloc[0]['What is your overall budget for home appliances?']),
-            'num_bedrooms': int(df.iloc[0]['Number of bedrooms']),
-            'num_bathrooms': int(df.iloc[0]['Number of bathrooms']),
             'demographics': {
                 'adults': int(df.iloc[0]['Adults (between the age 18 to 50)']),
                 'elders': int(df.iloc[0]['Elders (above the age 60)']),
@@ -79,35 +71,29 @@ def analyze_user_requirements(excel_file: str):
             }
         }
         
-        # Clean up NaN values
-        def clean_dict(d):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    clean_dict(v)
-                elif pd.isna(v):
-                    d[k] = None
-                elif isinstance(v, str) and v.lower() == 'nan':
-                    d[k] = None
-        
-        clean_dict(user_data)
-        
-        # Extract room requirements
+        # Extract room-specific requirements
         requirements = {
             'hall': {
                 'fans': int(df.iloc[0]['Hall: Fan(s)?']),
                 'ac': df.iloc[0]['Hall: Air Conditioner (AC)?'] == 'Yes',
                 'color_theme': df.iloc[0]['Hall: Colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Hall: What is the square feet ?', 150.0))  # Updated column name
+                'size_sqft': float(df.iloc[0].get('Hall: What is the square feet?', 200.0))  # Default to 200 sq ft if not specified
             },
             'kitchen': {
                 'chimney_width': df.iloc[0]['Kitchen: Chimney width?'],
                 'gas_stove_type': df.iloc[0]['Kitchen: Gas stove type?'],
                 'num_burners': int(df.iloc[0]['Kitchen: Number of burners?']),
                 'small_fan': df.iloc[0]['Kitchen: Do you need a small fan?'] == 'Yes',
-                'color_theme': None,  # No color theme specified for kitchen
-                'refrigerator_type': df.iloc[0].get('Kitchen: Refrigerator type?', None), # Add refrigerator type
-                'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None), # Add refrigerator capacity
-                'size_sqft': float(df.iloc[0].get('Kitchen: Size (square feet)', 100.0))  # Default to 100 sq ft if not specified
+                'color_theme': None,
+                'refrigerator_type': df.iloc[0].get('Kitchen: Refrigerator type?', None),
+                'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None),
+                'size_sqft': float(df.iloc[0].get('Kitchen: Size (square feet)', 100.0))
+            },
+            'dining': {
+                'fan_size': df.iloc[0]['Dining: Fan'],  # Updated to use new fan size field
+                'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
+                'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
+                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0))
             },
             'master_bedroom': {
                 'ac': df.iloc[0]['Master: Air Conditioner (AC)?'] == 'Yes',
@@ -137,12 +123,6 @@ def analyze_user_requirements(excel_file: str):
                 'color_theme': None,  # No color theme specified for laundry
                 'size_sqft': float(df.iloc[0].get('Laundry: Size (square feet)', 50.0))  # Default to 50 sq ft if not specified
             },
-            'dining': {
-                'fans': int(df.iloc[0].get('Dining: Fan(s)?', 0)),
-                'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
-                'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
-                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0))  # Default to 120 sq ft if not specified
-            }
         }
         
         # Merge requirements into user_data
@@ -336,40 +316,85 @@ def get_specific_product_recommendations(
     demographics: Dict[str, int], 
     room_color_theme: str = None, 
     user_data: Dict[str, Any] = None,
-    required_features: Dict[str, str] = None,  # Added parameter
-    room: str = None  # Add room parameter
+    required_features: Dict[str, str] = None,
+    room: str = None
 ) -> List[Dict[str, Any]]:
     """Get specific product recommendations based on appliance type, budget category, demographics, color theme, and specific features."""
-
-    required_features = required_features or {} # Ensure it's a dict
+    
+    required_features = required_features or {}
     catalog = load_product_catalog()
     recommendations = []
-    product_groups = {}  # Dictionary to group products by model
     
-    # Define budget ranges for each appliance type
-    budget_ranges = {
-        'refrigerator': {'budget': 60000, 'mid': 85000},
-        'washing_machine': {'budget': 35000, 'mid': 40000},
-        'chimney': {'budget': 25000, 'mid': 35000},
-        'geyser': {'budget': 10000, 'mid': 20000},  # Updated to ensure AO Smith Elegance Prime is included
-        'ceiling_fan': {'budget': 4000, 'mid': 6000},
-        'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
-        'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
-        'dishwasher': {'budget': 30000, 'mid': 50000},
-        'dryer': {'budget': 25000, 'mid': 45000},
-        'shower_system': {'budget': 30000, 'mid': 50000},
-        'gas_stove': {'budget': 15000, 'mid': 25000},
-        'hob_top': {'budget': 20000, 'mid': 40000},  # Added budget ranges for hob tops
-        'small_fan': {'budget': 2000, 'mid': 4000},
-        'led_mirror': {'budget': 4000, 'mid': 6000}  # Add LED mirror budget ranges
-    }
-    
-    # Default ranges if appliance type is not in the budget_ranges
-    default_ranges = {'budget': 20000, 'mid': 40000}
-    ranges = budget_ranges.get(appliance_type, default_ranges)
+    # Add fan size to required features for dining room fans or kitchen small fans
+    if appliance_type == 'ceiling_fan':
+        if room == 'dining' and user_data and 'dining' in user_data:
+            fan_size = user_data['dining'].get('fan_size')
+            if fan_size:
+                required_features['size'] = fan_size
+        elif room == 'kitchen' and user_data and 'kitchen' in user_data:
+            if user_data['kitchen'].get('small_fan'):
+                required_features['size'] = '60 CM'  # Set size requirement for kitchen small fan
     
     # Process available products
     if catalog and "products" in catalog:
+        filtered_products = []
+        for p in catalog["products"]:
+            if isinstance(p.get("product_type", ""), str):
+                product_type_norm = p.get("product_type", "").lower().replace('_', ' ')
+                matches = False
+                
+                # Special case for ceiling fans - check size requirements
+                if appliance_type == 'ceiling_fan' and 'size' in required_features:
+                    required_size = required_features['size'].lower()
+                    product_size = None
+                    
+                    # First try to extract size from title (most reliable for fans)
+                    title = p.get('title', '').lower()
+                    # Look for common size patterns in title
+                    size_patterns = [
+                        r'(\d+)\s*(?:cm|mm)',  # Matches "60cm" or "600mm"
+                        r'(\d+)\s*(?:inch|")',  # Matches "24inch" or "24""
+                        r'(\d+)\s*(?:feet|ft)'  # Matches "2feet" or "2ft"
+                    ]
+                    
+                    for pattern in size_patterns:
+                        size_match = re.search(pattern, title)
+                        if size_match:
+                            size_num = int(size_match.group(1))
+                            # Convert to cm if needed
+                            if 'mm' in title:
+                                size_num = size_num / 10  # Convert mm to cm
+                            elif 'inch' in title or '"' in title:
+                                size_num = size_num * 2.54  # Convert inches to cm
+                            elif 'feet' in title or 'ft' in title:
+                                size_num = size_num * 30.48  # Convert feet to cm
+                            product_size = str(size_num)
+                            break
+                    
+                    # If size not found in title, try features
+                    if not product_size:
+                        for feature in p.get('features', []):
+                            if 'size' in feature.lower() or 'blade' in feature.lower():
+                                size_match = re.search(r'(\d+)\s*(?:cm|mm)', feature.lower())
+                                if size_match:
+                                    size_num = int(size_match.group(1))
+                                    if 'mm' in feature.lower():
+                                        size_num = size_num / 10  # Convert mm to cm
+                                    product_size = str(size_num)
+                                    break
+                    
+                    # Match size requirements
+                    if product_size:
+                        required_size_num = int(re.search(r'(\d+)', required_size).group(1))
+                        product_size_num = int(float(product_size))
+                        if abs(product_size_num - required_size_num) <= 5:  # Allow 5cm tolerance
+                            matches = True
+                else:
+                    # Standard type matching for other appliances
+                    matches = product_type_norm == appliance_type.lower().replace('_', ' ')
+                
+                if matches:
+                    filtered_products.append(p)
         if appliance_type == 'geyser':
             print(f"[DEBUG][Geyser] Total products in catalog: {len(catalog['products'])}")
             all_types = set(str(p.get('product_type', 'No type')) for p in catalog['products'])
@@ -438,11 +463,8 @@ def get_specific_product_recommendations(
             if filtered_products:
                 print(f"[DEBUG][Geyser] First filtered product: {filtered_products[0].get('title')}")
         if appliance_type == 'led_mirror':
-            print(f"[DEBUG][LED Mirror] Total products in catalog: {len(catalog['products'])}")
-            print(f"[DEBUG][LED Mirror] All product types in catalog: {sorted(set(str(p.get('product_type', 'No type')) for p in catalog['products']))}")
-            print(f"[DEBUG][LED Mirror] Products after type filter: {len(filtered_products)}")
+
             if filtered_products:
-                print(f"[DEBUG][LED Mirror] Found LED mirrors:")
                 for lp in filtered_products:
                     print(f"  - {lp.get('title')} - Price: {lp.get('retail_price', lp.get('price', lp.get('better_home_price', 0)))}")
         # For hob tops, filter by number of burners right after initial type filtering
@@ -498,7 +520,6 @@ def get_specific_product_recommendations(
         
         # DEBUG: Print initial list of ACs after type filter
         if appliance_type == 'ac':
-            print("[DEBUG AC DETAILS] Initial AC candidates before budget/feature check:")
             for idx, p in enumerate(filtered_products):
                 try:
                     p_tonnage = "Unknown"
@@ -646,7 +667,6 @@ def get_specific_product_recommendations(
                 req_tonnage = required_features.get('tonnage', 'Not Specified') if required_features else 'Not Specified'
                 # Use the actual tonnage if found, otherwise fallback to the debug value from features
                 display_tonnage = f"{actual_product_tonnage} Ton" if actual_product_tonnage is not None else product_tonnage_value_for_debug
-                print(f"[DEBUG AC TONNAGE MATCH] Product: {product.get('brand', 'N/A')} {product.get('title', 'N/A')} - Required: {req_tonnage}, Product has: {display_tonnage}, Tonnage Feature Score: {tonnage_feature_score}")
 
             # Calculate relevance score (existing logic)
             relevance_score = 0
@@ -727,7 +747,6 @@ def get_specific_product_recommendations(
 
         # DEBUG: Print top N products after sorting
         if appliance_type == 'ac':
-             print("[DEBUG AC SORTING] Top 5 AC candidates after sorting:")
              for idx, p_data in enumerate(matching_products_data[:5]):
                  print(f"  {idx+1}. {p_data.get('brand', 'N/A')} - {p_data.get('model', 'N/A')} "
                        f"(Price: {p_data.get('price', 0):.2f}, FeatScore: {p_data.get('feature_match_score', 0)}, RelScore: {p_data.get('relevance_score', 0)})")
@@ -1035,13 +1054,9 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Check for LED Mirror requirement in master bathroom
     if master_bath.get('led_mirror', False):
-        print("[DEBUG][LED Mirror] Master bathroom requires LED mirror")
         budget_category = get_budget_category(user_data['total_budget'], 'led_mirror')
-        print(f"[DEBUG][LED Mirror] Budget category: {budget_category}")
         led_mirror_recommendations = get_specific_product_recommendations('led_mirror', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, {}, 'master_bedroom_bathroom')
-        print(f"[DEBUG][LED Mirror] Found {len(led_mirror_recommendations)} LED mirrors for master bathroom")
         if led_mirror_recommendations:
-            print("[DEBUG][LED Mirror] LED mirror recommendations:")
             for mirror in led_mirror_recommendations:
                 print(f"  - {mirror.get('title')} - Price: {mirror.get('retail_price', mirror.get('price', mirror.get('better_home_price', 0)))}")
         final_list['master_bedroom']['bathroom']['led_mirror'] = led_mirror_recommendations
@@ -1870,38 +1885,27 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         
         if user_data['kitchen'].get('gas_stove_type'):
             # Debug: Print the gas stove type from user data
-            print(f"[DEBUG GAS STOVE TYPE] User data gas stove type: {user_data['kitchen'].get('gas_stove_type')}")
             # Check for specific gas stove type
             gas_stove_type = user_data['kitchen'].get('gas_stove_type', '').strip()
-            print(f"[DEBUG GAS STOVE] Processing gas stove type: '{gas_stove_type}'")
             
             # Case 1: If gas stove type is "Hob (built-in)", recommend a Hob Top
             if "hob (built-in)" in gas_stove_type.lower():
-                print(f"[DEBUG GAS STOVE] Recommending Hob Top for built-in requirement: '{gas_stove_type}'")
                 budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
                 required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
-                print(f"[DEBUG GAS STOVE] Budget category: {budget_category}, Features: {required_features}")
                 # Debug: Print user data and required features before calling recommendation function
-                print(f"[DEBUG HOB TOP INPUT] User data: {user_data}")
-                print(f"[DEBUG HOB TOP INPUT] Required features: {required_features}")
                 recommendations = get_specific_product_recommendations('hob_top', budget_category, user_data['demographics'], 
                                                                      user_data['kitchen'].get('color_theme'), user_data, required_features)
-                print(f"[DEBUG GAS STOVE] Got {len(recommendations)} hob_top recommendations")
                 final_list['kitchen']['hob_top'] = recommendations
-                print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
                 # Clear gas_stove as we're using hob_top instead
                 final_list['kitchen']['gas_stove'] = []
             elif "not needed" in gas_stove_type.lower():
-                print(f"[DEBUG GAS STOVE] Skipping gas stove recommendation for: '{gas_stove_type}'")
                 final_list['kitchen']['gas_stove'] = []
                 final_list['kitchen']['hob_top'] = []
             else:
-                print(f"[DEBUG GAS STOVE] Recommending regular gas stove for: '{gas_stove_type}'")
                 budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
                 required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
                 recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], 
                                                                      user_data['kitchen'].get('color_theme'), user_data, required_features)
-                print(f"[DEBUG GAS STOVE] Got {len(recommendations)} gas_stove recommendations")
                 final_list['kitchen']['gas_stove'] = recommendations
         
         if user_data['kitchen'].get('small_fan', False):
@@ -2451,7 +2455,6 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     """
 
     # Debug: Print the final list for kitchen before generating HTML
-    print("[DEBUG FINAL LIST] Kitchen hob tops:", final_list['kitchen']['hob_top'])
 
     # Add logic to ensure at least three recommendations are displayed
     def ensure_three_recommendations(products):
