@@ -13,7 +13,7 @@ import unicodedata
 # Configuration
 # ==========================
 MODEL_NAME = "text-embedding-3-small"
-CSV_FILE_PATH = 'cleaned_products_new.csv'
+CSV_FILE_PATH = 'cleaned_products_1.4.csv'
 EMBEDDINGS_FILE_PATH = 'embeddings.json'
 PRODUCT_CATALOG_PATH = 'web_app/product_catalog.json'
 
@@ -31,8 +31,16 @@ INDEX_FILE_IMAGE = 'faiss_index.index_image'
 def load_product_catalog(file_path):
     df = pd.read_csv(file_path)
     print(f"Successfully loaded product catalog with {len(df)} entries.")
+    
+    # Debug: Print initial Product Type information
+    print("\nInitial Product Type information:")
+    print("Column names:", df.columns.tolist())
+    print("Product Type values (first 5):", df['Product Type'].head() if 'Product Type' in df.columns else "No Product Type column found")
+    print("Product Type null count:", df['Product Type'].isnull().sum() if 'Product Type' in df.columns else "No Product Type column found")
+    
     df['Better Home Price'] = pd.to_numeric(df['Better Home Price'], errors='coerce')
     df['Retail Price'] = pd.to_numeric(df['Retail Price'], errors='coerce')
+    
     # Ensure 'Features' is included
     if 'Features (product.metafields.custom.features)' in df.columns:
         df.rename(columns={'Features (product.metafields.custom.features)': 'Features'}, inplace=True)
@@ -104,47 +112,75 @@ def prepare_entries(df):
 def parse_features(features_str: str) -> List[str]:
     """Convert features string (separated by '|') into a list of features."""
     # Handle potential non-string types gracefully
-    if not isinstance(features_str, str):
+    if not isinstance(features_str, str) or pd.isna(features_str):
         return []
     # Split by '|' and strip whitespace from each feature
-    return [feature.strip() for feature in features_str.split('|') if feature.strip()]
+    features = [feature.strip() for feature in features_str.split('|') if feature.strip()]
+    if not features:  # If no features found after splitting
+        # Try to use the whole string as a single feature if it's not empty
+        if features_str.strip():
+            return [features_str.strip()]
+    return features
 
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     def clean_text(text):
         if not isinstance(text, str):
             return text
-        # Normalize and encode to ASCII, ignoring errors
-        return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+        # Normalize unicode characters and remove control characters
+        text = unicodedata.normalize('NFKD', text)
+        text = ''.join(c for c in text if not unicodedata.category(c).startswith('C'))
+        
+        # Remove specific problematic characters
+        text = text.replace('\u200e', '')  # Remove LEFT-TO-RIGHT MARK
+        text = text.replace('\u200f', '')  # Remove RIGHT-TO-LEFT MARK
+        text = text.replace('\u200b', '')  # Remove ZERO WIDTH SPACE
+        
+        # Convert to ASCII, replacing non-ASCII with closest equivalent
+        text = text.encode('ascii', 'ignore').decode('ascii')
+        return text.strip()
+
+    # Debug: Print feature information before processing
+    print("\nFeature information before processing:")
+    print(f"Total rows: {len(df)}")
+    print(f"Null features count: {df['Features'].isnull().sum() if 'Features' in df.columns else 'Features column not found'}")
+    if 'Features' in df.columns:
+        print("Sample features:")
+        print(df['Features'].head())
+        # Count empty feature lists
+        empty_features = df['Features'].apply(lambda x: not bool(parse_features(x)) if pd.notna(x) else True)
+        print(f"Rows with empty features: {empty_features.sum()}")
 
     catalog = []
+    empty_features_count = 0
     for _, row in df.iterrows():
-        # Debug: Print 'Features' field before parsing
-        print(f"[DEBUG] Raw Features: {row.get('Features', 'Not Available')}")
-
-        # Parse features
-        parsed_features = parse_features(row.get('Features', ''))
-        # Clean features
-        parsed_features = [clean_text(f) for f in parsed_features]
-
-        # Debug: Print parsed features
-        print(f"[DEBUG] Parsed Features: {parsed_features}")
+        # Parse and clean features
+        features = parse_features(row.get('Features', ''))
+        if not features:
+            empty_features_count += 1
+            if empty_features_count <= 5:  # Print first 5 examples of empty features
+                print(f"\nEmpty features for row:")
+                print(f"SKU: {row.get('SKU', 'N/A')}")
+                print(f"Title: {row.get('title', 'N/A')}")
+                print(f"Raw features value: {row.get('Features', 'N/A')}")
 
         product = {
+            'sku': clean_text(row.get('SKU', 'Not Available')),
             'product_type': clean_text(row.get('Product Type', 'Not Available')),
             'brand': clean_text(row.get('Brand', 'Not Available')),
             'title': clean_text(row.get('title', 'Not Available')),
             'better_home_price': row.get('Better Home Price', 'Not Available'),
             'retail_price': row.get('Retail Price', 'Not Available'),
             'warranty': clean_text(row.get('Warranty', 'Not Available')),
-            'features': parsed_features,  # Use cleaned features
+            'features': features,
             'description': clean_text(row.get('Description', 'Not Available')),
             'url': clean_text(row.get('url', 'Not Available')),
             'image_src': clean_text(row.get('Image Src', 'Not Available')),
-            'best_seller': row.get('best_seller', 'No')  # Add bestseller field
+            'best_seller': row.get('best_seller', 'No')
         }
-        # Debug statement to print Features data before writing to JSON
-        print(f"[DEBUG] Features to JSON: {product['features']}")
         catalog.append(product)
+
+    print(f"\nTotal products with empty features: {empty_features_count}")
+    
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump({'products': catalog}, f, indent=2, ensure_ascii=True)
     print(f"Product catalog saved successfully to {file_path}.")
