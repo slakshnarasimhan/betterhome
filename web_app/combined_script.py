@@ -1280,49 +1280,113 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
     return ""
 
 def get_user_information(excel_filename: str) -> Dict[str, Any]:
-    """Read user information from the Excel file"""
+    """Extract user information from the Excel file."""
     try:
-        # Read the Excel file
         df = pd.read_excel(excel_filename)
+        user_data = {}
         
-        # Clean up column names by removing newlines and extra spaces
-        df.columns = [col.split('\n')[0].strip() for col in df.columns]
-        row = df.iloc[0]
+        # Extract basic information
+        user_data['name'] = df.iloc[0]['Name']
+        user_data['mobile'] = df.iloc[0]['Mobile Number (Preferably on WhatsApp)']
+        user_data['email'] = df.iloc[0]['E-mail']
+        user_data['address'] = df.iloc[0]['Apartment Address']
+        user_data['budget'] = df.iloc[0]['What is your overall budget for home appliances?']
         
-        # Convert DataFrame to dictionary
-        user_data = {
-            'name': df.iloc[0]['Name'],
-            'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
-            'email': df.iloc[0]['E-mail'],
-            'address': df.iloc[0]['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)'],
-            'total_budget': float(df.iloc[0]['What is your overall budget for home appliances?']),
-            'num_bedrooms': int(df.iloc[0]['Number of bedrooms']),
-            'num_bathrooms': int(df.iloc[0]['Number of bathrooms']),
-            'demographics': {
-                'adults': int(df.iloc[0]['Adults (between the age 18 to 50)']),
-                'elders': int(df.iloc[0]['Elders (above the age 60)']),
-                'kids': int(df.iloc[0]['Kids (below the age 18)'])
-            }
+        # Extract demographics
+        user_data['demographics'] = {
+            'adults': df.iloc[0]['Adults (between the age 18 to 50)'],
+            'elders': df.iloc[0]['Elders (above the age 60)'],
+            'kids': df.iloc[0]['Kids (below the age 18)']
         }
         
-        # Clean up NaN values
+        # Extract room information
+        user_data['rooms'] = {
+            'bedrooms': df.iloc[0]['Number of bedrooms'],
+            'bathrooms': df.iloc[0]['Number of bathrooms']
+        }
+        
+        # Extract hall information
+        user_data['hall'] = {
+            'fans': df.iloc[0]['Hall: Fan(s)?'],
+            'ac': df.iloc[0]['Hall: Air Conditioner (AC)?'],
+            'color': df.iloc[0]['Hall: Colour theme?'],
+            'square_feet': df.iloc[0]['Hall: What is the square feet?'],
+            'other_info': df.iloc[0]['Hall: Any other information?']
+        }
+        
+        # Extract dining information
+        user_data['dining'] = {
+            'fan': df.iloc[0]['Dining: Fan'],
+            'fan_size': df.iloc[0]['Dining: Fan'],  # Store the fan size
+            'ac': df.iloc[0]['Dining: Air Conditioner (AC)?'],
+            'color': df.iloc[0]['Dining: Colour theme?'],
+            'square_feet': df.iloc[0]['Dining: What is the square feet?']
+        }
+        
+        # Extract kitchen information
+        user_data['kitchen'] = {
+            'chimney': df.iloc[0]['Kitchen: Chimney width?'],
+            'stove': df.iloc[0]['Kitchen: Gas stove type?'],
+            'burners': df.iloc[0]['Kitchen: Number of burners?'],
+            'stove_width': df.iloc[0]['Kitchen: Stove width?'],
+            'small_fan': df.iloc[0]['Kitchen: Do you need a small fan?'],
+            'dishwasher_capacity': df.iloc[0]['Kitchen: Dishwasher capacity?'],
+            'refrigerator_type': df.iloc[0]['Kitchen: Refrigerator type?'],
+            'refrigerator_capacity': df.iloc[0]['Kitchen: Refrigerator capacity?'],
+            'other_info': df.iloc[0]['Kitchen: Do you need any other appliances or do you have any other information?']
+        }
+        
+        # Extract master bedroom information
+        user_data['master'] = {
+            'ac': df.iloc[0]['Master: Air Conditioner (AC)?'],
+            'water': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
+            'exhaust_size': df.iloc[0]['Master: Exhaust fan size?'],
+            'color': df.iloc[0]['Master: What is the colour theme?'],
+            'area': df.iloc[0]['Master: What is the area of the bedroom in square feet?'],
+            'bathroom_for_elders': df.iloc[0]['Master: Is this bathroom for elders (above the age 60)?'],
+            'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
+            'exhaust_color': df.iloc[0]['Master: Exhaust fan colour?'],
+            'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'],
+            'other_info': df.iloc[0]['Master: Any other information?']
+        }
+        
+        # Extract bedroom 2 information
+        user_data['bedroom2'] = {
+            'ac': df.iloc[0]['Bedroom 2: Air Conditioner (AC)?'],
+            'water': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
+            'exhaust_size': df.iloc[0]['Bedroom 2: Exhaust fan size?'],
+            'color': df.iloc[0]['Bedroom 2: What is the colour theme?'],
+            'area': df.iloc[0]['Bedroom 2: What is the area of the bedroom in square feet?'],
+            'for_kids': df.iloc[0]['Bedroom 2: Is this for kids above'],
+            'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
+            'exhaust_color': df.iloc[0]['Bedroom 2: Exhaust fan colour?'],
+            'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'],
+            'other_info': df.iloc[0]['Bedroom 2: Any other information?']
+        }
+        
+        # Extract laundry information
+        user_data['laundry'] = {
+            'washing': df.iloc[0]['Laundry: Washing Machine?'],
+            'dryer': df.iloc[0]['Laundry: Dryer?']
+        }
+        
+        # Extract other information
+        user_data['other_info'] = df.iloc[0]['Any other information?']
+        user_data['questions_comments'] = df.iloc[0]['Questions and comments']
+        
+        # Clean the data
         def clean_dict(d):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    clean_dict(v)
-                elif pd.isna(v):
-                    d[k] = None
-                elif isinstance(v, str) and v.lower() == 'nan':
-                    d[k] = None
+            if isinstance(d, dict):
+                return {k: clean_dict(v) for k, v in d.items() if pd.notna(v)}
+            elif isinstance(d, list):
+                return [clean_dict(x) for x in d if pd.notna(x)]
+            else:
+                return d
         
-        clean_dict(user_data)
-        
-        return user_data
+        return clean_dict(user_data)
     except Exception as e:
         print(f"Error reading user information: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return None
+        return {}
 
 # Function to get product recommendation reason
 def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float, required_features: Dict[str, str] = None) -> str:
