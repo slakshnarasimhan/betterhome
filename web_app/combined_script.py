@@ -20,6 +20,8 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 import pprint
 import math
 import numpy as np
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -1481,6 +1483,7 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
 
 # Function to create a styled PDF
 def create_styled_pdf(filename, user_data, recommendations, required_features: Dict[str, str] = None):
+    """Create a styled PDF with the recommendations."""
     doc = SimpleDocTemplate(filename, pagesize=letter)
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
@@ -1490,8 +1493,8 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
-    # Always use the CDN URL for the logo
-    logo_html = '<img src="https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300" alt="BetterHome Logo" class="logo">'
+    # Always use the CDN URL for the logo with only supported attributes
+    logo_html = '<img src="https://betterhomeapp.com/cdn/shop/files/better_home_logo.png?v=1693921840&width=300" width="300" height="auto">'
     
     # Try to register DejaVuSans font if available, otherwise use default fonts
     try:
@@ -1598,9 +1601,9 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     if is_web_app:
         story.append(Paragraph(logo_html, normal_style))
         story.append(Spacer(1, 20))
-
+    
     # Title and date
-    story.append(Paragraph("BetterHome Recommendations", title_style))
+    story.append(Paragraph("BetterHome Recommendations", heading1_style))
     story.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y')}", normal_style))
     story.append(Spacer(1, 15))
 
@@ -1618,20 +1621,20 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     
     # Create a table for client info
     data = []
-    data.append([Paragraph("<b>Name:</b>", info_label_style), 
-                 Paragraph(user_data.get('name', 'Not provided'), info_value_style)])
-    data.append([Paragraph("<b>Email:</b>", info_label_style), 
-                 Paragraph(user_data.get('email', 'Not provided'), info_value_style)])
-    data.append([Paragraph("<b>Phone:</b>", info_label_style), 
-                 Paragraph(user_data.get('phone', 'Not provided'), info_value_style)])
-    data.append([Paragraph("<b>Address:</b>", info_label_style), 
-                 Paragraph(user_data.get('address', 'Not provided'), info_value_style)])
+    data.append([Paragraph("<b>Name:</b>", normal_style), 
+                 Paragraph(user_data.get('name', 'Not provided'), normal_style)])
+    data.append([Paragraph("<b>Email:</b>", normal_style), 
+                 Paragraph(user_data.get('email', 'Not provided'), normal_style)])
+    data.append([Paragraph("<b>Phone:</b>", normal_style), 
+                 Paragraph(user_data.get('phone', 'Not provided'), normal_style)])
+    data.append([Paragraph("<b>Address:</b>", normal_style), 
+                 Paragraph(user_data.get('address', 'Not provided'), normal_style)])
     
     if 'demographics' in user_data:
-        data.append([Paragraph("<b>Number of Bedrooms:</b>", info_label_style), 
-                     Paragraph(str(user_data['demographics'].get('bedrooms', 'Not provided')), info_value_style)])
-        data.append([Paragraph("<b>Number of People:</b>", info_label_style), 
-                     Paragraph(str(user_data['demographics'].get('num_people', 'Not provided')), info_value_style)])
+        data.append([Paragraph("<b>Number of Bedrooms:</b>", normal_style), 
+                     Paragraph(str(user_data['demographics'].get('bedrooms', 'Not provided')), normal_style)])
+        data.append([Paragraph("<b>Number of People:</b>", normal_style), 
+                     Paragraph(str(user_data['demographics'].get('num_people', 'Not provided')), normal_style)])
     
     client_table = Table(data, colWidths=[150, 350])
     client_table.setStyle(TableStyle([
