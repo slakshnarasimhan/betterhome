@@ -648,6 +648,9 @@ def get_specific_product_recommendations(
             product_data['retail_price'] = float(product.get('retail_price', price * 1.2)) # Estimate retail if missing
             product_data['better_home_price'] = float(product.get('better_home_price', price / 1.2 if price > 0 else 0)) # Estimate BH if missing
             
+            # Normalize best seller field
+            product_data['is_bestseller'] = str(product.get('best_seller', '')).strip().lower() == 'yes'
+            
             matching_products_data.append(product_data)
         if appliance_type == 'geyser':
             # print(f"[DEBUG][Geyser] Products after budget filter: {len(matching_products_data)}")
@@ -1225,19 +1228,17 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
             except Exception:
                 pass
         if not capacity_found:
-            # If capacity is missing or not in expected format
             reasons.append("Spacious and reliable refrigerator for your family")
-        # Highlight key features if present
+        # Highlight only 2 string key features (not dicts/lists)
         features = product.get('features', [])
+        key_features = []
         if features:
-            if isinstance(features, dict):
-                features_iter = list(features.values())[:2]
-            elif isinstance(features, list):
-                features_iter = features[:2]
-            else:
-                features_iter = []
-            for feature in features_iter:
-                reasons.append(f"Key feature: {feature}")
+            if isinstance(features, list):
+                key_features = [f for f in features if isinstance(f, str)][:2]
+            elif isinstance(features, dict):
+                key_features = [str(v) for v in list(features.values()) if isinstance(v, str)][:2]
+        for feature in key_features:
+            reasons.append(f"Key feature: {feature}")
     elif appliance_type == 'washing_machine':
         family_size = sum(demographics.values())
         if product.get('capacity', '').lower().endswith('kg'):
