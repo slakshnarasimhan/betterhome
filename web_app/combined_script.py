@@ -63,7 +63,7 @@ def analyze_user_requirements(excel_file: str):
             'name': df.iloc[0]['Name'],
             'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
             'email': df.iloc[0]['E-mail'],
-            'address': df.iloc[0]['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)'],
+            'address': df.iloc[0]['Apartment Address'],
             'total_budget': float(df.iloc[0]['What is your overall budget for home appliances?']),
             'num_bedrooms': int(df.iloc[0]['Number of bedrooms']),
             'num_bathrooms': int(df.iloc[0]['Number of bathrooms']),
@@ -1103,7 +1103,7 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
             'name': df.iloc[0]['Name'],
             'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
             'email': df.iloc[0]['E-mail'],
-            'address': df.iloc[0]['Apartment Address (building, floor, and what feeling does this Chennai location bring you?)'],
+            'address': df.iloc[0]['Apartment Address'],
             'total_budget': float(df.iloc[0]['What is your overall budget for home appliances?']),
             'num_bedrooms': int(df.iloc[0]['Number of bedrooms']),
             'num_bathrooms': int(df.iloc[0]['Number of bathrooms']),
@@ -1230,11 +1230,14 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
         # Highlight key features if present
         features = product.get('features', [])
         if features:
-            for feature in features[:2]:
+            if isinstance(features, dict):
+                features_iter = list(features.values())[:2]
+            elif isinstance(features, list):
+                features_iter = features[:2]
+            else:
+                features_iter = []
+            for feature in features_iter:
                 reasons.append(f"Key feature: {feature}")
-        if demographics.get('kids', 0) > 0 and any('child lock' in f.lower() for f in product.get('features', [])):
-            reasons.append("Child safety lock - keeps your little ones safe")
-    
     elif appliance_type == 'washing_machine':
         family_size = sum(demographics.values())
         if product.get('capacity', '').lower().endswith('kg'):
@@ -1554,10 +1557,16 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
                     features = item.get('features', [])
                     if features:
                         story.append(Paragraph("Key Features:", heading2_style))
-                        features_list = [f"• {feature}" for feature in features[:5]]
+                        if isinstance(features, dict):
+                            features_iter = list(features.values())[:5]
+                        elif isinstance(features, list):
+                            features_iter = features[:5]
+                        else:
+                            features_iter = []
+                        features_list = [f"• {feature}" for feature in features_iter]
                         for feature in features_list:
                             story.append(Paragraph(feature, normal_style))
-                        if len(features) > 5:
+                        if len(features_iter) > 5:
                             story.append(Paragraph("• ...", normal_style))
                     # Always call get_product_recommendation_reason for the reason
                     reason = ""
@@ -2248,19 +2257,6 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <p>Specially curated for {user_data['name']}</p>
             </header>
     """
-    # Render geysers from master bedroom
-    if 'bathroom' in final_list.get('master_bedroom', {}) and 'water_heater' in final_list['master_bedroom']['bathroom']:
-        html_content += "<h2>Water Heaters - Master Bedroom</h2>"
-        for product in final_list['master_bedroom']['bathroom']['water_heater']:
-            html_content += f"<p>{product.get('title', 'No Title')} - {product.get('brand', '')} - {product.get('price', '')} INR</p>"
-
-    # Render geysers from bedroom 2
-    if 'bathroom' in final_list.get('bedroom_2', {}) and 'water_heater' in final_list['bedroom_2']['bathroom']:
-        html_content += "<h2>Water Heaters - Bedroom 2</h2>"
-        for product in final_list['bedroom_2']['bathroom']['water_heater']:
-            html_content += f"<p>{product.get('title', 'No Title')} - {product.get('brand', '')} - {product.get('price', '')} INR</p>"
-    
-    html_content += header_section
             
     # Add client info section with explicit f-string
     client_info_section = f"""
