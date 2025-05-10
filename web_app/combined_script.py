@@ -377,6 +377,9 @@ def get_specific_product_recommendations(
                 # Special case: geyser can be labeled as 'geyser', 'water heater', 'instant water heater', or 'storage water heater'
                 elif norm_type == 'geyser':
                     matches = product_type_norm in ['geyser', 'water heater', 'instant water heater', 'storage water heater']
+                # Special case: bathroom_exhaust can be labeled as 'exhaust fan' or 'bathroom exhaust'
+                elif norm_type == 'bathroom exhaust':
+                    matches = product_type_norm in ['bathroom exhaust', 'exhaust fan']
                 # Special case: If explicitly looking for hob tops
                 elif norm_type == 'hob top':
                     # Look for exact product type match
@@ -784,12 +787,46 @@ def get_specific_product_recommendations(
 
         # After initial filtering for type, add this for bathroom_exhaust:
         if appliance_type == 'bathroom_exhaust' and required_features:
-            if 'color' in required_features and required_features['color']:
-                color_val = required_features['color'].strip().lower()
-                filtered_products = [p for p in filtered_products if color_val in (p.get('color', '').lower() + ' ' + ' '.join(p.get('features', [])).lower())]
-            if 'dimensions' in required_features and required_features['dimensions']:
-                size_val = required_features['dimensions'].strip().lower()
-                filtered_products = [p for p in filtered_products if size_val in (p.get('dimensions', '').lower() + ' ' + ' '.join(p.get('features', [])).lower())]
+            # --- Size Matching (blade length in cm or mm) ---
+            size_val = str(required_features.get('dimensions', '') or '').strip().lower()
+            size_num = None
+            size_unit = None
+            if size_val:
+                match = re.match(r'(\d+\.?\d*)\s*(mm|cm)?', size_val)
+                if match:
+                    size_num = float(match.group(1))
+                    size_unit = match.group(2) or 'cm'  # Default to cm if not specified
+            def blade_length_matches(product):
+                features = product.get('features', {})
+                numeric = features.get('numeric_features', {}) if isinstance(features, dict) else {}
+                # Try to get blade_length from numeric_features
+                blade = numeric.get('blade_length') or numeric.get('blade length')
+                if blade and isinstance(blade, dict):
+                    val = blade.get('value')
+                    unit = (blade.get('unit') or '').lower()
+                    if val is not None:
+                        # Convert to input unit
+                        if size_unit == 'mm' and unit == 'cm':
+                            val = val * 10
+                        elif size_unit == 'cm' and unit == 'mm':
+                            val = val / 10
+                        # Allow small tolerance (±2mm or ±0.2cm)
+                        tolerance = 2 if size_unit == 'mm' else 0.2
+                        return abs(val - size_num) <= tolerance
+                return False
+            if size_num is not None:
+                filtered_products = [p for p in filtered_products if blade_length_matches(p)]
+            # --- Color Matching ---
+            color_val = str(required_features.get('color', '') or '').strip().lower()
+            def color_matches(product):
+                # Check color field, then search description and features
+                color_field = str(product.get('color', '')).lower()
+                desc = str(product.get('description', '')).lower()
+                features = product.get('features', [])
+                features_str = ' '.join(features).lower() if isinstance(features, list) else str(features).lower()
+                return color_val in color_field or color_val in desc or color_val in features_str
+            if color_val:
+                filtered_products = [p for p in filtered_products if color_matches(p)]
 
         return final_recommendations
 
