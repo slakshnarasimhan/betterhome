@@ -1020,10 +1020,16 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['kitchen']['chimney'] = recommendations
     
     if user_data['kitchen'].get('refrigerator_capacity'):
-        budget_category = get_budget_category(user_data['total_budget'], 'refrigerator')
-        required_features = {'capacity': user_data['kitchen'].get('refrigerator_capacity')}
-        recommendations = get_specific_product_recommendations('refrigerator', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
-        final_list['kitchen']['refrigerator'] = recommendations
+        print("\n=== Refrigerator Debug ===")
+        print(f"Required capacity: {user_data['kitchen'].get('refrigerator_capacity')}")
+        catalog = load_product_catalog()
+        refrigerators = [p for p in catalog.get('products', []) if p.get('product_type', '').lower() == 'refrigerator']
+        print(f"Found {len(refrigerators)} refrigerators")
+        if refrigerators:
+            print(f"Sample: {refrigerators[0].get('brand')} - {refrigerators[0].get('title')}")
+        final_list['kitchen']['refrigerator'] = refrigerators[:3]
+        print(f"Added {len(final_list['kitchen']['refrigerator'])} refrigerators to recommendations")
+        print("=== End Debug ===\n")
     
     if user_data['kitchen'].get('gas_stove_type'):
         gas_stove_type = user_data['kitchen'].get('gas_stove_type', '').strip()
@@ -1254,6 +1260,16 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         required_features = {'capacity': user_data['kitchen'].get('dishwasher_capacity')}
         recommendations = get_specific_product_recommendations('dishwasher', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
         final_list['kitchen']['dishwasher'] = recommendations
+
+    # Add dryer recommendations if needed
+    if user_data['laundry'].get('dryer', False):
+        print("\n=== Dryer Debug ===")
+        budget_category = get_budget_category(user_data['total_budget'], 'dryer')
+        recommendations = get_specific_product_recommendations('cloth dryer', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data)
+        print(f"Found {len(recommendations)} dryers")
+        final_list['laundry']['dryer'] = recommendations
+        print(f"Added {len(final_list['laundry']['dryer'])} dryers to recommendations")
+        print("=== End Dryer Debug ===\n")
 
     # Debug: Print all kitchen appliance keys and their product titles before rendering
     print("[DEBUG] Kitchen appliance keys and product titles before rendering:")
