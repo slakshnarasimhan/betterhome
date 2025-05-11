@@ -158,11 +158,13 @@ def parse_features(features_str: str) -> Dict[str, Any]:
         # Try to split into key-value pair
         if ':' in feature:
             key, value = [part.strip() for part in feature.split(':', 1)]
-            key = key.lower()  # Normalize keys to lowercase
-            
-            # Store in parsed_features
+            # Special handling for Room Type
+            if key.lower() == 'room type':
+                if ',' not in value:
+                    # Use regex to split before each capital letter that starts a word (except the first)
+                    value = re.sub(r'(?<!^)(?=[A-Z][a-z])', ', ', value)
+                    value = ', '.join([v.strip() for v in value.split(',')])
             features_dict['parsed_features'][key] = value
-            
             # Try to convert to number
             try:
                 # Extract numeric value and unit if present
@@ -197,114 +199,99 @@ def standardize_fan_measurements(features_dict: Dict[str, Any], product_type: st
     
     # Initialize standard fan measurements
     blade_length_cm = None
+    blade_length_key_found = None
     
     # Try to extract length from title first if provided
     if blade_length_cm is None and title:
-        # Look for patterns like "1200mm" or "48 inches" or "1200 mm" in title
         match = re.search(r'(\d+)\s*(mm|cm|m|inch|")', title.lower())
         if match:
             value = float(match.group(1))
             unit = match.group(2)
             blade_length_cm = convert_to_cm(value, unit)
-    
-    # Check numeric features for blade length or fan length
-    numeric_features = features_dict.get('numeric_features', {})
-    parsed_features = features_dict.get('parsed_features', {})
-    raw_features = features_dict.get('raw_features', [])
+            blade_length_key_found = 'title'
     
     # List of possible keys for blade/fan length
     length_keys = ['blade length', 'fan length', 'sweep size', 'sweep', 'size', 'fan size', 'sweep length', 'length', 'diameter']
     
     # First check numeric features
     if blade_length_cm is None:
-        for key in numeric_features:
-            # Check if any of the length keys is a substring of the current key
+        for key in features_dict.get('numeric_features', {}):
             if any(length_key in key.lower() for length_key in length_keys):
-                value = numeric_features[key]['value']
-                unit = numeric_features[key]['unit']
+                value = features_dict['numeric_features'][key]['value']
+                unit = features_dict['numeric_features'][key]['unit']
                 blade_length_cm = convert_to_cm(value, unit)
+                blade_length_key_found = key
                 break
     
     # If not found in numeric features, check parsed features
     if blade_length_cm is None:
-        for key in parsed_features:
-            # Check if any of the length keys is a substring of the current key
+        for key in features_dict.get('parsed_features', {}):
             if any(length_key in key.lower() for length_key in length_keys):
-                # Try to extract numeric value and unit from string
-                value_str = parsed_features[key]
-                # Try to extract from title if it contains dimensions
+                value_str = features_dict['parsed_features'][key]
                 if isinstance(value_str, str):
-                    # Look for patterns like "1200mm" or "48 inches" or "1200 mm"
                     match = re.search(r'(\d+)\s*(mm|cm|m|inch|")', value_str.lower())
                     if match:
                         value = float(match.group(1))
                         unit = match.group(2)
                         blade_length_cm = convert_to_cm(value, unit)
+                        blade_length_key_found = key
                         break
-                    # Look for just numbers (assume cm)
                     match = re.match(r'(\d+)', value_str)
                     if match:
                         value = float(match.group(1))
                         blade_length_cm = value  # Assume cm if no unit specified
+                        blade_length_key_found = key
                         break
     
     # If still not found, try to extract from raw features
     if blade_length_cm is None:
-        # First, look for features containing size-related keywords
-        size_features = [f for f in raw_features if any(key in f.lower() for key in length_keys)]
+        size_features = [f for f in features_dict.get('raw_features', []) if any(key in f.lower() for key in length_keys)]
         for feature in size_features:
-            # Look for patterns like "1200mm" or "48 inches" in raw features
             match = re.search(r'(\d+)\s*(mm|cm|m|inch|")', feature.lower())
             if match:
                 value = float(match.group(1))
                 unit = match.group(2)
                 blade_length_cm = convert_to_cm(value, unit)
+                blade_length_key_found = feature
                 break
-            # Look for patterns like "sweep size: 1200"
             match = re.search(r'(?:' + '|'.join(length_keys) + r')\s*(?::|is|of)?\s*(\d+)', feature.lower())
             if match:
                 value = float(match.group(1))
                 blade_length_cm = value  # Assume cm if no unit specified
+                blade_length_key_found = feature
                 break
     
     # If still not found, try to extract from description
     if blade_length_cm is None and description:
-        # Common patterns in descriptions
         size_patterns = [
-            r'(\d+)\s*(mm|cm|m|inch|")',  # Basic size pattern
-            r'sweep\s+(?:size|length)?\s*(?:of|:)?\s*(\d+)\s*(mm|cm|m|inch|")',  # "sweep size of 1200mm"
-            r'(\d+)\s*(mm|cm|m|inch|")\s*(?:sweep|blade|fan)',  # "1200mm sweep"
-            r'(?:sweep|blade|fan)\s*(?:size|length)?\s*(?:of|:)?\s*(\d+)\s*(mm|cm|m|inch|")',  # "blade size: 1200mm"
-            r'(?:sweep|blade|fan)\s*(?:size|length)?\s*(?:of|:)?\s*(\d+)',  # "sweep size: 1200"
-            r'(\d+)\s*(?:mm|cm|m|inch|")?(?:\s+(?:' + '|'.join(length_keys) + r'))',  # "1200mm sweep size"
+            r'(\d+)\s*(mm|cm|m|inch|")',
+            r'sweep\s+(?:size|length)?\s*(?:of|:)?\s*(\d+)\s*(mm|cm|m|inch|")',
+            r'(\d+)\s*(mm|cm|m|inch|")\s*(?:sweep|blade|fan)',
+            r'(?:sweep|blade|fan)\s*(?:size|length)?\s*(?:of|:)?\s*(\d+)\s*(mm|cm|m|inch|")',
+            r'(?:sweep|blade|fan)\s*(?:size|length)?\s*(?:of|:)?\s*(\d+)',
+            r'(\d+)\s*(?:mm|cm|m|inch|")?(?:\s+(?:' + '|'.join(length_keys) + r'))',
         ]
-        
         for pattern in size_patterns:
             match = re.search(pattern, description.lower())
             if match:
-                # Get the first group that contains a number
                 value_groups = [g for g in match.groups() if g and g.replace('.', '').isdigit()]
                 if value_groups:
                     value = float(value_groups[0])
-                    # Get the unit if it exists in the match groups
                     unit_groups = [g for g in match.groups() if g and not g.replace('.', '').isdigit()]
-                    unit = unit_groups[0] if unit_groups else 'mm'  # Default to mm if no unit found
+                    unit = unit_groups[0] if unit_groups else 'mm'
                     blade_length_cm = convert_to_cm(value, unit)
+                    blade_length_key_found = 'description'
                     break
     
-    # If blade length was found and converted, update all relevant fields
+    # --- Always set numeric_features['blade_length'] if any size key is found ---
     if blade_length_cm is not None:
-        # Validate the blade length is reasonable (between 600mm and 2000mm)
         if 60 <= blade_length_cm <= 200:
-            # Update numeric features
             features_dict['numeric_features']['blade_length'] = {
                 'value': round(blade_length_cm, 2),
                 'unit': 'cm',
                 'raw': f"{round(blade_length_cm, 2)} cm"
             }
-            # Update parsed features
             features_dict['parsed_features']['blade_length'] = f"{round(blade_length_cm, 2)} cm"
-            
             # Remove any old inconsistent keys
             for key in list(features_dict['numeric_features'].keys()):
                 if any(length_key in key.lower() for length_key in length_keys) and key != 'blade_length':
@@ -312,7 +299,12 @@ def standardize_fan_measurements(features_dict: Dict[str, Any], product_type: st
             for key in list(features_dict['parsed_features'].keys()):
                 if any(length_key in key.lower() for length_key in length_keys) and key != 'blade_length':
                     del features_dict['parsed_features'][key]
-    
+    else:
+        # If a size key is found but out of range, still set blade_length for debugging
+        for key in features_dict.get('numeric_features', {}):
+            if any(length_key in key.lower() for length_key in length_keys):
+                features_dict['numeric_features']['blade_length'] = features_dict['numeric_features'][key]
+                break
     return features_dict
 
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
