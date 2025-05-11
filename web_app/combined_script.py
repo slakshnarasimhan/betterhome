@@ -256,7 +256,7 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
         'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
         'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
         'dishwasher': {'budget': 30000, 'mid': 50000},
-        'dryer': {'budget': 25000, 'mid': 45000},
+        'dryer': {'budget': 50000, 'mid': 75000},  # Updated dryer thresholds
         'shower_system': {'budget': 30000, 'mid': 50000},
         'gas_stove': {'budget': 15000, 'mid': 25000}, # Add gas stove
         'hob_top': {'budget': 20000, 'mid': 40000}    # Add hob top
@@ -350,7 +350,7 @@ def get_specific_product_recommendations(
         'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
         'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
         'dishwasher': {'budget': 30000, 'mid': 50000},
-        'dryer': {'budget': 25000, 'mid': 45000},
+        'dryer': {'budget': 50000, 'mid': 75000},  # Updated dryer thresholds
         'shower_system': {'budget': 30000, 'mid': 50000},
         'gas_stove': {'budget': 15000, 'mid': 25000},
         'hob_top': {'budget': 20000, 'mid': 40000},  # Added budget ranges for hob tops
@@ -1262,13 +1262,23 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['kitchen']['dishwasher'] = recommendations
 
     # Add dryer recommendations if needed
-    if user_data['laundry'].get('dryer', False):
+    if user_data['laundry'].get('dryer', True):
         print("\n=== Dryer Debug ===")
         budget_category = get_budget_category(user_data['total_budget'], 'dryer')
         recommendations = get_specific_product_recommendations('cloth dryer', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data)
         print(f"Found {len(recommendations)} dryers")
-        final_list['laundry']['dryer'] = recommendations
-        print(f"Added {len(final_list['laundry']['dryer'])} dryers to recommendations")
+        
+        # Deduplicate recommendations
+        seen = set()
+        deduped = []
+        for p in recommendations:
+            key = (p.get('brand', ''), p.get('title', ''))
+            if key not in seen:
+                deduped.append(p)
+                seen.add(key)
+        
+        final_list['laundry']['dryer'] = deduped
+        print(f"Added {len(final_list['laundry']['dryer'])} unique dryers to recommendations")
         print("=== End Dryer Debug ===\n")
 
     # Debug: Print all kitchen appliance keys and their product titles before rendering
