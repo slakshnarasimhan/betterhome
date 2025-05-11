@@ -1064,9 +1064,37 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['kitchen']['gas_stove'] = recommendations
     
     if user_data['kitchen'].get('small_fan', False):
-        budget_category = get_budget_category(user_data['total_budget'], 'small_fan')
-        recommendations = get_specific_product_recommendations('small_fan', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
-        final_list['kitchen']['small_fan'] = recommendations
+        # Recommend ceiling fans with blade_length of 60 cm or 90 cm
+        def is_small_fan(product):
+            if product.get('product_type', '').lower() != 'ceiling fan':
+                return False
+            features = product.get('features', {})
+            # Check numeric_features
+            numeric = features.get('numeric_features', {}) if isinstance(features, dict) else {}
+            blade = numeric.get('blade_length') or numeric.get('blade length')
+            if blade and isinstance(blade, dict):
+                val = blade.get('value')
+                unit = (blade.get('unit') or '').lower()
+                if val is not None:
+                    val_cm = val
+                    if unit == 'mm':
+                        val_cm = val / 10.0
+                    elif unit == 'm':
+                        val_cm = val * 100.0
+                    if abs(val_cm - 60.0) <= 0.5 or abs(val_cm - 90.0) <= 0.5:
+                        return True
+            # Fallback: check parsed_features
+            parsed = features.get('parsed_features', {}) if isinstance(features, dict) else {}
+            blade_str = parsed.get('blade_length')
+            if blade_str:
+                match = re.match(r'(\d+(?:\.\d+)?)\s*cm', blade_str.lower())
+                if match:
+                    val_cm = float(match.group(1))
+                    if abs(val_cm - 60.0) <= 0.5 or abs(val_cm - 90.0) <= 0.5:
+                        return True
+            return False
+        small_fan_recommendations = [p for p in load_product_catalog().get('products', []) if is_small_fan(p)]
+        final_list['kitchen']['small_fan'] = small_fan_recommendations[:3]  # Top 3 matches
     
     # Process master bedroom requirements
     if user_data['master_bedroom'].get('ac', False):
@@ -1946,7 +1974,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                 recommendations = get_specific_product_recommendations('hob_top', budget_category, user_data['demographics'], 
                                                                      user_data['kitchen'].get('color_theme'), user_data, required_features)
                 print(f"[DEBUG GAS STOVE] Got {len(recommendations)} hob_top recommendations")
-                final_list['kitchen']['hob_top'] = recommendations
+                #final_list['kitchen']['hob_top'] = recommendations
                 print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
                 # Clear gas_stove as we're using hob_top instead
                 final_list['kitchen']['gas_stove'] = []
