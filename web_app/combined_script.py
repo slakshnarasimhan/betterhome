@@ -102,6 +102,7 @@ def analyze_user_requirements(excel_file: str):
                 'color_theme': None,  # No color theme specified for kitchen
                 'refrigerator_type': df.iloc[0].get('Kitchen: Refrigerator type?', None), # Add refrigerator type
                 'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None), # Add refrigerator capacity
+                'dishwasher_capacity': df.iloc[0].get('Kitchen: Dishwasher capacity?', None), # Add dishwasher capacity
                 'size_sqft': float(df.iloc[0].get('Kitchen: Size (square feet)', 100.0))  # Default to 100 sq ft if not specified
             },
             'master_bedroom': {
@@ -850,7 +851,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             'refrigerator': [],
             'gas_stove': [],
             'hob_top': [],  # Add hob_top to kitchen section
-            'small_fan': []
+            'small_fan': [],
+            'dishwasher': []  # Add dishwasher to kitchen section
         },
         'master_bedroom': {
             'ac': [],
@@ -1064,14 +1066,36 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Process dining room requirements
     if user_data['dining'].get('fans'):
+        # Extract the fan size from the input (e.g., '60 CM' or '120 CM')
+        fan_size_str = str(user_data['dining'].get('fan_size', '') or user_data['dining'].get('fans', '')).strip().upper()
+        size_cm = None
+        if 'CM' in fan_size_str:
+            try:
+                size_cm = int(fan_size_str.replace('CM', '').strip())
+            except Exception:
+                size_cm = None
+        elif 'MM' in fan_size_str:
+            try:
+                size_cm = int(fan_size_str.replace('MM', '').strip()) // 10
+            except Exception:
+                size_cm = None
+        # Pass required_features to filter by size
+        required_features = {'fan_size_cm': size_cm} if size_cm else {}
         budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
-        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['dining'].get('color_theme'))
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['dining'].get('color_theme'), user_data, required_features, room='dining')
         final_list['dining']['fans'] = recommendations
 
     if user_data['dining'].get('ac'):
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['dining'].get('color_theme'))
         final_list['dining']['ac'] = recommendations
+
+    # Add logic to recommend dishwasher
+    if user_data['kitchen'].get('dishwasher_capacity'):
+        budget_category = get_budget_category(user_data['total_budget'], 'dishwasher')
+        required_features = {'capacity': user_data['kitchen'].get('dishwasher_capacity')}
+        recommendations = get_specific_product_recommendations('dishwasher', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
+        final_list['kitchen']['dishwasher'] = recommendations
 
     return final_list
 
