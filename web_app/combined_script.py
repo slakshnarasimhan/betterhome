@@ -405,9 +405,7 @@ def get_specific_product_recommendations(
                     matches = product_type_norm == norm_type
                 if matches:
                     filtered_products.append(p)
-        if appliance_type == 'geyser':
-            print(f"[DEBUG][Geyser] Products after type filter: {len(filtered_products)}")
-        # For hob tops, filter by number of burners right after initial type filtering
+
         if appliance_type == 'hob_top':
             # print(f"[DEBUG HOB] required_features: {required_features}")
             # print(f"[DEBUG HOB] Titles before burner filter:")
@@ -453,7 +451,7 @@ def get_specific_product_recommendations(
         
         # DEBUG: Print initial list of ACs after type filter
         if appliance_type == 'ac':
-            print("[DEBUG AC DETAILS] Initial AC candidates before budget/feature check:")
+            # print("[DEBUG AC DETAILS] Initial AC candidates before budget/feature check:")
             for idx, p in enumerate(filtered_products):
                 try:
                     p_tonnage = "Unknown"
@@ -478,7 +476,7 @@ def get_specific_product_recommendations(
                                 except ValueError:
                                     p_tonnage = "Unknown" # Handle potential conversion error
                                     
-                    print(f"  {idx+1}. {p.get('brand', 'N/A')} - {p.get('title', 'N/A')} - Tonnage: {p_tonnage} - Price: {p.get('retail_price', p.get('price', p.get('better_home_price', 0)))}")
+                    # print(f"  {idx+1}. {p.get('brand', 'N/A')} - {p.get('title', 'N/A')} - Tonnage: {p_tonnage} - Price: {p.get('retail_price', p.get('price', p.get('better_home_price', 0)))}")
                 except Exception as e:
                      print(f"  Error printing details for product index {idx}: {e}")
 
@@ -566,7 +564,7 @@ def get_specific_product_recommendations(
                             feature_match_score += penalty # Apply penalty
                             tonnage_feature_score = penalty # Set tonnage score to penalty
                             # --- Temporary Debug Print --- 
-                            print(f"[TEMP DEBUG] Tonnage Mismatch! Product: {product.get('title', 'N/A')[:30]}... Penalty Applied. New FeatScore: {feature_match_score}, New TonnageScore: {tonnage_feature_score}")
+                            # print(f"[TEMP DEBUG] Tonnage Mismatch! Product: {product.get('title', 'N/A')[:30]}... Penalty Applied. New FeatScore: {feature_match_score}, New TonnageScore: {tonnage_feature_score}")
                             # --- End Temporary Debug Print ---
                             
                         # Even if no match, we handled the tonnage requirement check
@@ -590,7 +588,7 @@ def get_specific_product_recommendations(
                 req_tonnage = required_features.get('tonnage', 'Not Specified') if required_features else 'Not Specified'
                 # Use the actual tonnage if found, otherwise fallback to the debug value from features
                 display_tonnage = f"{actual_product_tonnage} Ton" if actual_product_tonnage is not None else product_tonnage_value_for_debug
-                print(f"[DEBUG AC TONNAGE MATCH] Product: {product.get('brand', 'N/A')} {product.get('title', 'N/A')} - Required: {req_tonnage}, Product has: {display_tonnage}, Tonnage Feature Score: {tonnage_feature_score}")
+                # print(f"[DEBUG AC TONNAGE MATCH] Product: {product.get('brand', 'N/A')} {product.get('title', 'N/A')} - Required: {req_tonnage}, Product has: {display_tonnage}, Tonnage Feature Score: {tonnage_feature_score}")
 
             # Calculate relevance score (existing logic)
             relevance_score = 0
@@ -673,11 +671,11 @@ def get_specific_product_recommendations(
         ))
 
         # DEBUG: Print top N products after sorting
-        if appliance_type == 'ac':
-             print("[DEBUG AC SORTING] Top 5 AC candidates after sorting:")
-             for idx, p_data in enumerate(matching_products_data[:5]):
-                 print(f"  {idx+1}. {p_data.get('brand', 'N/A')} - {p_data.get('model', 'N/A')} "
-                       f"(Price: {p_data.get('price', 0):.2f}, FeatScore: {p_data.get('feature_match_score', 0)}, RelScore: {p_data.get('relevance_score', 0)})")
+        # if appliance_type == 'ac':
+             # print("[DEBUG AC SORTING] Top 5 AC candidates after sorting:")
+             #for idx, p_data in enumerate(matching_products_data[:5]):
+             #      print(f"  {idx+1}. {p_data.get('brand', 'N/A')} - {p_data.get('model', 'N/A')} "
+             #            f"(Price: {p_data.get('price', 0):.2f}, FeatScore: {p_data.get('feature_match_score', 0)}, RelScore: {p_data.get('relevance_score', 0)})")
 
         # Group top products by model (using existing logic, but apply to sorted list)
         # Take the top N unique models after sorting
@@ -864,38 +862,32 @@ def get_specific_product_recommendations(
                                     print(f"[DEBUG] -> MATCH (features list)")
                                     return True
                 return False
-            # DEBUG: Print all candidate ceiling fans before blade length matching:
-            print("[DEBUG] Candidate ceiling fans before blade length matching:")
-            for p in filtered_products:
-                print(f"  - {p.get('title', 'No Title')} | features: {p.get('features')}")
-            # First, filter by blade length
-            blade_matched_products = [p for p in filtered_products if matches_blade_length(p)]
-            # Now, filter by budget among those
-            budget_matched = []
-            for product in blade_matched_products:
-                try:
-                    price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
-                except (ValueError, TypeError):
-                    price = 0.0
-                if target_budget_category == 'premium':
-                    budget_matched.append(product)
-                elif target_budget_category == 'mid':
-                    if price <= ranges.get('mid', float('inf')):
-                        budget_matched.append(product)
-                else:
-                    if price <= ranges.get('budget', float('inf')):
-                        budget_matched.append(product)
-            # If none in budget, use all blade-matched products
-            if budget_matched:
-                blade_matched_products = budget_matched
-            # Now, prioritize blade-matched products at the top of the recommendations
-            # Remove blade-matched products from filtered_products to avoid duplicates
-            non_blade_matched = [p for p in filtered_products if p not in blade_matched_products]
-            # Combine, with blade-matched first
-            filtered_products = blade_matched_products + non_blade_matched
+            # Only print debug info for dining room ceiling fans
+            if appliance_type == 'ceiling_fan' and room == 'dining':
+                print("[DEBUG] Filtered ceiling fans before final_recommendations:")
+                for p in filtered_products:
+                    if p.get('product_type', '').lower() != 'ceiling fan':
+                        continue
+                    blade_length = None
+                    features = p.get('features', {})
+                    if isinstance(features, dict):
+                        numeric = features.get('numeric_features', {})
+                        blade = numeric.get('blade_length') or numeric.get('blade length')
+                        if blade and isinstance(blade, dict):
+                            blade_length = blade.get('value')
+                    if not blade_length:
+                        features_list = p.get('features', [])
+                        if isinstance(features_list, list):
+                            for feat in features_list:
+                                if 'blade length' in feat.lower() or 'fan size' in feat.lower():
+                                    match = re.search(r'(\d+)', feat)
+                                    if match:
+                                        blade_length = int(match.group(1))
+                                        break
+                    print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
 
         # After all filtering and sorting, before building final_recommendations
-        print("[DEBUG] Filtered ceiling fans before final_recommendations:")
+        print("[DEBUG] Filtered ceiling fans before final_recommendations1:")
         for p in filtered_products:
             blade_length = None
             features = p.get('features', {})
@@ -913,7 +905,35 @@ def get_specific_product_recommendations(
                             if match:
                                 blade_length = int(match.group(1))
                                 break
-            print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
+            if appliance_type == 'ceiling_fan' and room == 'dining':
+                print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
+
+        # --- Room Type Filtering Helper ---
+        def matches_room_type(product, required_room_type):
+            features = product.get('features', {})
+            parsed = features.get('parsed_features', {}) if isinstance(features, dict) else {}
+            # Prefer parsed_features if available
+            room_type_val = parsed.get('room type')
+            if room_type_val:
+                # Normalize and check if required room type is present
+                room_types = [r.strip().lower() for r in room_type_val.split(',')]
+                return required_room_type.lower() in room_types
+            # Fallback: search in raw_features or feature strings
+            raw_features = features.get('raw_features', []) if isinstance(features, dict) else []
+            for feat in raw_features:
+                if 'room type' in feat.lower() and required_room_type.lower() in feat.lower():
+                    return True
+            # Fallback: search in features list of strings
+            features_list = product.get('features', [])
+            if isinstance(features_list, list):
+                for feat in features_list:
+                    if 'room type' in feat.lower() and required_room_type.lower() in feat.lower():
+                        return True
+            return False
+
+        # Apply room type filtering if required
+        if required_features and required_features.get('room_type'):
+            filtered_products = [p for p in filtered_products if matches_room_type(p, required_features['room_type'])]
 
         return final_recommendations
 
@@ -1156,30 +1176,50 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         size_cm = None
         # Handle different unit formats
         if 'CM' in fan_size_str:
-            size_cm = int(fan_size_str.replace('CM', '').strip())
+            size_cm = float(fan_size_str.replace('CM', '').strip())
         elif 'MM' in fan_size_str:
-            size_cm = int(fan_size_str.replace('MM', '').strip()) // 10
+            size_cm = float(fan_size_str.replace('MM', '').strip()) / 10.0
         elif fan_size_str.isdigit():
-            size_cm = int(fan_size_str)
+            size_cm = float(fan_size_str)
         # For dining rooms, if no specific size is given, default to 120cm (1200mm)
         if not size_cm:
-            size_cm = 120
+            size_cm = 120.0
         required_features = {
-            'fan_size_cm': size_cm,
-            'room_type': 'dining room'  # Add room type requirement
+            'fan_size_cm': size_cm
         }
         print(f"[DEBUG DINING FAN] fan_size_str={fan_size_str}, size_cm={size_cm}, required_features={required_features}")
         budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
-        recommendations = get_specific_product_recommendations(
-            'ceiling_fan',
-            budget_category,
-            user_data['demographics'],
-            user_data['dining'].get('color_theme'),
-            user_data,
-            required_features,
-            room='dining'
-        )
-        final_list['dining']['fans'] = recommendations
+        def matches_blade_length_precise(product):
+            features = product.get('features', {})
+            # Prefer numeric_features if available
+            numeric = features.get('numeric_features', {}) if isinstance(features, dict) else {}
+            blade = numeric.get('blade_length') or numeric.get('blade length')
+            if blade and isinstance(blade, dict):
+                val = blade.get('value')
+                unit = (blade.get('unit') or '').lower()
+                if val is not None:
+                    # Convert to cm if needed
+                    val_cm = val
+                    if unit == 'mm':
+                        val_cm = val / 10.0
+                    elif unit == 'm':
+                        val_cm = val * 100.0
+                    # Allow small tolerance (±0.5cm)
+                    if abs(val_cm - size_cm) <= 0.5:
+                        return True
+            # Fallback: check parsed_features
+            parsed = features.get('parsed_features', {}) if isinstance(features, dict) else {}
+            blade_str = parsed.get('blade_length')
+            if blade_str:
+                match = re.match(r'(\d+(?:\.\d+)?)\s*cm', blade_str.lower())
+                if match:
+                    val_cm = float(match.group(1))
+                    if abs(val_cm - size_cm) <= 0.5:
+                        return True
+            return False
+        recommendations = [p for p in load_product_catalog().get('products', []) if p.get('product_type', '').lower() == 'ceiling fan' and matches_blade_length_precise(p)]
+        # Optionally, sort or limit recommendations as before
+        final_list['dining']['fans'] = recommendations[:3]  # Top 3 matches
 
     if user_data['dining'].get('ac'):
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
@@ -2496,7 +2536,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     """
 
     # Debug: Print the final list for kitchen before generating HTML
-    print("[DEBUG FINAL LIST] Kitchen hob tops:", final_list['kitchen']['hob_top'])
+    # print("[DEBUG FINAL LIST] Kitchen hob tops:", final_list['kitchen']['hob_top'])
 
     # Add logic to ensure at least three recommendations are displayed
     def ensure_three_recommendations(products):
@@ -2896,8 +2936,8 @@ if __name__ == "__main__":
     txt_filename = f"{output_base_path}.txt"
     html_filename = f"{output_base_path}.html"
     required_features = {}  # Initialize as an empty dictionary or populate as needed
-    create_styled_pdf(pdf_filename, user_data, final_list, required_features)
-    generate_text_file(user_data, final_list, txt_filename)
+    # create_styled_pdf(pdf_filename, user_data, final_list, required_features)
+    #generate_text_file(user_data, final_list, txt_filename)
     generate_html_file(user_data, final_list, html_filename)
     
     print("\nProduct recommendations have been generated!")
