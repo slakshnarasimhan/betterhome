@@ -1026,42 +1026,36 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['kitchen']['refrigerator'] = recommendations
     
     if user_data['kitchen'].get('gas_stove_type'):
-        # Debug: Print the gas stove type from user data
-        # print(f"[DEBUG GAS STOVE TYPE] User data gas stove type: {user_data['kitchen'].get('gas_stove_type')}")
-        # Check for specific gas stove type
         gas_stove_type = user_data['kitchen'].get('gas_stove_type', '').strip()
-        # print(f"[DEBUG GAS STOVE] Processing gas stove type: '{gas_stove_type}'")
-        
-        # Case 1: If gas stove type is "Hob (built-in)", recommend a Hob Top
         if "hob (built-in)" in gas_stove_type.lower():
-            # print(f"[DEBUG GAS STOVE] Recommending Hob Top for built-in requirement: '{gas_stove_type}'")
             budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
             required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
-            # print(f"[DEBUG GAS STOVE] Budget category: {budget_category}, Features: {required_features}")
-            # Debug: Print user data and required features before calling recommendation function
-            # print(f"[DEBUG HOB TOP INPUT] User data: {user_data}")
-            # print(f"[DEBUG HOB TOP INPUT] Required features: {required_features}")
-            recommendations = get_specific_product_recommendations('hob_top', budget_category, user_data['demographics'], 
-                                                                 user_data['kitchen'].get('color_theme'), user_data, required_features)
-            # print(f"[DEBUG GAS STOVE] Got {len(recommendations)} hob_top recommendations")
-            final_list['kitchen']['hob_top'] = recommendations
-            # print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
-            # Clear gas_stove as we're using hob_top instead
+            recommendations = get_specific_product_recommendations(
+                'hob_top', budget_category, user_data['demographics'],
+                user_data['kitchen'].get('color_theme'), user_data, required_features
+            )
+            # Deduplicate
+            seen = set()
+            deduped = []
+            for p in recommendations:
+                key = (p.get('brand', ''), p.get('title', ''))
+                if key not in seen:
+                    deduped.append(p)
+                    seen.add(key)
+            final_list['kitchen']['hob_top'] = deduped
             final_list['kitchen']['gas_stove'] = []
-        # Case 2: Skip recommendation if "Not needed"
         elif "not needed" in gas_stove_type.lower():
-            # print(f"[DEBUG GAS STOVE] Skipping gas stove recommendation for: '{gas_stove_type}'")
             final_list['kitchen']['gas_stove'] = []
             final_list['kitchen']['hob_top'] = []
-        # Case 3: For all other types, recommend normal gas stove
         else:
-            # print(f"[DEBUG GAS STOVE] Recommending regular gas stove for: '{gas_stove_type}'")
             budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
             required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
-            recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], 
-                                                                 user_data['kitchen'].get('color_theme'), user_data, required_features)
-            # print(f"[DEBUG GAS STOVE] Got {len(recommendations)} gas_stove recommendations")
-        final_list['kitchen']['gas_stove'] = recommendations
+            recommendations = get_specific_product_recommendations(
+                'gas_stove', budget_category, user_data['demographics'],
+                user_data['kitchen'].get('color_theme'), user_data, required_features
+            )
+            final_list['kitchen']['gas_stove'] = recommendations
+            final_list['kitchen']['hob_top'] = []
     
     if user_data['kitchen'].get('small_fan', False):
         # Recommend ceiling fans with blade_length of 60 cm or 90 cm
@@ -1260,6 +1254,14 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         required_features = {'capacity': user_data['kitchen'].get('dishwasher_capacity')}
         recommendations = get_specific_product_recommendations('dishwasher', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
         final_list['kitchen']['dishwasher'] = recommendations
+
+    # Debug: Print all kitchen appliance keys and their product titles before rendering
+    print("[DEBUG] Kitchen appliance keys and product titles before rendering:")
+    for key, products in final_list['kitchen'].items():
+        if isinstance(products, list):
+            print(f"  {key}: {[p.get('title', 'No title') for p in products if isinstance(p, dict)]}")
+        else:
+            print(f"  {key}: {products}")
 
     return final_list
 
