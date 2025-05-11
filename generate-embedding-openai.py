@@ -6,8 +6,9 @@ from tqdm import tqdm
 import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 import faiss
-from typing import Dict, List
+from typing import Dict, List, Any
 import unicodedata
+import re
 
 # ==========================
 # Configuration
@@ -32,11 +33,24 @@ def load_product_catalog(file_path):
     df = pd.read_csv(file_path)
     print(f"Successfully loaded product catalog with {len(df)} entries.")
     
-    # Debug: Print initial Product Type information
-    print("\nInitial Product Type information:")
-    print("Column names:", df.columns.tolist())
-    print("Product Type values (first 5):", df['Product Type'].head() if 'Product Type' in df.columns else "No Product Type column found")
-    print("Product Type null count:", df['Product Type'].isnull().sum() if 'Product Type' in df.columns else "No Product Type column found")
+    # Debug: Print detailed column information
+    print("\nAll columns in CSV file:")
+    for col in df.columns:
+        print(f"Column: '{col}'")
+        print(f"Sample values: {df[col].head().tolist()}")
+        print(f"Null count: {df[col].isnull().sum()}")
+        print("---")
+    
+    # Check specifically for Product Type column variations
+    possible_product_type_cols = [col for col in df.columns if 'product' in col.lower() and 'type' in col.lower()]
+    if possible_product_type_cols:
+        print("\nPossible Product Type columns found:")
+        for col in possible_product_type_cols:
+            print(f"\nColumn: '{col}'")
+            print(f"Sample values: {df[col].head().tolist()}")
+            print(f"Unique values: {df[col].unique().tolist()}")
+    else:
+        print("\nNo columns containing 'product' and 'type' found!")
     
     df['Better Home Price'] = pd.to_numeric(df['Better Home Price'], errors='coerce')
     df['Retail Price'] = pd.to_numeric(df['Retail Price'], errors='coerce')
@@ -109,18 +123,197 @@ def prepare_entries(df):
 # ==========================
 # Step 3: Save Product Catalog
 # ==========================
-def parse_features(features_str: str) -> List[str]:
-    """Convert features string (separated by '|') into a list of features."""
+def convert_to_cm(value: float, unit: str) -> float:
+    """Convert various length units to centimeters"""
+    unit = unit.lower() if unit else ''
+    if unit in ['mm', 'millimeter', 'millimeters']:
+        return value / 10
+    elif unit in ['m', 'meter', 'meters']:
+        return value * 100
+    elif unit in ['inch', 'inches', '"']:
+        return value * 2.54
+    return value  # Assume cm if no unit or unrecognized unit
+
+def parse_features(features_str: str) -> Dict[str, Any]:
+    """Convert features string (separated by '|') into a structured dictionary of features."""
+    features_dict = {
+        'raw_features': [],  # Keep original feature strings
+        'parsed_features': {},  # Structured key-value pairs
+        'numeric_features': {},  # Features with numeric values
+        'boolean_features': {},  # Yes/No type features
+        'text_features': {}  # Text-based features
+    }
+    
     # Handle potential non-string types gracefully
     if not isinstance(features_str, str) or pd.isna(features_str):
-        return []
-    # Split by '|' and strip whitespace from each feature
-    features = [feature.strip() for feature in features_str.split('|') if feature.strip()]
-    if not features:  # If no features found after splitting
-        # Try to use the whole string as a single feature if it's not empty
-        if features_str.strip():
-            return [features_str.strip()]
-    return features
+        return features_dict
+
+    # Split by '|' and process each feature
+    feature_items = [f.strip() for f in features_str.split('|') if f.strip()]
+    
+    for feature in feature_items:
+        # Store raw feature
+        features_dict['raw_features'].append(feature)
+        
+        # Try to split into key-value pair
+        if ':' in feature:
+            key, value = [part.strip() for part in feature.split(':', 1)]
+            key = key.lower()  # Normalize keys to lowercase
+            
+            # Store in parsed_features
+            features_dict['parsed_features'][key] = value
+            
+            # Try to convert to number
+            try:
+                # Extract numeric value and unit if present
+                numeric_match = re.match(r'([\d.]+)\s*([a-zA-Z°%"]+)?', value)
+                if numeric_match:
+                    numeric_value = float(numeric_match.group(1))
+                    unit = numeric_match.group(2) if numeric_match.group(2) else None
+                    features_dict['numeric_features'][key] = {
+                        'value': numeric_value,
+                        'unit': unit,
+                        'raw': value
+                    }
+                # Check for boolean-like values
+                elif value.lower() in ['yes', 'no', 'true', 'false']:
+                    features_dict['boolean_features'][key] = value.lower() in ['yes', 'true']
+                else:
+                    # Store as text feature
+                    features_dict['text_features'][key] = value
+            except ValueError:
+                # If conversion fails, store as text feature
+                features_dict['text_features'][key] = value
+        else:
+            # Handle features without key-value format
+            features_dict['text_features'][feature.lower()] = True
+
+    return features_dict
+
+def standardize_fan_measurements(features_dict: Dict[str, Any], product_type: str, title: str = None, description: str = None) -> Dict[str, Any]:
+    """Standardize fan measurements, particularly blade length/fan length to cm"""
+    if product_type.lower() != 'ceiling fan':
+        return features_dict
+    
+    # Initialize standard fan measurements
+    blade_length_cm = None
+    
+    # Try to extract length from title first if provided
+    if blade_length_cm is None and title:
+        # Look for patterns like "1200mm" or "48 inches" or "1200 mm" in title
+        match = re.search(r'(\d+)\s*(mm|cm|m|inch|")', title.lower())
+        if match:
+            value = float(match.group(1))
+            unit = match.group(2)
+            blade_length_cm = convert_to_cm(value, unit)
+    
+    # Check numeric features for blade length or fan length
+    numeric_features = features_dict.get('numeric_features', {})
+    parsed_features = features_dict.get('parsed_features', {})
+    raw_features = features_dict.get('raw_features', [])
+    
+    # List of possible keys for blade/fan length
+    length_keys = ['blade length', 'fan length', 'sweep size', 'sweep', 'size', 'fan size', 'sweep length', 'length', 'diameter']
+    
+    # First check numeric features
+    if blade_length_cm is None:
+        for key in numeric_features:
+            # Check if any of the length keys is a substring of the current key
+            if any(length_key in key.lower() for length_key in length_keys):
+                value = numeric_features[key]['value']
+                unit = numeric_features[key]['unit']
+                blade_length_cm = convert_to_cm(value, unit)
+                break
+    
+    # If not found in numeric features, check parsed features
+    if blade_length_cm is None:
+        for key in parsed_features:
+            # Check if any of the length keys is a substring of the current key
+            if any(length_key in key.lower() for length_key in length_keys):
+                # Try to extract numeric value and unit from string
+                value_str = parsed_features[key]
+                # Try to extract from title if it contains dimensions
+                if isinstance(value_str, str):
+                    # Look for patterns like "1200mm" or "48 inches" or "1200 mm"
+                    match = re.search(r'(\d+)\s*(mm|cm|m|inch|")', value_str.lower())
+                    if match:
+                        value = float(match.group(1))
+                        unit = match.group(2)
+                        blade_length_cm = convert_to_cm(value, unit)
+                        break
+                    # Look for just numbers (assume cm)
+                    match = re.match(r'(\d+)', value_str)
+                    if match:
+                        value = float(match.group(1))
+                        blade_length_cm = value  # Assume cm if no unit specified
+                        break
+    
+    # If still not found, try to extract from raw features
+    if blade_length_cm is None:
+        # First, look for features containing size-related keywords
+        size_features = [f for f in raw_features if any(key in f.lower() for key in length_keys)]
+        for feature in size_features:
+            # Look for patterns like "1200mm" or "48 inches" in raw features
+            match = re.search(r'(\d+)\s*(mm|cm|m|inch|")', feature.lower())
+            if match:
+                value = float(match.group(1))
+                unit = match.group(2)
+                blade_length_cm = convert_to_cm(value, unit)
+                break
+            # Look for patterns like "sweep size: 1200"
+            match = re.search(r'(?:' + '|'.join(length_keys) + r')\s*(?::|is|of)?\s*(\d+)', feature.lower())
+            if match:
+                value = float(match.group(1))
+                blade_length_cm = value  # Assume cm if no unit specified
+                break
+    
+    # If still not found, try to extract from description
+    if blade_length_cm is None and description:
+        # Common patterns in descriptions
+        size_patterns = [
+            r'(\d+)\s*(mm|cm|m|inch|")',  # Basic size pattern
+            r'sweep\s+(?:size|length)?\s*(?:of|:)?\s*(\d+)\s*(mm|cm|m|inch|")',  # "sweep size of 1200mm"
+            r'(\d+)\s*(mm|cm|m|inch|")\s*(?:sweep|blade|fan)',  # "1200mm sweep"
+            r'(?:sweep|blade|fan)\s*(?:size|length)?\s*(?:of|:)?\s*(\d+)\s*(mm|cm|m|inch|")',  # "blade size: 1200mm"
+            r'(?:sweep|blade|fan)\s*(?:size|length)?\s*(?:of|:)?\s*(\d+)',  # "sweep size: 1200"
+            r'(\d+)\s*(?:mm|cm|m|inch|")?(?:\s+(?:' + '|'.join(length_keys) + r'))',  # "1200mm sweep size"
+        ]
+        
+        for pattern in size_patterns:
+            match = re.search(pattern, description.lower())
+            if match:
+                # Get the first group that contains a number
+                value_groups = [g for g in match.groups() if g and g.replace('.', '').isdigit()]
+                if value_groups:
+                    value = float(value_groups[0])
+                    # Get the unit if it exists in the match groups
+                    unit_groups = [g for g in match.groups() if g and not g.replace('.', '').isdigit()]
+                    unit = unit_groups[0] if unit_groups else 'mm'  # Default to mm if no unit found
+                    blade_length_cm = convert_to_cm(value, unit)
+                    break
+    
+    # If blade length was found and converted, update all relevant fields
+    if blade_length_cm is not None:
+        # Validate the blade length is reasonable (between 600mm and 2000mm)
+        if 60 <= blade_length_cm <= 200:
+            # Update numeric features
+            features_dict['numeric_features']['blade_length'] = {
+                'value': round(blade_length_cm, 2),
+                'unit': 'cm',
+                'raw': f"{round(blade_length_cm, 2)} cm"
+            }
+            # Update parsed features
+            features_dict['parsed_features']['blade_length'] = f"{round(blade_length_cm, 2)} cm"
+            
+            # Remove any old inconsistent keys
+            for key in list(features_dict['numeric_features'].keys()):
+                if any(length_key in key.lower() for length_key in length_keys) and key != 'blade_length':
+                    del features_dict['numeric_features'][key]
+            for key in list(features_dict['parsed_features'].keys()):
+                if any(length_key in key.lower() for length_key in length_keys) and key != 'blade_length':
+                    del features_dict['parsed_features'][key]
+    
+    return features_dict
 
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     def clean_text(text):
@@ -143,24 +336,60 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     print("\nFeature information before processing:")
     print(f"Total rows: {len(df)}")
     print(f"Null features count: {df['Features'].isnull().sum() if 'Features' in df.columns else 'Features column not found'}")
+    
+    # Track ceiling fan statistics
+    ceiling_fan_count = 0
+    fans_with_blade_length = 0
+    fans_missing_length = []
+    
     if 'Features' in df.columns:
         print("Sample features:")
         print(df['Features'].head())
         # Count empty feature lists
-        empty_features = df['Features'].apply(lambda x: not bool(parse_features(x)) if pd.notna(x) else True)
+        empty_features = df['Features'].apply(lambda x: not bool(parse_features(x)['raw_features']) if pd.notna(x) else True)
         print(f"Rows with empty features: {empty_features.sum()}")
 
     catalog = []
     empty_features_count = 0
+    feature_keys_stats = {}  # Track frequency of feature keys
+    
     for _, row in df.iterrows():
+        product_type = clean_text(row.get('Product Type', 'Not Available'))
+        # Rename 'Bath Fittings' to 'Bathroom Fittings'
+        if product_type == 'Bath Fittings':
+            product_type = 'Bathroom Fittings'
+        title = clean_text(row.get('title', 'Not Available'))
+        description = clean_text(row.get('Description', ''))
+        
         # Parse and clean features
         features = parse_features(row.get('Features', ''))
-        if not features:
+        
+        # Standardize measurements for ceiling fans
+        if product_type.lower() == 'ceiling fan':
+            ceiling_fan_count += 1
+            features = standardize_fan_measurements(features, product_type, title, description)
+            if 'blade_length' in features['numeric_features']:
+                fans_with_blade_length += 1
+            else:
+                # Store information about fans missing length
+                fans_missing_length.append({
+                    'title': title,
+                    'description': description,
+                    'raw_features': features['raw_features'],
+                    'parsed_features': features['parsed_features'],
+                    'numeric_features': features['numeric_features']
+                })
+        
+        # Update feature keys statistics
+        for key in features['parsed_features'].keys():
+            feature_keys_stats[key] = feature_keys_stats.get(key, 0) + 1
+        
+        if not features['raw_features']:
             empty_features_count += 1
             if empty_features_count <= 5:  # Print first 5 examples of empty features
                 print(f"\nEmpty features for row:")
                 print(f"SKU: {row.get('SKU', 'N/A')}")
-                print(f"Title: {row.get('title', 'N/A')}")
+                print(f"Title: {title}")
                 print(f"Raw features value: {row.get('Features', 'N/A')}")
 
         # Check if product is a best seller by looking at Tags
@@ -169,26 +398,55 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
 
         product = {
             'sku': clean_text(row.get('SKU', 'Not Available')),
-            'product_type': clean_text(row.get('Product Type', 'Not Available')),
+            'product_type': product_type,
             'brand': clean_text(row.get('Brand', 'Not Available')),
-            'title': clean_text(row.get('title', 'Not Available')),
+            'title': title,
             'better_home_price': row.get('Better Home Price', 'Not Available'),
             'retail_price': row.get('Retail Price', 'Not Available'),
             'warranty': clean_text(row.get('Warranty', 'Not Available')),
-            'features': features,
-            'description': clean_text(row.get('Description', 'Not Available')),
+            'features': features,  # Now contains structured feature information
+            'description': description,
             'url': clean_text(row.get('url', 'Not Available')),
             'image_src': clean_text(row.get('Image Src', 'Not Available')),
             'best_seller': 'Yes' if is_best_seller else 'No'
         }
         catalog.append(product)
 
-    print(f"\nTotal products with empty features: {empty_features_count}")
-    print(f"Total best seller products: {sum(1 for p in catalog if p['best_seller'] == 'Yes')}")
+    # Print feature keys statistics
+    print("\nFeature keys statistics:")
+    sorted_features = sorted(feature_keys_stats.items(), key=lambda x: x[1], reverse=True)
+    print("Top 20 most common feature keys:")
+    for key, count in sorted_features[:20]:
+        print(f"{key}: {count} occurrences")
+
+    print(f"\nCeiling Fan Statistics:")
+    print(f"Total ceiling fans: {ceiling_fan_count}")
+    print(f"Fans with standardized blade length: {fans_with_blade_length}")
+    print(f"Fans missing blade length: {ceiling_fan_count - fans_with_blade_length}")
+    
+    print("\nExamining fans missing blade length:")
+    for i, fan in enumerate(fans_missing_length, 1):
+        print(f"\nFan {i}:")
+        print(f"Title: {fan['title']}")
+        print(f"Description: {fan['description']}")
+        print("Raw features:", fan['raw_features'])
+        print("Parsed features:", fan['parsed_features'])
+        print("Numeric features:", fan['numeric_features'])
+    
+    # Debug: Print sample of ceiling fan entries
+    print("\nSample of ceiling fan entries with standardized measurements (first 2):")
+    ceiling_fans = [p for p in catalog if p['product_type'].lower() == 'ceiling fan'][:2]
+    for i, fan in enumerate(ceiling_fans):
+        print(f"\nCeiling Fan {i+1}:")
+        print(f"Title: {fan['title']}")
+        print("Features structure:")
+        print("- Numeric features:", json.dumps(fan['features']['numeric_features'], indent=2))
+        print("- Boolean features:", json.dumps(fan['features']['boolean_features'], indent=2))
+        print("- Text features:", json.dumps(fan['features']['text_features'], indent=2))
     
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump({'products': catalog}, f, indent=2, ensure_ascii=True)
-    print(f"Product catalog saved successfully to {file_path}.")
+    print(f"\nProduct catalog saved successfully to {file_path}.")
 
 """
 # ==========================
@@ -249,6 +507,9 @@ def build_faiss_index(embeddings, index_file_path):
 # Main Execution
 # ==========================
 def main():
+    print("Starting main function...")
+    print(f"Looking for CSV file at: {CSV_FILE_PATH}")
+    
     df = load_product_catalog(CSV_FILE_PATH)
     if df.empty:
         print("Product catalog could not be loaded. Exiting.")

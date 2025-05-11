@@ -132,6 +132,7 @@ def analyze_user_requirements(excel_file: str):
                 'size_sqft': float(df.iloc[0].get('Laundry: Size (square feet)', 50.0))  # Default to 50 sq ft if not specified
             },
             'dining': {
+                'fan_size': df.iloc[0].get('Dining: Fan', None),
                 'fans': int(df.iloc[0].get('Dining: Fan(s)?', 0)),
                 'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
                 'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
@@ -829,6 +830,91 @@ def get_specific_product_recommendations(
             if color_val:
                 filtered_products = [p for p in filtered_products if color_matches(p)]
 
+        # For ceiling fans, filter by blade_length if fan_size_cm is specified
+        if appliance_type == 'ceiling_fan' and 'fan_size_cm' in required_features and required_features['fan_size_cm']:
+            fan_size_cm = required_features['fan_size_cm']
+            def matches_blade_length(product):
+                # First, try numeric_features dict
+                features = product.get('features', {})
+                if isinstance(features, dict):
+                    numeric = features.get('numeric_features', {})
+                    blade = numeric.get('blade_length') or numeric.get('blade length')
+                    if blade and isinstance(blade, dict):
+                        val = blade.get('value')
+                        print(f"[DEBUG] Checking {product.get('title', 'No Title')} (numeric_features): blade_length={val}, required={fan_size_cm}")
+                        if val is not None and abs(val - fan_size_cm) <= 2:
+                            print(f"[DEBUG] -> MATCH (numeric_features)")
+                            return True
+                # Fallback: parse features list of strings
+                features_list = product.get('features', [])
+                if isinstance(features_list, list):
+                    for feat in features_list:
+                        feat_lower = feat.lower()
+                        # Look for 'blade length' or 'fan size'
+                        if 'blade length' in feat_lower or 'fan size' in feat_lower:
+                            match = re.search(r'(\d+)\s*(mm|cm)?', feat_lower)
+                            if match:
+                                val = int(match.group(1))
+                                unit = match.group(2)
+                                # Convert mm to cm if needed
+                                if unit == 'mm':
+                                    val = val // 10
+                                print(f"[DEBUG] Checking {product.get('title', 'No Title')} (features list): {feat} -> blade_length={val}, required={fan_size_cm}")
+                                if abs(val - fan_size_cm) <= 2:
+                                    print(f"[DEBUG] -> MATCH (features list)")
+                                    return True
+                return False
+            # DEBUG: Print all candidate ceiling fans before blade length matching:
+            print("[DEBUG] Candidate ceiling fans before blade length matching:")
+            for p in filtered_products:
+                print(f"  - {p.get('title', 'No Title')} | features: {p.get('features')}")
+            # First, filter by blade length
+            blade_matched_products = [p for p in filtered_products if matches_blade_length(p)]
+            # Now, filter by budget among those
+            budget_matched = []
+            for product in blade_matched_products:
+                try:
+                    price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
+                except (ValueError, TypeError):
+                    price = 0.0
+                if target_budget_category == 'premium':
+                    budget_matched.append(product)
+                elif target_budget_category == 'mid':
+                    if price <= ranges.get('mid', float('inf')):
+                        budget_matched.append(product)
+                else:
+                    if price <= ranges.get('budget', float('inf')):
+                        budget_matched.append(product)
+            # If none in budget, use all blade-matched products
+            if budget_matched:
+                blade_matched_products = budget_matched
+            # Now, prioritize blade-matched products at the top of the recommendations
+            # Remove blade-matched products from filtered_products to avoid duplicates
+            non_blade_matched = [p for p in filtered_products if p not in blade_matched_products]
+            # Combine, with blade-matched first
+            filtered_products = blade_matched_products + non_blade_matched
+
+        # After all filtering and sorting, before building final_recommendations
+        print("[DEBUG] Filtered ceiling fans before final_recommendations:")
+        for p in filtered_products:
+            blade_length = None
+            features = p.get('features', {})
+            if isinstance(features, dict):
+                numeric = features.get('numeric_features', {})
+                blade = numeric.get('blade_length') or numeric.get('blade length')
+                if blade and isinstance(blade, dict):
+                    blade_length = blade.get('value')
+            if not blade_length:
+                features_list = p.get('features', [])
+                if isinstance(features_list, list):
+                    for feat in features_list:
+                        if 'blade length' in feat.lower() or 'fan size' in feat.lower():
+                            match = re.search(r'(\d+)', feat)
+                            if match:
+                                blade_length = int(match.group(1))
+                                break
+            print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
+
         return final_recommendations
 
     else: # No catalog loaded or no products key
@@ -1065,24 +1151,34 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     
 
     # Process dining room requirements
-    if user_data['dining'].get('fans'):
-        # Extract the fan size from the input (e.g., '60 CM' or '120 CM')
-        fan_size_str = str(user_data['dining'].get('fan_size', '') or user_data['dining'].get('fans', '')).strip().upper()
+    if user_data['dining'].get('fan_size'):
+        fan_size_str = str(user_data['dining'].get('fan_size', '')).strip().upper()
         size_cm = None
+        # Handle different unit formats
         if 'CM' in fan_size_str:
-            try:
-                size_cm = int(fan_size_str.replace('CM', '').strip())
-            except Exception:
-                size_cm = None
+            size_cm = int(fan_size_str.replace('CM', '').strip())
         elif 'MM' in fan_size_str:
-            try:
-                size_cm = int(fan_size_str.replace('MM', '').strip()) // 10
-            except Exception:
-                size_cm = None
-        # Pass required_features to filter by size
-        required_features = {'fan_size_cm': size_cm} if size_cm else {}
+            size_cm = int(fan_size_str.replace('MM', '').strip()) // 10
+        elif fan_size_str.isdigit():
+            size_cm = int(fan_size_str)
+        # For dining rooms, if no specific size is given, default to 120cm (1200mm)
+        if not size_cm:
+            size_cm = 120
+        required_features = {
+            'fan_size_cm': size_cm,
+            'room_type': 'dining room'  # Add room type requirement
+        }
+        print(f"[DEBUG DINING FAN] fan_size_str={fan_size_str}, size_cm={size_cm}, required_features={required_features}")
         budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
-        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['dining'].get('color_theme'), user_data, required_features, room='dining')
+        recommendations = get_specific_product_recommendations(
+            'ceiling_fan',
+            budget_category,
+            user_data['demographics'],
+            user_data['dining'].get('color_theme'),
+            user_data,
+            required_features,
+            room='dining'
+        )
         final_list['dining']['fans'] = recommendations
 
     if user_data['dining'].get('ac'):
