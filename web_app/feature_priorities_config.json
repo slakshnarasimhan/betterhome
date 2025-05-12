@@ -1,0 +1,9 @@
+{
+    "ac": ["tonnage", "energy_rating", "sound_level", "color_match"],
+    "refrigerator": ["capacity", "energy_rating", "color_match"],
+    "washing_machine": ["capacity", "spin_speed", "energy_rating"],
+    "geyser": ["capacity", "energy_rating", "installation_type"],
+    "ceiling_fan": ["blade_length", "energy_rating", "color_match"],
+    "hob_top": ["burners", "material", "color_match"]
+    // Add more product types and their feature priorities as needed
+} 
