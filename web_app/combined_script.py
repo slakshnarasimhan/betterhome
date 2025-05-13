@@ -127,6 +127,17 @@ def analyze_user_requirements(excel_file: str):
                 'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
             },
+            'bedroom_3': {
+                'ac': df.iloc[0]['Bedroom 3: Air Conditioner (AC)?'] == 'Yes',
+                'bathroom': {
+                    'water_heater_type': df.iloc[0]['Bedroom 3: How do you bath with the hot & cold water?'],
+                    'exhaust_fan_size': df.iloc[0]['Bedroom 3: Exhaust fan size?'],
+                    'water_heater_ceiling': df.iloc[0]['Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?'],
+                    'led_mirror': df.iloc[0]['Bedroom 3: Would you like to have a LED Mirror?'] == 'Yes'  # Add LED mirror preference
+                },
+                'color_theme': df.iloc[0]['Bedroom 3: What is the colour theme?'],
+                'size_sqft': float(df.iloc[0].get('Bedroom 3: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
+            },
             'laundry': {
                 'washing_machine_type': df.iloc[0]['Laundry: Washing Machine?'],
                 'dryer_type': df.iloc[0]['Laundry: Dryer?'],
@@ -942,6 +953,15 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                 'led_mirror': []  # Add LED mirror list
             }
         },
+        'bedroom_3': {
+            'ac': [], 
+            'fans': [], 
+            'bathroom': {
+                'water_heater': [],
+                'exhaust_fan': [],
+                'led_mirror': []  # Add LED mirror list
+            }
+        },
         'laundry': {'washing_machine': [], 'dryer': []},
         'dining': {'fans': [], 'ac': []},
         'summary': {'total_budget': user_data['total_budget'], 'used_budget': 0}
@@ -1137,6 +1157,54 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
         final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
     
+######
+    # Process bedroom 3 requirements
+    if user_data['bedroom_3'].get('ac', False):
+        # print(f"[DEBUG] Bedroom 2 AC requirement: {user_data['bedroom_2'].get('ac', False)}") # DEBUG
+        budget_category = get_budget_category(user_data['total_budget'], 'ac')
+        # Calculate the recommended AC tonnage based on room size
+        bedroom3_size = user_data['bedroom_3'].get('size_sqft', 120.0)  # Default to 120 sq ft if not specified
+        recommended_tonnage = determine_ac_tonnage(bedroom3_size, 'bedroom_3')
+        # print(f"[DEBUG] Bedroom 2 AC tonnage recommendation: {recommended_tonnage} Ton for {bedroom2_size} sq ft")
+        required_features = {'tonnage': f"{recommended_tonnage} Ton"}
+        recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data, required_features)
+        final_list['bedroom_3']['ac'] = recommendations
+    
+    budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+    recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
+    final_list['bedroom_3']['fans'] = recommendations
+    
+    # Process bedroom 3 bathroom requirements
+    bedroom3_bath = user_data['bedroom_3'].get('bathroom', {})
+    bedroom3_bath_type = bedroom3_bath.get('water_heater_type', '')
+    bedroom3_bath_ceiling = bedroom3_bath.get('water_heater_ceiling', '')
+    geyser_recommendations_3 = []
+    if str(bedroom3_bath_type).strip().lower() == 'yes':
+        budget_category = get_budget_category(user_data['total_budget'], 'geyser')
+        # If ceiling is also yes, prefer horizontal
+        if str(bedroom3_bath_ceiling).strip().lower() == 'yes':
+            # First, try to get only horizontal water heaters
+            all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
+            horizontal_geysers = [g for g in all_geysers if 'horizontal' in g.get('title', '').lower() or any('horizontal' in f.lower() for f in g.get('features', []))]
+            if horizontal_geysers:
+                geyser_recommendations_3 = horizontal_geysers
+            else:
+                geyser_recommendations_3 = all_geysers
+        else:
+            geyser_recommendations_3 = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
+        final_list['bedroom_3']['bathroom']['water_heater'] = geyser_recommendations_3
+
+    # Process exhaust fan for bedroom 3 (updated to use color)
+    if user_data['bedroom_3'].get('bathroom') and user_data['bedroom_3']['bathroom'].get('exhaust_fan_size'):
+        budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+        required_features = {
+            'dimensions': user_data['bedroom_3']['bathroom'].get('exhaust_fan_size'),
+            'color': user_data['bedroom_3']['bathroom'].get('exhaust_fan_color')
+        }
+        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data, required_features)
+        final_list['bedroom_3']['bathroom']['exhaust_fan'] = recommendations
+ 
+######
     # Process laundry requirements
     if str(user_data['laundry'].get('washing_machine_type', '')).strip().lower() == 'yes':
         budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
@@ -1306,7 +1374,41 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_2']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         print(f"Added {len(final_list['bedroom_2']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         print("=== End LED Mirror Debug ===\n")
+#####
+   # Bedroom 3 Bathroom
+    if user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type'):
+        print("\n=== Water Heater Debug ===")
+        print(f"Bedroom 3 Bathroom - False Ceiling: {user_data['bedroom_3']['bathroom'].get('false_ceiling', False)}")
+        budget_category = get_budget_category(user_data['total_budget'], 'geyser')
+        required_features = {
+            'type': user_data['bedroom_3']['bathroom'].get('water_heater_type'),
+            'false_ceiling': user_data['bedroom_3']['bathroom'].get('false_ceiling', False)
+        }
+        print(f"Required features: {required_features}")
+        recommendations = get_specific_product_recommendations(
+            'geyser', budget_category, user_data['demographics'],
+            user_data['bedroom_3'].get('color_theme'), user_data, required_features, 'bedroom_3'
+        )
+        print(f"Found {len(recommendations)} water heaters")
+        final_list['bedroom_3']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
+        print(f"Added {len(final_list['bedroom_3']['bathroom']['water_heater'])} unique water heaters to recommendations")
+        print("=== End Water Heater Debug ===\n")
 
+    # Add LED mirror recommendations for bedroom 3 bathroom
+    if user_data['bedroom_3'].get('bathroom', {}).get('led_mirror', False):
+        print("\n=== LED Mirror Debug ===")
+        print("Bedroom 3 Bathroom - LED Mirror requested")
+        budget_category = get_budget_category(user_data['total_budget'], 'led_mirror')
+        recommendations = get_specific_product_recommendations(
+            'led_mirror', budget_category, user_data['demographics'],
+            user_data['bedroom_3'].get('color_theme'), user_data, None, 'bedroom_3'
+        )
+        print(f"Found {len(recommendations)} LED mirrors")
+        final_list['bedroom_3']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
+        print(f"Added {len(final_list['bedroom_3']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
+        print("=== End LED Mirror Debug ===\n")
+
+#####
     return final_list
 
 def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
@@ -1354,7 +1456,21 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
         return f"Second bedroom of {room_size} sq ft with {user_data['bedroom_2'].get('color_theme', 'neutral')} theme, " \
                f"{ac_info}, " \
                f"and a bathroom equipped with {user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+    ######
+    elif room == 'bedroom_3':
+        room_size = user_data['bedroom_3'].get('size_sqft', 120.0)
+        ac_info = ""
+        if user_data['bedroom_3'].get('ac', False):
+            recommended_tonnage = determine_ac_tonnage(room_size, 'bedroom_3')
+            ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
+        else:
+            ac_info = "no AC"
+            
+        return f"Third bedroom of {room_size} sq ft with {user_data['bedroom_3'].get('color_theme', 'neutral')} theme, " \
+               f"{ac_info}, " \
+               f"and a bathroom equipped with {user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
     
+    ######
     elif room == 'laundry':
         room_size = user_data['laundry'].get('size_sqft', 50.0)
         return f"Laundry area of {room_size} sq ft equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine" \
@@ -2193,6 +2309,19 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
         return f"Second bedroom of {room_size} sq ft with {user_data['bedroom_2'].get('color_theme', 'neutral')} theme, " \
                f"{ac_info}, " \
                f"and a bathroom equipped with {user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+    
+    elif room == 'bedroom_3':
+        room_size = user_data['bedroom_3'].get('size_sqft', 120.0)
+        ac_info = ""
+        if user_data['bedroom_3'].get('ac', False):
+            recommended_tonnage = determine_ac_tonnage(room_size, 'bedroom_3')
+            ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
+        else:
+            ac_info = "no AC"
+            
+        return f"Third bedroom of {room_size} sq ft with {user_data['bedroom_3'].get('color_theme', 'neutral')} theme, " \
+               f"{ac_info}, " \
+               f"and a bathroom equipped with {user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."    
     
     elif room == 'laundry':
         room_size = user_data['laundry'].get('size_sqft', 50.0)
@@ -3637,7 +3766,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         """
 
         # NEW: Render bathroom appliances for bedrooms
-        if room in ['master_bedroom', 'bedroom_2'] and 'bathroom' in appliances:
+        if room in ['master_bedroom', 'bedroom_2', 'bedroom_3'] and 'bathroom' in appliances:
             for bath_appliance_type, bath_products in appliances['bathroom'].items():
                 # print(f"[DEBUG HTML] {room} bathroom {bath_appliance_type}: {bath_products}")
                 if not isinstance(bath_products, list) or not bath_products:
