@@ -110,7 +110,7 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
+                    'false_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'] == 'Yes'  # Add LED mirror preference
                 },
                 'color_theme': df.iloc[0]['Master: What is the colour theme?'],
@@ -121,7 +121,7 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
+                    'false_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'] == 'Yes'  # Add LED mirror preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
@@ -132,7 +132,7 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Bedroom 3: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 3: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?'],
+                    'false_ceiling': df.iloc[0]['Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Bedroom 3: Would you like to have a LED Mirror?'] == 'Yes'  # Add LED mirror preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 3: What is the colour theme?'],
@@ -341,8 +341,8 @@ def is_horizontal_water_heater(product: Dict[str, Any]) -> bool:
     """Check if a water heater is horizontal based on title keywords."""
     title = product.get('title', '').lower()
     is_horizontal = any(keyword in title for keyword in ['horizontal', 'slim', 'rhs'])
-    print(f"[DEBUG] Checking water heater: {title}")
-    print(f"[DEBUG] Is horizontal: {is_horizontal}")
+    # print(f"[DEBUG] Checking water heater: {title}")
+    # print(f"[DEBUG] Is horizontal: {is_horizontal}")
     return is_horizontal
 
 # Function to get specific product recommendations
@@ -366,7 +366,7 @@ def get_specific_product_recommendations(
     if catalog and "products" in catalog:
         if appliance_type == 'geyser':
             all_types = set(str(p.get('product_type', 'No type')) for p in catalog['products'])
-            print(f"[DEBUG][Geyser] All product types in catalog: {sorted(all_types)}")
+            # print(f"[DEBUG][Geyser] All product types in catalog: {sorted(all_types)}")
         norm_type = appliance_type.lower().replace('_', ' ')
         # Adjust filtering logic to handle special cases
         filtered_products = []
@@ -380,12 +380,12 @@ def get_specific_product_recommendations(
                 # Special case: geyser can be labeled as 'geyser', 'water heater', 'instant water heater', or 'storage water heater'
                 elif norm_type == 'geyser':
                     matches = any(t in product_type_norm for t in ['geyser', 'water heater', 'instant water heater', 'storage water heater'])
-                    print(f"[DEBUG] Found water heater: {p.get('title')}")
+                    # print(f"[DEBUG] Found water heater: {p.get('title')}")
                     # If false ceiling installation is required, only include horizontal water heaters
                     if matches and required_features.get('false_ceiling', False):
-                        print(f"[DEBUG] False ceiling required, checking orientation")
+                        # print(f"[DEBUG] False ceiling required, checking orientation")
                         matches = is_horizontal_water_heater(p)
-                        print(f"[DEBUG] After orientation check: {matches}")
+                        # print(f"[DEBUG] After orientation check: {matches}")
                 else:
                     matches = product_type_norm == norm_type
                 if matches:
@@ -657,10 +657,10 @@ def get_specific_product_recommendations(
 
         # DEBUG: Print top N products after sorting
         # if appliance_type == 'ac':
-             # print("[DEBUG AC SORTING] Top 5 AC candidates after sorting:")
-             #for idx, p_data in enumerate(matching_products_data[:5]):
-             #      print(f"  {idx+1}. {p_data.get('brand', 'N/A')} - {p_data.get('model', 'N/A')} "
-             #            f"(Price: {p_data.get('price', 0):.2f}, FeatScore: {p_data.get('feature_match_score', 0)}, RelScore: {p_data.get('relevance_score', 0)})")
+        #     print("[DEBUG AC SORTING] Top 5 AC candidates after sorting:")
+        #     for idx, p_data in enumerate(matching_products_data[:5]):
+        #         print(f"  {idx+1}. {p_data.get('brand', 'N/A')} - {p_data.get('model', 'N/A')} "
+        #               f"(Price: {p_data.get('price', 0):.2f}, FeatScore: {p_data.get('feature_match_score', 0)}, RelScore: {p_data.get('relevance_score', 0)})")
 
         # Group top products by model (using existing logic, but apply to sorted list)
         # Take the top N unique models after sorting
@@ -824,9 +824,9 @@ def get_specific_product_recommendations(
                     blade = numeric.get('blade_length') or numeric.get('blade length')
                     if blade and isinstance(blade, dict):
                         val = blade.get('value')
-                        print(f"[DEBUG] Checking {product.get('title', 'No Title')} (numeric_features): blade_length={val}, required={fan_size_cm}")
+                        # print(f"[DEBUG] Checking {product.get('title', 'No Title')} (numeric_features): blade_length={val}, required={fan_size_cm}")
                         if val is not None and abs(val - fan_size_cm) <= 2:
-                            print(f"[DEBUG] -> MATCH (numeric_features)")
+                            # print(f"[DEBUG] -> MATCH (numeric_features)")
                             return True
                 # Fallback: parse features list of strings
                 features_list = product.get('features', [])
@@ -842,14 +842,14 @@ def get_specific_product_recommendations(
                                 # Convert mm to cm if needed
                                 if unit == 'mm':
                                     val = val // 10
-                                print(f"[DEBUG] Checking {product.get('title', 'No Title')} (features list): {feat} -> blade_length={val}, required={fan_size_cm}")
+                                # print(f"[DEBUG] Checking {product.get('title', 'No Title')} (features list): {feat} -> blade_length={val}, required={fan_size_cm}")
                                 if abs(val - fan_size_cm) <= 2:
-                                    print(f"[DEBUG] -> MATCH (features list)")
+                                    # print(f"[DEBUG] -> MATCH (features list)")
                                     return True
                 return False
             # Only print debug info for dining room ceiling fans
             if appliance_type == 'ceiling_fan' and room == 'dining':
-                print("[DEBUG] Filtered ceiling fans before final_recommendations:")
+                # print("[DEBUG] Filtered ceiling fans before final_recommendations:")
                 for p in filtered_products:
                     if p.get('product_type', '').lower() != 'ceiling fan':
                         continue
@@ -869,10 +869,10 @@ def get_specific_product_recommendations(
                                     if match:
                                         blade_length = int(match.group(1))
                                         break
-                    print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
+                    # print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
 
         # After all filtering and sorting, before building final_recommendations
-        print("[DEBUG] Filtered ceiling fans before final_recommendations1:")
+        # print("[DEBUG] Filtered ceiling fans before final_recommendations1:")
         for p in filtered_products:
             blade_length = None
             features = p.get('features', {})
@@ -891,7 +891,8 @@ def get_specific_product_recommendations(
                                 blade_length = int(match.group(1))
                                 break
             if appliance_type == 'ceiling_fan' and room == 'dining':
-                print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
+                # print(f"  - {p.get('title', 'No Title')} - blade_length={blade_length}")
+                pass
 
         # --- Room Type Filtering Helper ---
         def matches_room_type(product, required_room_type):
@@ -3054,8 +3055,8 @@ def download_image(image_url: str, save_dir: str) -> str:
 
 # Function to generate an HTML file with recommendations
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
-    import pprint
-    pprint.pprint(final_list)
+    #import pprint
+    #pprint.pprint(final_list)
     # print("[DEBUG HTML] final_list keys:", list(final_list.keys()))
     """Generate an HTML file with user information and product recommendations."""
     
