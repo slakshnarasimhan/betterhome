@@ -519,6 +519,65 @@
                     }, false)
                 })
         })()
+
+        // Dynamic form handling
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle bedroom count changes
+            const bedroomsInput = document.getElementById('bedrooms');
+            const bedroom2Section = document.querySelector('.form-section:nth-of-type(5)');
+            const bedroom3Section = document.querySelector('.form-section:nth-of-type(6)');
+
+            function updateBedroomSections() {
+                const count = parseInt(bedroomsInput.value) || 0;
+                bedroom2Section.style.display = count >= 2 ? 'block' : 'none';
+                bedroom3Section.style.display = count >= 3 ? 'block' : 'none';
+            }
+
+            bedroomsInput.addEventListener('change', updateBedroomSections);
+            updateBedroomSections(); // Initial state
+
+            // Handle bathroom count changes
+            const bathroomsInput = document.getElementById('bathrooms');
+            const masterBathroomSection = document.querySelector('.form-section:nth-of-type(4)');
+            const bedroom2BathroomSection = document.querySelector('.form-section:nth-of-type(5)');
+            const bedroom3BathroomSection = document.querySelector('.form-section:nth-of-type(6)');
+
+            function updateBathroomSections() {
+                const count = parseInt(bathroomsInput.value) || 0;
+                masterBathroomSection.style.display = count >= 1 ? 'block' : 'none';
+                bedroom2BathroomSection.style.display = count >= 2 ? 'block' : 'none';
+                bedroom3BathroomSection.style.display = count >= 3 ? 'block' : 'none';
+            }
+
+            bathroomsInput.addEventListener('change', updateBathroomSections);
+            updateBathroomSections(); // Initial state
+
+            // Handle water heater type changes
+            const waterHeaterInputs = document.querySelectorAll('select[id$="_water_heater_type"]');
+            waterHeaterInputs.forEach(input => {
+                const ceilingInput = input.parentElement.querySelector('select[id$="_water_heater_ceiling"]');
+                if (ceilingInput) {
+                    input.addEventListener('change', function() {
+                        ceilingInput.style.display = this.value === 'yes' ? 'block' : 'none';
+                    });
+                    // Initial state
+                    ceilingInput.style.display = input.value === 'yes' ? 'block' : 'none';
+                }
+            });
+
+            // Handle exhaust fan size changes
+            const exhaustFanInputs = document.querySelectorAll('select[id$="_exhaust_fan_size"]');
+            exhaustFanInputs.forEach(input => {
+                const colorInput = input.parentElement.querySelector('select[id$="_exhaust_fan_color"]');
+                if (colorInput) {
+                    input.addEventListener('change', function() {
+                        colorInput.style.display = this.value !== 'I Don\'t Know' ? 'block' : 'none';
+                    });
+                    // Initial state
+                    colorInput.style.display = input.value !== 'I Don\'t Know' ? 'block' : 'none';
+                }
+            });
+        });
     </script>
 </body>
 </html> 
