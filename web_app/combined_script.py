@@ -2293,51 +2293,6 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # print("[DEBUG HTML] final_list keys:", list(final_list.keys()))
     """Generate an HTML file with user information and product recommendations."""
     
-    # Add the generate_concise_description function
-    def generate_concise_description(product):
-        """
-        Generate a concise 2-3 line description for a product.
-        If description is NaN, create a meaningful description from available data.
-        """
-        description = product.get('description', '')
-        
-        # If description is NaN or empty, create one from available data
-        if pd.isna(description) or not description.strip():
-            product_type = product.get('appliance_type', '')
-            brand = product.get('brand', '')
-            features = product.get('features', '')
-            
-            # Create a meaningful description from available data
-            description_parts = []
-            
-            # Add product type and brand
-            if product_type and brand:
-                description_parts.append(f"{brand} {product_type}")
-            
-            # Add key features if available
-            if features and isinstance(features, str):
-                # Take first 2-3 key features
-                features_list = [f.strip() for f in features.split(',') if f.strip()]
-                if features_list:
-                    description_parts.append(f"Key features: {', '.join(features_list[:3])}")
-            
-            # Add capacity if available
-            capacity = product.get('capacity', '')
-            if capacity:
-                description_parts.append(f"Capacity: {capacity}")
-            
-            description = '. '.join(description_parts)
-        
-        # If we still have a description, make it concise (2-3 sentences)
-        if description:
-            # Split into sentences
-            sentences = [s.strip() for s in description.split('.') if s.strip()]
-            if len(sentences) > 3:
-                # Take first 3 sentences and join them
-                description = '. '.join(sentences[:3]) + '.'
-        
-        return description
-
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
     
@@ -2979,7 +2934,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
                             </div>
                             <div class="product-info-item">
-                                <span class="product-info-label">Description:</span> {generate_concise_description(product)}
+                                <span class="product-info-label">Description:</span> {product.get('concise_description', product.get('description', 'No description available'))}
                             </div>
                             <div class="product-info-item">
                             <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
@@ -3082,7 +3037,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
                                 </div>
                                 <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> {generate_concise_description(product)}
+                                    <span class="product-info-label">Description:</span> {product.get('concise_description', product.get('description', 'No description available'))}
                                 </div>
                                 <div class="product-info-item">
                                 <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
