@@ -63,7 +63,7 @@ def analyze_user_requirements(excel_file: str):
             'name': df.iloc[0]['Name'],
             'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
             'email': df.iloc[0]['E-mail'],
-            'address': df.iloc[0]['Apartment Address'],
+            'address': df.iloc[0]['Apartment Address'].replace('\n', ' '),
             'total_budget': float(df.iloc[0]['What is your overall budget for home appliances?']),
             'num_bedrooms': int(df.iloc[0]['Number of bedrooms']),
             'num_bathrooms': int(df.iloc[0]['Number of bathrooms']),
@@ -389,6 +389,25 @@ def get_specific_product_recommendations(
     recommendations = []
     product_groups = {}  # Dictionary to group products by model
     
+    # Define budget ranges for each appliance type
+    ranges = {
+        'refrigerator': {'budget': 40000, 'mid': 80000},  # Above 80000 is premium
+        'washing_machine': {'budget': 30000, 'mid': 50000},
+        'chimney': {'budget': 20000, 'mid': 35000},
+        'geyser': {'budget': 10000, 'mid': 20000},
+        'ceiling_fan': {'budget': 4000, 'mid': 6000},  # Updated to match actual product prices
+        'bathroom_exhaust': {'budget': 2000, 'mid': 4000},
+        'ac': {'budget': 75000, 'mid': 100000, 'premium': 150000},  # Increased thresholds to prioritize proper tonnage
+        'dishwasher': {'budget': 30000, 'mid': 50000},
+        'dryer': {'budget': 50000, 'mid': 75000},  # Updated dryer thresholds
+        'shower_system': {'budget': 30000, 'mid': 50000},
+        'gas_stove': {'budget': 15000, 'mid': 25000}, # Add gas stove
+        'hob_top': {'budget': 20000, 'mid': 40000}    # Add hob top
+    }
+    
+    # Get the ranges for this appliance type, or use default ranges
+    ranges = ranges.get(appliance_type, {'budget': 20000, 'mid': 40000})
+    
     # Process available products
     if catalog and "products" in catalog:
         if appliance_type == 'geyser':
@@ -417,6 +436,9 @@ def get_specific_product_recommendations(
                         print(f"[DEBUG][Geyser] No false ceiling, checking for vertical orientation")
                         matches = not is_horizontal_water_heater(p)
                         print(f"[DEBUG][Geyser] After orientation check: {matches}")
+                # Special case: bathroom_exhaust can be labeled as 'exhaust fan', 'bathroom exhaust', or 'ventilation fan'
+                elif norm_type == 'bathroom exhaust':
+                    matches = any(t in product_type_norm for t in ['exhaust fan', 'bathroom exhaust', 'ventilation fan'])
                 else:
                     matches = product_type_norm == norm_type
                 if matches:
@@ -803,6 +825,10 @@ def get_specific_product_recommendations(
 
         # After initial filtering for type, add this for bathroom_exhaust:
         if appliance_type == 'bathroom_exhaust' and required_features:
+            print("\n=== Bathroom Exhaust Fan Filtering Debug ===")
+            print(f"Required features: {required_features}")
+            print(f"Initial filtered products count: {len(filtered_products)}")
+            
             # --- Size Matching (blade length in cm or mm) ---
             size_val = str(required_features.get('dimensions', '') or '').strip().lower()
             size_num = None
@@ -812,6 +838,8 @@ def get_specific_product_recommendations(
                 if match:
                     size_num = float(match.group(1))
                     size_unit = match.group(2) or 'cm'  # Default to cm if not specified
+            print(f"Parsed size: {size_num} {size_unit}")
+            
             def blade_length_matches(product):
                 features = product.get('features', {})
                 numeric = features.get('numeric_features', {}) if isinstance(features, dict) else {}
@@ -830,19 +858,27 @@ def get_specific_product_recommendations(
                         tolerance = 2 if size_unit == 'mm' else 0.2
                         return abs(val - size_num) <= tolerance
                 return False
+            
             if size_num is not None:
                 filtered_products = [p for p in filtered_products if blade_length_matches(p)]
+                print(f"Products after size filtering: {len(filtered_products)}")
+            
             # --- Color Matching ---
             color_val = str(required_features.get('color', '') or '').strip().lower()
+            print(f"Required color: {color_val}")
+            
             def color_matches(product):
                 # Check color field, then search description and features
-                color_field = str(product.get('color', '')).lower()
-                desc = str(product.get('description', '')).lower()
-                features = product.get('features', [])
-                features_str = ' '.join(features).lower() if isinstance(features, list) else str(features).lower()
-                return color_val in color_field or color_val in desc or color_val in features_str
+                product_color = str(product.get('color', '') or '').lower()
+                if color_val and product_color:
+                    return color_val in product_color
+                return True  # If no color specified, don't filter
+            
             if color_val:
                 filtered_products = [p for p in filtered_products if color_matches(p)]
+                print(f"Products after color filtering: {len(filtered_products)}")
+            
+            print("=== End Bathroom Exhaust Fan Filtering Debug ===\n")
 
         # For ceiling fans, filter by blade_length if fan_size_cm is specified
         if appliance_type == 'ceiling_fan' and 'fan_size_cm' in required_features and required_features['fan_size_cm']:
@@ -1135,13 +1171,18 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Process exhaust fan for master (updated to use color)
     if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'):
+        print("\n=== Master Bedroom Exhaust Fan Debug ===")
+        print(f"Exhaust fan size: {user_data['master_bedroom']['bathroom'].get('exhaust_fan_size')}")
+        print(f"Exhaust fan color: {user_data['master_bedroom']['bathroom'].get('exhaust_fan_color')}")
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
         required_features = {
             'dimensions': user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'),
             'color': user_data['master_bedroom']['bathroom'].get('exhaust_fan_color')
         }
         recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
+        print(f"Found {len(recommendations)} recommendations")
         final_list['master_bedroom']['bathroom']['exhaust_fan'] = recommendations
+        print("=== End Master Bedroom Exhaust Fan Debug ===\n")
 
     # Process bedroom 2 requirements
     if user_data['bedroom_2'].get('ac', False):
@@ -1181,14 +1222,19 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Process exhaust fan for bedroom 2 (updated to use color)
     if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
+        print("\n=== Bedroom 2 Exhaust Fan Debug ===")
+        print(f"Exhaust fan size: {user_data['bedroom_2']['bathroom'].get('exhaust_fan_size')}")
+        print(f"Exhaust fan color: {user_data['bedroom_2']['bathroom'].get('exhaust_fan_color')}")
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
         required_features = {
             'dimensions': user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'),
             'color': user_data['bedroom_2']['bathroom'].get('exhaust_fan_color')
         }
         recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
+        print(f"Found {len(recommendations)} recommendations")
         final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
-    
+        print("=== End Bedroom 2 Exhaust Fan Debug ===\n")
+
 ######
     # Process bedroom 3 requirements
     if user_data['bedroom_3'].get('ac', False):
@@ -1255,13 +1301,18 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Process exhaust fan for bedroom 3 (updated to use color)
     if user_data['bedroom_3'].get('bathroom') and user_data['bedroom_3']['bathroom'].get('exhaust_fan_size'):
+        print("\n=== Bedroom 3 Exhaust Fan Debug ===")
+        print(f"Exhaust fan size: {user_data['bedroom_3']['bathroom'].get('exhaust_fan_size')}")
+        print(f"Exhaust fan color: {user_data['bedroom_3']['bathroom'].get('exhaust_fan_color')}")
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
         required_features = {
             'dimensions': user_data['bedroom_3']['bathroom'].get('exhaust_fan_size'),
             'color': user_data['bedroom_3']['bathroom'].get('exhaust_fan_color')
         }
         recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data, required_features)
+        print(f"Found {len(recommendations)} recommendations")
         final_list['bedroom_3']['bathroom']['exhaust_fan'] = recommendations
+        print("=== End Bedroom 3 Exhaust Fan Debug ===\n")
  
 ######
     # Process laundry requirements
