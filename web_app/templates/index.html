@@ -79,11 +79,23 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="bedrooms" class="form-label required">Number of bedrooms</label>
-                        <input type="number" class="form-control" id="bedrooms" name="bedrooms" required>
+                        <select class="form-select" id="bedrooms" name="bedrooms" required>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="bathrooms" class="form-label required">Number of bathrooms</label>
-                        <input type="number" class="form-control" id="bathrooms" name="bathrooms" required>
+                        <select class="form-select" id="bathrooms" name="bathrooms" required>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -529,12 +541,23 @@
 
             function updateBedroomSections() {
                 const count = parseInt(bedroomsInput.value) || 0;
-                bedroom2Section.style.display = count >= 2 ? 'block' : 'none';
-                bedroom3Section.style.display = count >= 3 ? 'block' : 'none';
+                console.log('Updating bedroom sections for count:', count);
+                
+                if (bedroom2Section) {
+                    bedroom2Section.style.display = count >= 2 ? 'block' : 'none';
+                    console.log('Bedroom 2 section display:', bedroom2Section.style.display);
+                }
+                
+                if (bedroom3Section) {
+                    bedroom3Section.style.display = count >= 3 ? 'block' : 'none';
+                    console.log('Bedroom 3 section display:', bedroom3Section.style.display);
+                }
             }
 
-            bedroomsInput.addEventListener('change', updateBedroomSections);
-            updateBedroomSections(); // Initial state
+            if (bedroomsInput) {
+                bedroomsInput.addEventListener('change', updateBedroomSections);
+                updateBedroomSections(); // Initial state
+            }
 
             // Handle bathroom count changes
             const bathroomsInput = document.getElementById('bathrooms');

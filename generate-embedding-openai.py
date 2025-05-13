@@ -9,6 +9,9 @@ import faiss
 from typing import Dict, List, Any
 import unicodedata
 import re
+import os
+from pathlib import Path
+import time
 
 # ==========================
 # Configuration
@@ -25,6 +28,38 @@ INDEX_FILE_TYPE = 'faiss_index.index_type'
 INDEX_FILE_BRAND = 'faiss_index.index_brand'
 INDEX_FILE_IMAGE = 'faiss_index.index_image'
 """
+
+def load_secrets():
+    """Load secrets from .streamlit/secrets.toml or environment variables."""
+    try:
+        # First try to load from Streamlit secrets
+        if hasattr(st, 'secrets') and 'OPENAI_API_KEY' in st.secrets:
+            return st.secrets['OPENAI_API_KEY']
+        
+        # Then try to load from environment variable
+        if 'OPENAI_API_KEY' in os.environ:
+            return os.environ['OPENAI_API_KEY']
+        
+        # Finally try to load from secrets.toml directly
+        secrets_path = Path('.streamlit/secrets.toml')
+        if secrets_path.exists():
+            import tomli
+            with open(secrets_path, 'rb') as f:
+                secrets = tomli.load(f)
+                if 'OPENAI_API_KEY' in secrets:
+                    return secrets['OPENAI_API_KEY']
+        
+        raise ValueError("OpenAI API key not found in any source")
+    except Exception as e:
+        print(f"Error loading secrets: {str(e)}")
+        raise
+
+# Initialize OpenAI API key
+try:
+    openai.api_key = load_secrets()
+except Exception as e:
+    print(f"Failed to initialize OpenAI API key: {str(e)}")
+    raise
 
 # ==========================
 # Step 1: Load Product Catalog
@@ -307,6 +342,56 @@ def standardize_fan_measurements(features_dict: Dict[str, Any], product_type: st
                 break
     return features_dict
 
+def generate_concise_description(description: str, features: Dict[str, Any], product_type: str) -> str:
+    """
+    Generate a concise 3-sentence description of the product using OpenAI's API.
+    """
+    max_retries = 3
+    retry_delay = 1  # seconds
+    
+    # Extract key features to keep prompt concise
+    key_features = []
+    if features and 'parsed_features' in features:
+        # Take first 5 most important features
+        key_features = list(features['parsed_features'].items())[:5]
+    
+    # Prepare a more concise prompt
+    prompt = f"""Create a 3-sentence product description for a {product_type}:
+1. Main benefit/unique selling point
+2. 2-3 key features: {', '.join([f"{k}: {v}" for k, v in key_features])}
+3. Compelling reason to choose this product
+
+Keep it clear and impactful."""
+
+    for attempt in range(max_retries):
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a product description expert who creates concise, compelling descriptions."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.7
+            )
+            
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                continue
+            else:
+                print(f"All {max_retries} attempts failed. Using fallback description.")
+                # Create a fallback description from available data
+                fallback = f"{product_type} with "
+                if key_features:
+                    fallback += ", ".join([f"{k}: {v}" for k, v in key_features[:3]])
+                else:
+                    fallback += "key features available"
+                return fallback
+
 def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     def clean_text(text):
         if not isinstance(text, str):
@@ -341,10 +426,8 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
         empty_features = df['Features'].apply(lambda x: not bool(parse_features(x)['raw_features']) if pd.notna(x) else True)
         print(f"Rows with empty features: {empty_features.sum()}")
 
-    catalog = []
-    empty_features_count = 0
-    feature_keys_stats = {}  # Track frequency of feature keys
-    
+    # Prepare all products first
+    products_to_process = []
     for _, row in df.iterrows():
         product_type = clean_text(row.get('Product Type', 'Not Available'))
         # Rename 'Bath Fittings' to 'Bathroom Fittings'
@@ -363,7 +446,6 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             if 'blade_length' in features['numeric_features']:
                 fans_with_blade_length += 1
             else:
-                # Store information about fans missing length
                 fans_missing_length.append({
                     'title': title,
                     'description': description,
@@ -371,18 +453,6 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
                     'parsed_features': features['parsed_features'],
                     'numeric_features': features['numeric_features']
                 })
-        
-        # Update feature keys statistics
-        for key in features['parsed_features'].keys():
-            feature_keys_stats[key] = feature_keys_stats.get(key, 0) + 1
-        
-        if not features['raw_features']:
-            empty_features_count += 1
-            if empty_features_count <= 5:  # Print first 5 examples of empty features
-                print(f"\nEmpty features for row:")
-                print(f"SKU: {row.get('SKU', 'N/A')}")
-                print(f"Title: {title}")
-                print(f"Raw features value: {row.get('Features', 'N/A')}")
 
         # Check if product is a best seller by looking at Tags
         tags = str(row.get('tags', '')).split(',')
@@ -396,15 +466,43 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             'better_home_price': row.get('Better Home Price', 'Not Available'),
             'retail_price': row.get('Retail Price', 'Not Available'),
             'warranty': clean_text(row.get('Warranty', 'Not Available')),
-            'features': features,  # Now contains structured feature information
+            'features': features,
             'description': description,
             'url': clean_text(row.get('url', 'Not Available')),
             'image_src': clean_text(row.get('Image Src', 'Not Available')),
             'best_seller': 'Yes' if is_best_seller else 'No'
         }
-        catalog.append(product)
+        products_to_process.append(product)
+
+    # Generate descriptions in parallel
+    def process_product(product):
+        try:
+            concise_description = generate_concise_description(
+                product['description'],
+                product['features'],
+                product['product_type']
+            )
+            product['concise_description'] = concise_description
+            return product
+        except Exception as e:
+            print(f"Error processing product {product['sku']}: {str(e)}")
+            product['concise_description'] = product['description'][:200] + "..."
+            return product
+
+    print("\nGenerating concise descriptions in parallel...")
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        catalog = list(tqdm(
+            executor.map(process_product, products_to_process),
+            total=len(products_to_process),
+            desc="Generating descriptions"
+        ))
 
     # Print feature keys statistics
+    feature_keys_stats = {}
+    for product in catalog:
+        for key in product['features']['parsed_features'].keys():
+            feature_keys_stats[key] = feature_keys_stats.get(key, 0) + 1
+
     print("\nFeature keys statistics:")
     sorted_features = sorted(feature_keys_stats.items(), key=lambda x: x[1], reverse=True)
     print("Top 20 most common feature keys:")
@@ -540,10 +638,10 @@ def main():
 
     # Build FAISS indexes
     print("Building FAISS indexes...")
-    build_faiss_index(product_embeddings, INDEX_FILE_PRODUCT)
-    build_faiss_index(product_type_embeddings, INDEX_FILE_TYPE)
-    build_faiss_index(brand_embeddings, INDEX_FILE_BRAND)
-    build_faiss_index(image_embeddings, INDEX_FILE_IMAGE)
+    #build_faiss_index(product_embeddings, INDEX_FILE_PRODUCT)
+    #build_faiss_index(product_type_embeddings, INDEX_FILE_TYPE)
+    #build_faiss_index(brand_embeddings, INDEX_FILE_BRAND)
+    #build_faiss_index(image_embeddings, INDEX_FILE_IMAGE)
     """
 
     print("\nProduct catalog generation completed successfully!")
