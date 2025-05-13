@@ -80,21 +80,15 @@
                     <div class="col-md-6 mb-3">
                         <label for="bedrooms" class="form-label required">Number of bedrooms</label>
                         <select class="form-select" id="bedrooms" name="bedrooms" required>
-                            <option value="1">1</option>
                             <option value="2">2</option>
                             <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="bathrooms" class="form-label required">Number of bathrooms</label>
                         <select class="form-select" id="bathrooms" name="bathrooms" required>
-                            <option value="1">1</option>
                             <option value="2">2</option>
                             <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
                         </select>
                     </div>
                 </div>
@@ -105,7 +99,11 @@
                 <h3>Hall Requirements</h3>
                 <div class="mb-3">
                     <label for="hall_fans" class="form-label required">Hall: Fan(s)?</label>
-                    <input type="number" class="form-control" id="hall_fans" name="hall_fans" required>
+                    <select class="form-select" id="hall_fans" name="hall_fans" required>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
                 </div>
                 <div class="mb-3">
                     <label for="hall_ac" class="form-label required">Hall: Air Conditioner (AC)?</label>
@@ -438,6 +436,98 @@
                 </div>
             </div>
 
+            <!-- Bedroom 3 Requirements -->
+            <div class="form-section" id="bedroom3-section" style="display: none;">
+                <h3>Bedroom 3 Requirements</h3>
+                <div class="mb-3">
+                    <label for="bedroom3_ac" class="form-label required">Bedroom 3: Air Conditioner (AC)?</label>
+                    <select class="form-select" id="bedroom3_ac" name="bedroom3_ac" required>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom3_water" class="form-label required">Bedroom 3: How do you bath with the hot & cold water?</label>
+                    <input type="text" class="form-control" id="bedroom3_water" name="bedroom3_water" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label required">Bedroom 3: Exhaust fan size?</label>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_150" name="bedroom3_exhaust_size" value="150mm" required>
+                        <label for="bedroom3_exhaust_150">150mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_200" name="bedroom3_exhaust_size" value="200mm">
+                        <label for="bedroom3_exhaust_200">200mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_250" name="bedroom3_exhaust_size" value="250mm">
+                        <label for="bedroom3_exhaust_250">250mm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_unknown" name="bedroom3_exhaust_size" value="I Don't Know">
+                        <label for="bedroom3_exhaust_unknown">I Don't Know</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bedroom 3: Exhaust fan colour?</label>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_white" name="bedroom3_exhaust_color" value="White">
+                        <label for="bedroom3_exhaust_white">White</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_black" name="bedroom3_exhaust_color" value="Black">
+                        <label for="bedroom3_exhaust_black">Black</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_brown" name="bedroom3_exhaust_color" value="Brown">
+                        <label for="bedroom3_exhaust_brown">Brown</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom3_color" class="form-label required">Bedroom 3: What is the colour theme?</label>
+                    <select class="form-select" id="bedroom3_color" name="bedroom3_color" required>
+                        <option value="">Select color theme</option>
+                        <option value="White">White</option>
+                        <option value="Brown">Brown</option>
+                        <option value="Grey">Grey</option>
+                        <option value="Blue">Blue</option>
+                        <option value="Green">Green</option>
+                        <option value="Yellow">Yellow</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom3_area" class="form-label">Bedroom 3: What is the area of the bedroom in square feet?</label>
+                    <input type="text" class="form-control" id="bedroom3_area" name="bedroom3_area">
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom3_for_kids" class="form-label">Bedroom 3: Is this for kids above</label>
+                    <select class="form-select" id="bedroom3_for_kids" name="bedroom3_for_kids">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom3_water_heater_ceiling" class="form-label">Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?</label>
+                    <select class="form-select" id="bedroom3_water_heater_ceiling" name="bedroom3_water_heater_ceiling">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom3_led_mirror" class="form-label">Bedroom 3: Would you like to have a LED Mirror?</label>
+                    <select class="form-select" id="bedroom3_led_mirror" name="bedroom3_led_mirror">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="bedroom3_other_info" class="form-label">Bedroom 3: Any other information?</label>
+                    <textarea class="form-control" id="bedroom3_other_info" name="bedroom3_other_info" rows="2"></textarea>
+                </div>
+            </div>
+
             <!-- Laundry Requirements -->
             <div class="form-section">
                 <h3>Laundry Requirements</h3>
@@ -532,74 +622,13 @@
                 })
         })()
 
-        // Dynamic form handling
-        document.addEventListener('DOMContentLoaded', function() {
-            // Handle bedroom count changes
-            const bedroomsInput = document.getElementById('bedrooms');
-            const bedroom2Section = document.querySelector('.form-section:nth-of-type(5)');
-            const bedroom3Section = document.querySelector('.form-section:nth-of-type(6)');
-
-            function updateBedroomSections() {
-                const count = parseInt(bedroomsInput.value) || 0;
-                console.log('Updating bedroom sections for count:', count);
-                
-                if (bedroom2Section) {
-                    bedroom2Section.style.display = count >= 2 ? 'block' : 'none';
-                    console.log('Bedroom 2 section display:', bedroom2Section.style.display);
-                }
-                
-                if (bedroom3Section) {
-                    bedroom3Section.style.display = count >= 3 ? 'block' : 'none';
-                    console.log('Bedroom 3 section display:', bedroom3Section.style.display);
-                }
+        document.getElementById('bedrooms').addEventListener('input', function() {
+            var bedroom3Section = document.getElementById('bedroom3-section');
+            if (this.value == '3') {
+                bedroom3Section.style.display = 'block';
+            } else {
+                bedroom3Section.style.display = 'none';
             }
-
-            if (bedroomsInput) {
-                bedroomsInput.addEventListener('change', updateBedroomSections);
-                updateBedroomSections(); // Initial state
-            }
-
-            // Handle bathroom count changes
-            const bathroomsInput = document.getElementById('bathrooms');
-            const masterBathroomSection = document.querySelector('.form-section:nth-of-type(4)');
-            const bedroom2BathroomSection = document.querySelector('.form-section:nth-of-type(5)');
-            const bedroom3BathroomSection = document.querySelector('.form-section:nth-of-type(6)');
-
-            function updateBathroomSections() {
-                const count = parseInt(bathroomsInput.value) || 0;
-                masterBathroomSection.style.display = count >= 1 ? 'block' : 'none';
-                bedroom2BathroomSection.style.display = count >= 2 ? 'block' : 'none';
-                bedroom3BathroomSection.style.display = count >= 3 ? 'block' : 'none';
-            }
-
-            bathroomsInput.addEventListener('change', updateBathroomSections);
-            updateBathroomSections(); // Initial state
-
-            // Handle water heater type changes
-            const waterHeaterInputs = document.querySelectorAll('select[id$="_water_heater_type"]');
-            waterHeaterInputs.forEach(input => {
-                const ceilingInput = input.parentElement.querySelector('select[id$="_water_heater_ceiling"]');
-                if (ceilingInput) {
-                    input.addEventListener('change', function() {
-                        ceilingInput.style.display = this.value === 'yes' ? 'block' : 'none';
-                    });
-                    // Initial state
-                    ceilingInput.style.display = input.value === 'yes' ? 'block' : 'none';
-                }
-            });
-
-            // Handle exhaust fan size changes
-            const exhaustFanInputs = document.querySelectorAll('select[id$="_exhaust_fan_size"]');
-            exhaustFanInputs.forEach(input => {
-                const colorInput = input.parentElement.querySelector('select[id$="_exhaust_fan_color"]');
-                if (colorInput) {
-                    input.addEventListener('change', function() {
-                        colorInput.style.display = this.value !== 'I Don\'t Know' ? 'block' : 'none';
-                    });
-                    // Initial state
-                    colorInput.style.display = input.value !== 'I Don\'t Know' ? 'block' : 'none';
-                }
-            });
         });
     </script>
 </body>

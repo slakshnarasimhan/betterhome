@@ -93,10 +93,27 @@ def submit():
         'Dining: Air Conditioner (AC)?': request.form.get('dining_ac'),
         'Dining: Colour theme?': request.form.get('dining_color'),
         'Dining: What is the square feet?': request.form.get('dining_square_feet'),
+        'Bedroom 3: Air Conditioner (AC)?': request.form.get('bedroom3_ac'),
+        'Bedroom 3: How do you bath with the hot & cold water?': request.form.get('bedroom3_water'),
+        'Bedroom 3: Exhaust fan size?': request.form.get('bedroom3_exhaust_size'),
+        'Bedroom 3: What is the colour theme?': request.form.get('bedroom3_color'),
+        'Bedroom 3: What is the area of the bedroom in square feet?': request.form.get('bedroom3_area'),
+        'Bedroom 3: Is this for kids above': request.form.get('bedroom3_for_kids'),
+        'Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?': request.form.get('bedroom3_water_heater_ceiling'),
+        'Bedroom 3: Exhaust fan colour?': request.form.get('bedroom3_exhaust_color'),
+        'Bedroom 3: Would you like to have a LED Mirror?': request.form.get('bedroom3_led_mirror'),
+        'Bedroom 3: Any other information?': request.form.get('bedroom3_other_info'),
     }
+
+    # Debug: Print form data to verify Bedroom 3 data
+    print("Form Data:", form_data)
 
     # Create a DataFrame from the form data
     df = pd.DataFrame([form_data])
+    
+    # Debug: Print DataFrame to verify Bedroom 3 data
+    print("DataFrame:")
+    print(df)
     
     # Capture the timestamp once for consistent file naming
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -127,23 +144,71 @@ def submit():
     env = os.environ.copy()
     env['FLASK_APP'] = 'app.py'  # Set Flask environment variable
     env['BETTERHOME_WEB_APP'] = 'true'  # Custom environment variable to indicate web app mode
-    subprocess.run(['python3', 'combined_script.py', excel_filename], env=env)
     
-    # Check if the recommendation files were created
-    pdf_filename = excel_filename.replace('.xlsx', '.pdf')
-    html_filename = excel_filename.replace('.xlsx', '.html')
-    
-    if os.path.exists(pdf_filename) and os.path.exists(html_filename):
-        # Get the basename for the PDF download link
-        pdf_basename = os.path.basename(pdf_filename)
-            
-        # For the HTML content, we'll simply redirect to a route that serves the HTML file directly
-        html_basename = os.path.basename(html_filename)
+    try:
+        # Get the absolute path to the web_app directory
+        web_app_dir = os.path.dirname(os.path.abspath(__file__))
+        script_path = os.path.join(web_app_dir, 'combined_script.py')
         
-        return render_template('results.html', 
-                             html_file=html_basename,
-                             pdf_path=url_for('download_file', filename=pdf_basename))
-    else:
+        print(f"Web app directory: {web_app_dir}")
+        print(f"Script path: {script_path}")
+        print(f"Excel filename: {excel_filename}")
+        
+        if not os.path.exists(script_path):
+            print(f"Error: combined_script.py not found at {script_path}")
+            return "Error: Recommendation script not found. Please check the installation."
+        
+        # Run the script with the correct working directory
+        result = subprocess.run(
+            ['python3', script_path, excel_filename],
+            env=env,
+            cwd=web_app_dir,
+            capture_output=True,
+            text=True
+        )
+        
+        # Print the full output for debugging
+        print("Script stdout:", result.stdout)
+        print("Script stderr:", result.stderr)
+        print("Script return code:", result.returncode)
+        
+        # Check if the script ran successfully
+        if result.returncode != 0:
+            print(f"Error running combined_script.py: {result.stderr}")
+            return "Error generating recommendations. Please try again."
+            
+        # Check if the recommendation files were created
+        pdf_filename = excel_filename.replace('.xlsx', '.pdf')
+        html_filename = excel_filename.replace('.xlsx', '.html')
+        
+        print(f"Checking for files:")
+        print(f"PDF file exists: {os.path.exists(pdf_filename)}")
+        print(f"HTML file exists: {os.path.exists(html_filename)}")
+        
+        if os.path.exists(html_filename):  # Only check for HTML file since PDF is optional
+            # Get the basename for the files
+            pdf_basename = os.path.basename(pdf_filename) if os.path.exists(pdf_filename) else None
+            html_basename = os.path.basename(html_filename)
+            
+            # Create the URLs for the files
+            html_url = url_for('view_html', filename=html_basename)
+            pdf_url = url_for('download_file', filename=pdf_basename) if pdf_basename else None
+            
+            print(f"HTML URL: {html_url}")
+            print(f"PDF URL: {pdf_url}")
+            
+            return render_template('results.html', 
+                                 html_file=html_basename,
+                                 pdf_path=pdf_url)
+        else:
+            print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
+            return "Error generating recommendations. Please try again."
+            
+    except Exception as e:
+        print(f"Error in recommendation generation: {str(e)}")
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
         return "Error generating recommendations. Please try again."
 
 @app.route('/download/<filename>')
@@ -158,21 +223,36 @@ def serve_uploads(filename):
 @app.route('/view_html/<filename>')
 def view_html(filename):
     """Serve the HTML file with proper content type"""
-    # Read the HTML file
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
     try:
+        # Get the full path to the HTML file
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        print(f"Attempting to serve HTML file: {file_path}")
+        
+        if not os.path.exists(file_path):
+            print(f"HTML file not found at: {file_path}")
+            return "Error: HTML file not found", 404
+            
+        # Read the HTML content
         with open(file_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
             
         # Check if the HTML content contains unprocessed template variables
         if '{logo_html}' in html_content or "{user_data['name']}" in html_content:
-            # Handle the case where variables weren't substituted
+            print("Warning: Template variables not correctly processed")
             return "Error: Template variables not correctly processed. Please check the logs and try again."
             
-        return send_from_directory(UPLOAD_FOLDER, filename, mimetype='text/html')
+        # Serve the file with the correct content type
+        return send_file(
+            file_path,
+            mimetype='text/html',
+            as_attachment=False
+        )
     except Exception as e:
-        print(f"Error serving HTML file: {e}")
-        return f"Error: {str(e)}"
+        print(f"Error serving HTML file: {str(e)}")
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
+        return f"Error serving HTML file: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002) 
