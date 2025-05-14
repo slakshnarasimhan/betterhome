@@ -440,20 +440,20 @@
             <div class="form-section" id="bedroom3-section" style="display: none;">
                 <h3>Bedroom 3 Requirements</h3>
                 <div class="mb-3">
-                    <label for="bedroom3_ac" class="form-label required">Bedroom 3: Air Conditioner (AC)?</label>
-                    <select class="form-select" id="bedroom3_ac" name="bedroom3_ac" required>
+                    <label for="bedroom3_ac" class="form-label">Bedroom 3: Air Conditioner (AC)?</label>
+                    <select class="form-select" id="bedroom3_ac" name="bedroom3_ac">
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="bedroom3_water" class="form-label required">Bedroom 3: How do you bath with the hot & cold water?</label>
-                    <input type="text" class="form-control" id="bedroom3_water" name="bedroom3_water" required>
+                    <label for="bedroom3_water" class="form-label">Bedroom 3: How do you bath with the hot & cold water?</label>
+                    <input type="text" class="form-control" id="bedroom3_water" name="bedroom3_water">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label required">Bedroom 3: Exhaust fan size?</label>
+                    <label class="form-label">Bedroom 3: Exhaust fan size?</label>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_150" name="bedroom3_exhaust_size" value="150mm" required>
+                        <input type="radio" id="bedroom3_exhaust_150" name="bedroom3_exhaust_size" value="150mm">
                         <label for="bedroom3_exhaust_150">150mm</label>
                     </div>
                     <div>
@@ -485,8 +485,8 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label for="bedroom3_color" class="form-label required">Bedroom 3: What is the colour theme?</label>
-                    <select class="form-select" id="bedroom3_color" name="bedroom3_color" required>
+                    <label for="bedroom3_color" class="form-label">Bedroom 3: What is the colour theme?</label>
+                    <select class="form-select" id="bedroom3_color" name="bedroom3_color">
                         <option value="">Select color theme</option>
                         <option value="White">White</option>
                         <option value="Brown">Brown</option>
@@ -599,7 +599,10 @@
             </div>
 
             <div class="text-center">
-                <button type="submit" class="btn btn-primary btn-lg">Submit</button>
+                <button type="submit" class="btn btn-primary btn-lg" id="submitButton">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="submitSpinner"></span>
+                    <span id="submitText">Submit</span>
+                </button>
             </div>
         </form>
     </div>
@@ -613,21 +616,63 @@
             Array.prototype.slice.call(forms)
                 .forEach(function (form) {
                     form.addEventListener('submit', function (event) {
+                        console.log('Form submission attempted');
+                        
+                        // Get number of bedrooms
+                        const bedrooms = document.getElementById('bedrooms').value;
+                        console.log('Number of bedrooms:', bedrooms);
+                        
+                        // If 3 bedrooms, make Bedroom 3 fields required
+                        const bedroom3Fields = document.querySelectorAll('#bedroom3-section input, #bedroom3-section select, #bedroom3-section textarea');
+                        bedroom3Fields.forEach(field => {
+                            if (bedrooms === '3') {
+                                field.setAttribute('required', 'required');
+                            } else {
+                                field.removeAttribute('required');
+                            }
+                        });
+                        
                         if (!form.checkValidity()) {
+                            console.log('Form validation failed');
                             event.preventDefault()
                             event.stopPropagation()
+                        } else {
+                            console.log('Form validation passed, submitting...');
+                            // Show loading indicator
+                            document.getElementById('submitButton').disabled = true;
+                            document.getElementById('submitButton').innerHTML = 'Generating Recommendations...';
                         }
                         form.classList.add('was-validated')
                     }, false)
                 })
         })()
 
+        // Add form submission event listener
+        document.querySelector('form').addEventListener('submit', function(event) {
+            console.log('Form submit event triggered');
+            // Log all form data
+            const formData = new FormData(this);
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+        });
+
         document.getElementById('bedrooms').addEventListener('input', function() {
             var bedroom3Section = document.getElementById('bedroom3-section');
             if (this.value == '3') {
                 bedroom3Section.style.display = 'block';
+                // Make Bedroom 3 fields required when 3 bedrooms are selected
+                const bedroom3Fields = document.querySelectorAll('#bedroom3-section input, #bedroom3-section select, #bedroom3-section textarea');
+                bedroom3Fields.forEach(field => {
+                    field.setAttribute('required', 'required');
+                });
             } else {
                 bedroom3Section.style.display = 'none';
+                // Remove required attribute when less than 3 bedrooms
+                const bedroom3Fields = document.querySelectorAll('#bedroom3-section input, #bedroom3-section select, #bedroom3-section textarea');
+                bedroom3Fields.forEach(field => {
+                    field.removeAttribute('required');
+                });
             }
         });
     </script>
