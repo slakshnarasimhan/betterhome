@@ -169,6 +169,72 @@ def convert_to_cm(value: float, unit: str) -> float:
         return value * 2.54
     return value  # Assume cm if no unit or unrecognized unit
 
+def is_instant_water_heater(title: str, features: Dict[str, Any]) -> bool:
+    """Check if a water heater is instant based on title and capacity."""
+    # Check title for 'instant' keyword
+    if 'instant' in title.lower():
+        return True
+    
+    # Check capacity in features
+    capacity = None
+    # First check numeric features
+    if 'numeric_features' in features:
+        for key in features['numeric_features']:
+            if 'capacity' in key.lower() or 'volume' in key.lower():
+                capacity = features['numeric_features'][key]['value']
+                break
+    
+    # If not found in numeric features, check parsed features
+    if capacity is None and 'parsed_features' in features:
+        for key in features['parsed_features']:
+            if 'capacity' in key.lower() or 'volume' in key.lower():
+                value_str = features['parsed_features'][key]
+                if isinstance(value_str, str):
+                    match = re.search(r'(\d+(?:\.\d+)?)\s*(?:l|litre|liter|litres|liters)', value_str.lower())
+                    if match:
+                        capacity = float(match.group(1))
+                        break
+    
+    # If capacity is 5 litres or less, it's likely an instant water heater
+    return capacity is not None and capacity <= 5
+
+def is_horizontal_water_heater(title: str, features: Dict[str, Any]) -> bool:
+    """Check if a water heater is horizontal based on title and features."""
+    # Check title for horizontal keywords
+    title_is_horizontal = any(keyword in title.lower() for keyword in ['horizontal', 'slim', 'rhs', 'flat'])
+    
+    # Check features for horizontal keywords
+    features_is_horizontal = False
+    if 'parsed_features' in features:
+        for key, value in features['parsed_features'].items():
+            if isinstance(value, str) and 'horizontal' in value.lower():
+                features_is_horizontal = True
+                break
+    
+    # Check dimensions in features for horizontal orientation
+    dimensions_is_horizontal = False
+    if 'parsed_features' in features:
+        for key, value in features['parsed_features'].items():
+            if isinstance(value, str) and ('dimensions' in key.lower() or 'size' in key.lower()):
+                if 'x' in value:
+                    try:
+                        # Extract dimensions, handling various formats like "HxWxD" or "H x W x D"
+                        dims = [d.strip() for d in value.split('x')]
+                        if len(dims) >= 2:
+                            # Try to extract numeric values
+                            h_match = re.search(r'(\d+(?:\.\d+)?)', dims[0])
+                            w_match = re.search(r'(\d+(?:\.\d+)?)', dims[1])
+                            if h_match and w_match:
+                                height = float(h_match.group(1))
+                                width = float(w_match.group(1))
+                                # If height is less than width, it's likely horizontal
+                                if height < width:
+                                    dimensions_is_horizontal = True
+                    except (ValueError, IndexError):
+                        pass
+    
+    return title_is_horizontal or features_is_horizontal or dimensions_is_horizontal
+
 def parse_features(features_str: str) -> Dict[str, Any]:
     """Convert features string (separated by '|') into a structured dictionary of features."""
     features_dict = {
@@ -438,6 +504,13 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
         
         # Parse and clean features
         features = parse_features(row.get('Features', ''))
+        
+        # Add water heater specific features
+        if product_type.lower() == 'water heater' or product_type.lower() == 'geyser':
+            # Add orientation
+            features['parsed_features']['Orientation'] = 'Horizontal' if is_horizontal_water_heater(title, features) else 'Vertical'
+            # Add instant feature
+            features['parsed_features']['Instant'] = 'Yes' if is_instant_water_heater(title, features) else 'No'
         
         # Standardize measurements for ceiling fans
         if product_type.lower() == 'ceiling fan':
