@@ -3096,23 +3096,34 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     const categories = {};
                     
                     // Group checkboxes by category
-                    document.querySelectorAll('.product-radio').forEach(radio => {
-                        const category = radio.getAttribute('data-category');
-                        const room = radio.getAttribute('data-room');
+                    document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+                        const category = checkbox.getAttribute('data-category');
+                        const room = checkbox.getAttribute('data-room');
                         const key = `${room}-${category}`;
                         
                         if (!categories[key]) {
                             categories[key] = [];
                         }
-                        categories[key].push(radio);
+                        categories[key].push(checkbox);
                         
                         // Add change listener
-                        radio.addEventListener('change', function() {
-                            if (this.checked) {
-                                // Uncheck other checkboxes in the same category
-                                categories[key].forEach(rb => {
-                                    if (rb !== this) rb.checked = false;
+                        checkbox.addEventListener('change', function() {
+                            const isChecked = this.checked;
+                            
+                            // Update the 'selected' class for this product's card
+                            const productCard = this.closest('.product-card');
+                            if (isChecked) {
+                                productCard.classList.add('selected');
+                                
+                                // Uncheck other checkboxes in the same category (maintain single selection per category)
+                                categories[key].forEach(cb => {
+                                    if (cb !== this) {
+                                        cb.checked = false;
+                                        cb.closest('.product-card').classList.remove('selected');
+                                    }
                                 });
+                            } else {
+                                productCard.classList.remove('selected');
                             }
                         });
                     });
@@ -3133,14 +3144,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         
                         // Collect all selected products
                         const selectedProducts = [];
-                        document.querySelectorAll('.product-radio:checked').forEach(radio => {
-                            const productId = radio.getAttribute('data-product-id');
-                            const room = radio.getAttribute('data-room');
-                            const category = radio.getAttribute('data-category');
-                            const brand = radio.getAttribute('data-brand');
-                            const model = radio.getAttribute('data-model');
-                            const price = radio.getAttribute('data-price');
-                            const image = radio.getAttribute('data-image');
+                        document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                            const productId = checkbox.getAttribute('data-product-id');
+                            const room = checkbox.getAttribute('data-room');
+                            const category = checkbox.getAttribute('data-category');
+                            const brand = checkbox.getAttribute('data-brand');
+                            const model = checkbox.getAttribute('data-model');
+                            const price = checkbox.getAttribute('data-price');
+                            const image = checkbox.getAttribute('data-image');
                             
                             selectedProducts.push({
                                 id: productId,
@@ -3749,9 +3760,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         product_html = f'''
                             <div class="product-card{best_class}">
                                 <div class="product-selection">
-                                    <input type="radio"
+                                    <input type="checkbox"
                                         id="{product_id}" 
-                                        class="product-radio"
+                                        class="product-checkbox"
                                         name="{room}-{sub_appliance_type}"
                                         data-product-id="{product_id}"
                                         data-room="{room}"
@@ -3759,7 +3770,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                         data-brand="{brand}"
                                         data-model="{model}"
                                         data-price="{better_home_price_num}"
-                                        data-image="{image_src}">
+                                        data-image="{image_src}"
+                                        {' checked' if product == best_product else ''}>
                                     <label for="{product_id}"></label>
                                     <span class="selection-label">Selected</span>
                                 </div>
@@ -3910,9 +3922,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 product_html = f'''
                     <div class="product-card{best_class}">
                         <div class="product-selection">
-                            <input type="radio"
+                            <input type="checkbox"
                                 id="{product_id}" 
-                                class="product-radio"
+                                class="product-checkbox"
                                 name="{room}-{appliance_type}"
                                 data-product-id="{product_id}"
                                 data-room="{room}"
@@ -3920,7 +3932,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 data-brand="{brand}"
                                 data-model="{model}"
                                 data-price="{better_home_price_num}"
-                                data-image="{image_src}">
+                                data-image="{image_src}"
+                                {' checked' if product == best_product else ''}>
                             <label for="{product_id}"></label>
                             <span class="selection-label">Selected</span>
                         </div>
@@ -4117,15 +4130,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 // Direct function access for button clicks
                 function generateFinalRecommendation() {
                     const selectedProducts = [];
-                    document.querySelectorAll('.product-radio:checked').forEach(radio => {
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
                         selectedProducts.push({
-                            id: radio.getAttribute('data-product-id'),
-                            room: radio.getAttribute('data-room'),
-                            category: radio.getAttribute('data-category'),
-                            brand: radio.getAttribute('data-brand'),
-                            model: radio.getAttribute('data-model'),
-                            price: radio.getAttribute('data-price'),
-                            image: radio.getAttribute('data-image')
+                            id: checkbox.getAttribute('data-product-id'),
+                            room: checkbox.getAttribute('data-room'),
+                            category: checkbox.getAttribute('data-category'),
+                            brand: checkbox.getAttribute('data-brand'),
+                            model: checkbox.getAttribute('data-model'),
+                            price: checkbox.getAttribute('data-price'),
+                            image: checkbox.getAttribute('data-image')
                         });
                     });
                     if (selectedProducts.length === 0) {
