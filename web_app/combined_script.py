@@ -92,7 +92,8 @@ def analyze_user_requirements(excel_file: str):
                 'fans': int(df.iloc[0]['Hall: Fan(s)?']),
                 'ac': df.iloc[0]['Hall: Air Conditioner (AC)?'] == 'Yes',
                 'color_theme': df.iloc[0]['Hall: Colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Hall: What is the square feet ?', 150.0))  # Updated column name
+                'size_sqft': float(df.iloc[0].get('Hall: What is the square feet ?', 150.0)),  # Updated column name
+                'is_for_kids': df.iloc[0].get('Hall: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             },
             'kitchen': {
                 'chimney_width': df.iloc[0]['Kitchen: Chimney width?'],
@@ -103,7 +104,8 @@ def analyze_user_requirements(excel_file: str):
                 'refrigerator_type': df.iloc[0].get('Kitchen: Refrigerator type?', None), # Add refrigerator type
                 'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None), # Add refrigerator capacity
                 'dishwasher_capacity': df.iloc[0].get('Kitchen: Dishwasher capacity?', None), # Add dishwasher capacity
-                'size_sqft': float(df.iloc[0].get('Kitchen: Size (square feet)', 100.0))  # Default to 100 sq ft if not specified
+                'size_sqft': float(df.iloc[0].get('Kitchen: Size (square feet)', 100.0)),  # Default to 100 sq ft if not specified
+                'is_for_kids': df.iloc[0].get('Kitchen: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             },
             'master_bedroom': {
                 'ac': df.iloc[0]['Master: Air Conditioner (AC)?'] == 'Yes',
@@ -115,7 +117,8 @@ def analyze_user_requirements(excel_file: str):
                     'glass_partition': df.iloc[0].get('Master: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
                 },
                 'color_theme': df.iloc[0]['Master: What is the colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?', 140.0))  # Updated column name
+                'size_sqft': float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?', 140.0)),  # Updated column name
+                'is_for_kids': df.iloc[0].get('Master: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             },
             'bedroom_2': {
                 'ac': df.iloc[0]['Bedroom 2: Air Conditioner (AC)?'] == 'Yes',
@@ -127,7 +130,8 @@ def analyze_user_requirements(excel_file: str):
                     'glass_partition': df.iloc[0].get('Bedroom 2: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
+                'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0)),  # Updated column name
+                'is_for_kids': df.iloc[0].get('Bedroom 2: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             },
             'bedroom_3': {
                 'ac': df.iloc[0]['Bedroom 3: Air Conditioner (AC)?'] == 'Yes',
@@ -139,20 +143,23 @@ def analyze_user_requirements(excel_file: str):
                     'glass_partition': df.iloc[0].get('Bedroom 3: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 3: What is the colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Bedroom 3: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
+                'size_sqft': float(df.iloc[0].get('Bedroom 3: What is the area of the bedroom in square feet?', 120.0)),  # Updated column name
+                'is_for_kids': df.iloc[0].get('Bedroom 3: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             },
             'laundry': {
                 'washing_machine_type': df.iloc[0]['Laundry: Washing Machine?'],
                 'dryer_type': df.iloc[0]['Laundry: Dryer?'],
                 'color_theme': None,  # No color theme specified for laundry
-                'size_sqft': float(df.iloc[0].get('Laundry: Size (square feet)', 50.0))  # Default to 50 sq ft if not specified
+                'size_sqft': float(df.iloc[0].get('Laundry: Size (square feet)', 50.0)),  # Default to 50 sq ft if not specified
+                'is_for_kids': df.iloc[0].get('Laundry: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             },
             'dining': {
                 'fan_size': df.iloc[0].get('Dining: Fan', None),
                 'fans': int(df.iloc[0].get('Dining: Fan(s)?', 0)),
                 'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
                 'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
-                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0))  # Default to 120 sq ft if not specified
+                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Default to 120 sq ft if not specified
+                'is_for_kids': df.iloc[0].get('Dining: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             }
         }
         
@@ -671,6 +678,41 @@ def get_specific_product_recommendations(
             product_data['color_match'] = False # Initialize color match flag
             product_data['matched_color'] = None # Initialize matched_color
             
+            # Check for Smart Control feature for rooms used by kids
+            if room and room not in ['kitchen', 'dining', 'laundry']:  # Skip rooms where is_for_kids is not relevant
+                # Get room-specific is_for_kids value if available from user_data
+                is_room_for_kids = False
+                if user_data and room in user_data:
+                    is_room_for_kids = user_data[room].get('is_for_kids', False)
+                
+                # If room is for kids, check for smart features and boost score
+                if is_room_for_kids:
+                    # Check if product has Smart Control
+                    has_smart_control = False
+                    
+                    # Check in parsed_features (preferred method)
+                    if 'features' in product_data:
+                        features = product_data.get('features', {})
+                        parsed_features = features.get('parsed_features', {}) if isinstance(features, dict) else {}
+                        if parsed_features.get('Smart Control') == 'Yes':
+                            has_smart_control = True
+                    
+                    # Also check in title for keywords indicating smart features
+                    title = product_data.get('title', '').lower()
+                    smart_keywords = ['iot', 'smart', 'voice control', 'voice-control', 'alexa', 'google home', 'wifi']
+                    if any(keyword in title for keyword in smart_keywords):
+                        has_smart_control = True
+                    
+                    # Check in features list for smart keywords
+                    feature_str_list = product_data.get('features', [])
+                    features_str_combined = '|'.join(feature_str_list) if isinstance(feature_str_list, list) else ''
+                    if any(keyword in features_str_combined.lower() for keyword in smart_keywords):
+                        has_smart_control = True
+                    
+                    # Apply relevance boost if smart control is available
+                    if has_smart_control:
+                        relevance_score += 5  # Significant boost for smart features in kids' rooms
+            
             if product_data.get('color_options'):
                 product_data['color_options'] = list(set(product_data.get('color_options', [])))
                 if room_color_theme:
@@ -1149,7 +1191,7 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
         return None
 
 # Function to get product recommendation reason
-def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float, required_features: Dict[str, str] = None) -> str:
+def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: str, room: str, demographics: Dict[str, int], total_budget: float, required_features: Dict[str, str] = None, user_data: Dict[str, Any] = None) -> str:
     """Generate a personalized recommendation reason for a product, highlighting matching features. Only use actual product features."""
     reasons = []
     required_features = required_features or {}
@@ -1170,6 +1212,36 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     # Energy efficiency
     if product.get('energy_rating') in ['5 Star', '4 Star']:
         reasons.append(f"Premium {product['energy_rating']} energy rating - significantly reduces your electricity bills")
+    
+    # Check for Smart Control features in rooms used by kids
+    if room and room not in ['kitchen', 'dining', 'laundry']:  # Skip rooms where is_for_kids is not relevant
+        is_room_for_kids = False
+        if user_data and room in user_data:
+            is_room_for_kids = user_data[room].get('is_for_kids', False)
+            
+        if is_room_for_kids:
+            # Check if product has Smart Control
+            has_smart_control = False
+            
+            # Check in parsed_features
+            features = product.get('features', {})
+            parsed_features = features.get('parsed_features', {}) if isinstance(features, dict) else {}
+            if parsed_features.get('Smart Control') == 'Yes':
+                has_smart_control = True
+                
+            # Check in title for smart keywords
+            title = product.get('title', '').lower()
+            if any(keyword in title for keyword in ['iot', 'smart', 'voice control', 'voice-control', 'alexa', 'google home', 'wifi']):
+                has_smart_control = True
+                
+            # Check in features list
+            feature_list = product.get('features', [])
+            features_combined = '|'.join(feature_list) if isinstance(feature_list, list) else ''
+            if any(keyword in features_combined.lower() for keyword in ['iot', 'smart', 'voice', 'alexa', 'google home', 'wifi', 'app control']):
+                has_smart_control = True
+                
+            if has_smart_control:
+                reasons.append("Smart controls are perfect for kids - allows easy control via smartphone, voice commands, or automation")
 
     # Highlight matching features
     matching_features = []
@@ -1645,7 +1717,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write(f"Features: {', '.join(fan['features'])}\n")
             if fan.get('color_match', False):
                 f.write(f"Color Options: {', '.join(fan.get('color_options', []))} - Matches your room's color theme!\n")
-            reason = get_product_recommendation_reason(fan, 'ceiling_fan', 'hall', user_data['demographics'], final_list['summary']['total_budget'])
+            reason = get_product_recommendation_reason(fan, 'ceiling_fan', 'hall', user_data['demographics'], final_list['summary']['total_budget'], {}, user_data)
             f.write(f"Why we recommend this:\n{reason}\n\n")
 
         # Master Bedroom
@@ -1655,7 +1727,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write(f"Air Conditioner: {ac['brand']} {ac['model']}\n")
             f.write(f"Price: {format_currency(ac['price'])} (Retail: {format_currency(ac['retail_price'])})\n")
             f.write(f"Features: {', '.join(ac['features'])}\n")
-            reason = get_product_recommendation_reason(ac, 'ac', 'master_bedroom', user_data['demographics'], final_list['summary']['total_budget'])
+            reason = get_product_recommendation_reason(ac, 'ac', 'master_bedroom', user_data['demographics'], final_list['summary']['total_budget'], {}, user_data)
             f.write(f"Why we recommend this:\n{reason}\n\n")
         for fan in final_list['master_bedroom']['fans']:
             f.write(f"Ceiling Fan: {fan['brand']} {fan['model']}\n")
@@ -1685,7 +1757,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write(f"Air Conditioner: {ac['brand']} {ac['model']}\n")
             f.write(f"Price: {format_currency(ac['price'])} (Retail: {format_currency(ac['retail_price'])})\n")
             f.write(f"Features: {', '.join(ac['features'])}\n")
-            reason = get_product_recommendation_reason(ac, 'ac', 'bedroom_2', user_data['demographics'], final_list['summary']['total_budget'])
+            reason = get_product_recommendation_reason(ac, 'ac', 'bedroom_2', user_data['demographics'], final_list['summary']['total_budget'], {}, user_data)
             f.write(f"Why we recommend this:\n{reason}\n\n")
         for fan in final_list['bedroom_2']['fans']:
             f.write(f"Ceiling Fan: {fan['brand']} {fan['model']}\n")
@@ -3066,7 +3138,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     room, 
                     user_data['demographics'],
                     user_data['total_budget'],
-                    {}  # Required features
+                    {},  # Required features
+                    user_data  # Add user_data parameter for smart control detection
                 )
                 
                 # Parse reasons into a list for better display
@@ -3200,7 +3273,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         room,
                         user_data['demographics'],
                         user_data['total_budget'],
-                        {}
+                        {},
+                        user_data  # Add user_data parameter for smart control detection
                     )
                     reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
                     bestseller_badge = ""
