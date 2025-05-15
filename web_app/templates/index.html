@@ -204,10 +204,6 @@
                 <div class="mb-3">
                     <label class="form-label">Kitchen: Dishwasher capacity?</label>
                     <div>
-                        <input type="radio" id="dishwasher_13" name="kitchen_dishwasher_capacity" value="13 place sittings">
-                        <label for="dishwasher_13">13 place sittings</label>
-                    </div>
-                    <div>
                         <input type="radio" id="dishwasher_14" name="kitchen_dishwasher_capacity" value="14 place sittings">
                         <label for="dishwasher_14">14 place sittings</label>
                     </div>
@@ -263,8 +259,15 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="master_water" class="form-label required">Master: How do you bath with the hot & cold water?</label>
-                    <input type="text" class="form-control" id="master_water" name="master_water" required>
+                    <label class="form-label required">Master: How do you mix the hot & cold water for bathing? (Helps to determine the capacity for the water heater.)</label>
+                    <div>
+                        <input type="radio" id="master_water_shower" name="master_water" value="Shower" required>
+                        <label for="master_water_shower">Shower</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_water_bucket" name="master_water" value="Bucket">
+                        <label for="master_water_bucket">Bucket (typically 20 litres)</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label required">Master: Exhaust fan size?</label>
@@ -318,7 +321,7 @@
                     <input type="text" class="form-control" id="master_area" name="master_area">
                 </div>
                 <div class="mb-3">
-                    <label for="master_bathroom_for_elders" class="form-label">Master: Is this bathroom for elders (above the age 60)?</label>
+                    <label for="master_bathroom_for_elders" class="form-label">Master: Do you want a Glass Partition in the bathroom?</label>
                     <select class="form-select" id="master_bathroom_for_elders" name="master_bathroom_for_elders">
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
@@ -355,8 +358,15 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="bedroom2_water" class="form-label required">Bedroom 2: How do you bath with the hot & cold water?</label>
-                    <input type="text" class="form-control" id="bedroom2_water" name="bedroom2_water" required>
+                    <label class="form-label required">Master: How do you mix the hot & cold water for bathing? (Helps to determine the capacity for the water heater.)</label>
+                    <div>
+                        <input type="radio" id="bedroom2_water_shower" name="bedroom2_water" value="Shower" required>
+                        <label for="bedroom2_water_shower">Shower</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_water_bucket" name="bedroom2_water" value="Bucket">
+                        <label for="bedroom2_water_bucket">Bucket (typically 20 litres)</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label required">Bedroom 2: Exhaust fan size?</label>
@@ -424,6 +434,13 @@
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label for="bedroom2_bathroom_for_elders" class="form-label">Bedroom 2: Do you want a Glass Partition in the bathroom?</label>
+                    <select class="form-select" id="bedroom2_bathroom_for_elders" name="bedroom2_bathroom_for_elders">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label for="bedroom2_led_mirror" class="form-label">Bedroom 2: Would you like to have a LED Mirror?</label>
                     <select class="form-select" id="bedroom2_led_mirror" name="bedroom2_led_mirror">
                         <option value="Yes">Yes</option>
@@ -447,8 +464,15 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="bedroom3_water" class="form-label">Bedroom 3: How do you bath with the hot & cold water?</label>
-                    <input type="text" class="form-control" id="bedroom3_water" name="bedroom3_water">
+                    <label class="form-label">Master: How do you mix the hot & cold water for bathing? (Helps to determine the capacity for the water heater.)</label>
+                    <div>
+                        <input type="radio" id="bedroom3_water_shower" name="bedroom3_water" value="Shower">
+                        <label for="bedroom3_water_shower">Shower</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_water_bucket" name="bedroom3_water" value="Bucket">
+                        <label for="bedroom3_water_bucket">Bucket (typically 20 litres)</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Bedroom 3: Exhaust fan size?</label>
@@ -516,6 +540,13 @@
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label for="bedroom3_bathroom_for_elders" class="form-label">Bedroom 3: Do you want a Glass Partition in the bathroom?</label>
+                    <select class="form-select" id="bedroom3_bathroom_for_elders" name="bedroom3_bathroom_for_elders">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label for="bedroom3_led_mirror" class="form-label">Bedroom 3: Would you like to have a LED Mirror?</label>
                     <select class="form-select" id="bedroom3_led_mirror" name="bedroom3_led_mirror">
                         <option value="Yes">Yes</option>
@@ -532,8 +563,19 @@
             <div class="form-section">
                 <h3>Laundry Requirements</h3>
                 <div class="mb-3">
-                    <label for="laundry_washing" class="form-label required">Laundry: Washing Machine?</label>
-                    <input type="text" class="form-control" id="laundry_washing" name="laundry_washing" required>
+                    <label class="form-label required">Laundry: Washing Machine?</label>
+                    <div>
+                        <input type="radio" id="laundry_washing_front" name="laundry_washing" value="Front-Load" required>
+                        <label for="laundry_washing_front">Front-Load</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="laundry_washing_top" name="laundry_washing" value="Top-Load">
+                        <label for="laundry_washing_top">Top-Load</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="laundry_washing_semi" name="laundry_washing" value="Semi-Automatic">
+                        <label for="laundry_washing_semi">Semi-Automatic</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="laundry_dryer" class="form-label required">Laundry: Dryer?</label>
