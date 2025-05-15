@@ -12,6 +12,7 @@ import re
 import os
 from pathlib import Path
 import time
+import requests
 
 # ==========================
 # Configuration
@@ -429,10 +430,16 @@ def generate_concise_description(description: str, features: Dict[str, Any], pro
 
 Keep it clear and impactful."""
 
+    # print(f"\n[OpenAI Request] Generating description for {product_type} with prompt:\n{prompt[:200]}..." )
+
     for attempt in range(max_retries):
         try:
+            # Ensure openai.api_key is set (it should be set globally near the top of the script)
+            if not openai.api_key:
+                raise ValueError("OpenAI API key is not set.")
+
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo", # You can also use "gpt-4" if preferred and available
                 messages=[
                     {"role": "system", "content": "You are a product description expert who creates concise, compelling descriptions."},
                     {"role": "user", "content": prompt}
@@ -441,15 +448,25 @@ Keep it clear and impactful."""
                 temperature=0.7
             )
             
-            return response.choices[0].message.content.strip()
+            generated_text = response.choices[0].message.content.strip()
+            if not generated_text:
+                print(f"Attempt {attempt + 1} for {product_type}: OpenAI returned empty response. Full response: {response}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                else:
+                    raise ValueError("OpenAI returned empty response after multiple retries.")
+            
+            # print(f"[OpenAI Response Text for {product_type}]: {generated_text[:100]}...")
+            return generated_text
             
         except Exception as e:
-            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            print(f"Attempt {attempt + 1} for {product_type} (OpenAI) failed: {str(e)}")
             if attempt < max_retries - 1:
                 time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
                 continue
             else:
-                print(f"All {max_retries} attempts failed. Using fallback description.")
+                print(f"All {max_retries} attempts failed for {product_type} with OpenAI. Using fallback description.")
                 # Create a fallback description from available data
                 fallback = f"{product_type} with "
                 if key_features:
@@ -492,26 +509,81 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
         empty_features = df['Features'].apply(lambda x: not bool(parse_features(x)['raw_features']) if pd.notna(x) else True)
         print(f"Rows with empty features: {empty_features.sum()}")
 
+    # Track smart control products
+    smart_control_count = 0
+    smart_fan_count = 0
+    
+    # Helper function to clean up "Smart Controls" from any dictionary
+    def remove_smart_controls_field(feature_dict):
+        if not isinstance(feature_dict, dict):
+            return feature_dict
+            
+        # Remove Smart Controls keys (with or without colon)
+        keys_to_remove = []
+        for key in feature_dict:
+            if isinstance(key, str) and key.lower() in ["smart controls", "smart controls:"]:
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del feature_dict[key]
+            
+        # Also recursively clean nested dictionaries
+        for key, value in feature_dict.items():
+            if isinstance(value, dict):
+                feature_dict[key] = remove_smart_controls_field(value)
+                
+        return feature_dict
+    
     # Prepare all products first
     products_to_process = []
     for _, row in df.iterrows():
-        product_type = clean_text(row.get('Product Type', 'Not Available'))
+        # Ensure product_type is robustly converted to a string
+        raw_product_type = row.get('Product Type', 'Not Available')
+        # Handle NaN specifically before passing to clean_text, then ensure string output
+        if pd.isna(raw_product_type):
+            raw_product_type = 'Not Available' 
+        product_type = str(clean_text(str(raw_product_type))) # Ensure it's string after clean_text
+
         # Rename 'Bath Fittings' to 'Bathroom Fittings'
-        if product_type == 'Bath Fittings':
+        if product_type.lower() == 'Bath Fittings'.lower(): # Compare lowercase for safety
             product_type = 'Bathroom Fittings'
-        title = clean_text(row.get('title', 'Not Available'))
-        description = clean_text(row.get('Description', ''))
+        
+        title = str(clean_text(str(row.get('title', 'Not Available'))))
+        description = str(clean_text(str(row.get('Description', ''))))
         
         # Parse and clean features
         features = parse_features(row.get('Features', ''))
         
+        # Remove any "Smart Controls" field to avoid confusion
+        # Remove from parsed_features
+        features = remove_smart_controls_field(features)
+        
+        # Also clean raw_features list to remove any entry with "Smart Controls"
+        if 'raw_features' in features:
+            features['raw_features'] = [f for f in features['raw_features'] if not (isinstance(f, str) and "smart controls" in f.lower())]
+        
         # Add water heater specific features
+        # product_type is already a string here from clean_text, but an explicit str() around product_type_raw handled NaNs
         if product_type.lower() == 'water heater' or product_type.lower() == 'geyser':
             # Add orientation
             features['parsed_features']['Orientation'] = 'Horizontal' if is_horizontal_water_heater(title, features) else 'Vertical'
             # Add instant feature
             features['parsed_features']['Instant'] = 'Yes' if is_instant_water_heater(title, features) else 'No'
         
+        # Add washing machine specific features (Type)
+        if product_type.lower() == 'washing machine':
+            title_lower = title.lower()
+            if 'front load' in title_lower:
+                features['parsed_features']['Type'] = 'Front Load'
+            elif 'top load' in title_lower:
+                features['parsed_features']['Type'] = 'Top Load'
+            elif 'semi automatic' in title_lower or 'semi-automatic' in title_lower:
+                features['parsed_features']['Type'] = 'Semi-Automatic'
+            # else:
+                # If no specific type is found, we can choose to omit the 'Type' feature
+                # or set a default like 'Other' or 'Not Specified'. For now, omitting.
+                # features['parsed_features']['Type'] = 'Not Specified'
+
         # Standardize measurements for ceiling fans
         if product_type.lower() == 'ceiling fan':
             ceiling_fan_count += 1
@@ -526,6 +598,34 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
                     'parsed_features': features['parsed_features'],
                     'numeric_features': features['numeric_features']
                 })
+
+        # Add smart control feature based on specified logic
+        has_smart_control = False
+        title_lower = title.lower()
+        description_lower = description.lower()
+        
+        # For fans: check if title contains IOT, voice-control, or voice control
+        if product_type.lower() in ["ceiling fan", "pedestal fan", "exhaust fan", "table fan"]:
+            if any(keyword in title_lower for keyword in ["iot", "voice-control", "voice control", "smart"]):
+                has_smart_control = True
+                smart_fan_count += 1
+            # Also check if any feature hint at smart controls
+            elif 'Control Method' in features['parsed_features'] and any(keyword in features['parsed_features']['Control Method'].lower() for keyword in ["iot", "smart", "voice", "app"]):
+                has_smart_control = True
+                smart_fan_count += 1
+            elif 'Special feature' in features['parsed_features'] and any(keyword in features['parsed_features']['Special feature'].lower() for keyword in ["smart", "iot", "voice"]):
+                has_smart_control = True
+                smart_fan_count += 1
+        # For other products: check if title or description contains IOT or IFTTT
+        elif any(keyword in title_lower or keyword in description_lower for keyword in ["iot", "ifttt", "smart control"]):
+            has_smart_control = True
+            
+        # Set Smart Control feature (ensure only one version of this field exists)
+        if has_smart_control:
+            features['parsed_features']['Smart Control'] = 'Yes'
+            smart_control_count += 1
+        else:
+            features['parsed_features']['Smart Control'] = 'No'
 
         # Check if product is a best seller by looking at Tags
         tags = str(row.get('tags', '')).split(',')
@@ -543,13 +643,22 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             'description': description,
             'url': clean_text(row.get('url', 'Not Available')),
             'image_src': clean_text(row.get('Image Src', 'Not Available')),
-            'best_seller': 'Yes' if is_best_seller else 'No'
+            'best_seller': 'Yes' if is_best_seller else 'No',
+            # Added new fields
+            'material': clean_text(row.get('Material', 'Not Available')),
+            'color': clean_text(row.get('Color', 'Not Available')),
+            'finish': clean_text(row.get('Finish', 'Not Available')),
+            'style': clean_text(row.get('Style', 'Not Available'))
         }
         products_to_process.append(product)
 
     # Generate descriptions in parallel
     def process_product(product):
         try:
+            # Clean up any Smart Controls fields in the entire product dictionary
+            if 'features' in product:
+                product['features'] = remove_smart_controls_field(product['features'])
+            
             concise_description = generate_concise_description(
                 product['description'],
                 product['features'],
@@ -570,6 +679,11 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
             desc="Generating descriptions"
         ))
 
+    # Final cleanup pass to ensure no Smart Controls fields remain
+    for product in catalog:
+        if 'features' in product:
+            product['features'] = remove_smart_controls_field(product['features'])
+
     # Print feature keys statistics
     feature_keys_stats = {}
     for product in catalog:
@@ -586,6 +700,10 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
     print(f"Total ceiling fans: {ceiling_fan_count}")
     print(f"Fans with standardized blade length: {fans_with_blade_length}")
     print(f"Fans missing blade length: {ceiling_fan_count - fans_with_blade_length}")
+    
+    print(f"\nSmart Control Statistics:")
+    print(f"Total products with Smart Control: {smart_control_count}")
+    print(f"Smart Fans count: {smart_fan_count}")
     
     print("\nExamining fans missing blade length:")
     for i, fan in enumerate(fans_missing_length, 1):
@@ -606,6 +724,17 @@ def save_product_catalog(df, file_path=PRODUCT_CATALOG_PATH):
         print("- Numeric features:", json.dumps(fan['features']['numeric_features'], indent=2))
         print("- Boolean features:", json.dumps(fan['features']['boolean_features'], indent=2))
         print("- Text features:", json.dumps(fan['features']['text_features'], indent=2))
+    
+    # Debug: Print sample of smart control products
+    smart_products = [p for p in catalog if p['features']['parsed_features'].get('Smart Control') == 'Yes'][:3]
+    if smart_products:
+        print("\nSample of Smart Control products (first 3):")
+        for i, product in enumerate(smart_products):
+            print(f"\nSmart Product {i+1}:")
+            print(f"Title: {product['title']}")
+            print(f"Product Type: {product['product_type']}")
+            print(f"Description: {product['description'][:100]}...")
+            print("Parsed features:", product['features']['parsed_features'])
     
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump({'products': catalog}, f, indent=2, ensure_ascii=True)
