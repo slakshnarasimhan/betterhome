@@ -112,7 +112,7 @@ def analyze_user_requirements(excel_file: str):
                     'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?'],
                     'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
-                    'for_elders': df.iloc[0].get('Master: Is this bathroom for elders (above the age 60)?') == 'Yes'  # Add elder bathroom preference
+                    'glass_partition': df.iloc[0].get('Master: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
                 },
                 'color_theme': df.iloc[0]['Master: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?', 140.0))  # Updated column name
@@ -124,7 +124,7 @@ def analyze_user_requirements(excel_file: str):
                     'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?'],
                     'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
-                    'for_elders': df.iloc[0].get('Bedroom 2: Is this bathroom for elders (above the age 60?)') == 'Yes'  # Add elder bathroom preference
+                    'glass_partition': df.iloc[0].get('Bedroom 2: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
@@ -136,7 +136,7 @@ def analyze_user_requirements(excel_file: str):
                     'exhaust_fan_size': df.iloc[0]['Bedroom 3: Exhaust fan size?'],
                     'water_heater_ceiling': df.iloc[0]['Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Bedroom 3: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
-                    'for_elders': df.iloc[0].get('Bedroom 3: Is this bathroom for elders (above the age 60?)') == 'Yes'  # Add elder bathroom preference
+                    'glass_partition': df.iloc[0].get('Bedroom 3: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 3: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Bedroom 3: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
@@ -2331,10 +2331,10 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # print(f"Added {len(final_list['master_bedroom']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
         
-    # Add Glass Partition recommendations for master bedroom bathroom if used by elders
-    if user_data['master_bedroom'].get('bathroom', {}).get('for_elders', False):
+    # Add Glass Partition recommendations for master bedroom bathroom if requested
+    if user_data['master_bedroom'].get('bathroom', {}).get('glass_partition', False):
         print("\n=== Glass Partition Debug ===")
-        print("Master Bedroom Bathroom - For Elders: Adding Glass Partition")
+        print("Master Bedroom Bathroom - Glass Partition Requested: Adding Glass Partition")
         budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
         recommendations = get_specific_product_recommendations(
             'glass partition', budget_category, user_data['demographics'],
@@ -2389,10 +2389,10 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # print(f"Added {len(final_list['bedroom_2']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
 
-    # Add Glass Partition recommendations for bedroom 2 bathroom if used by elders
-    if user_data['bedroom_2'].get('bathroom', {}).get('for_elders', False):
+    # Add Glass Partition recommendations for bedroom 2 bathroom if requested
+    if user_data['bedroom_2'].get('bathroom', {}).get('glass_partition', False):
         print("\n=== Glass Partition Debug ===")
-        print("Bedroom 2 Bathroom - For Elders: Adding Glass Partition")
+        print("Bedroom 2 Bathroom - Glass Partition Requested: Adding Glass Partition")
         budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
         recommendations = get_specific_product_recommendations(
             'glass partition', budget_category, user_data['demographics'],
@@ -2447,10 +2447,10 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # print(f"Added {len(final_list['bedroom_3']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
         
-    # Add Glass Partition recommendations for bedroom 3 bathroom if used by elders
-    if user_data['bedroom_3'].get('bathroom', {}).get('for_elders', False):
+    # Add Glass Partition recommendations for bedroom 3 bathroom if requested
+    if user_data['bedroom_3'].get('bathroom', {}).get('glass_partition', False):
         print("\n=== Glass Partition Debug ===")
-        print("Bedroom 3 Bathroom - For Elders: Adding Glass Partition")
+        print("Bedroom 3 Bathroom - Glass Partition Requested: Adding Glass Partition")
         budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
         recommendations = get_specific_product_recommendations(
             'glass partition', budget_category, user_data['demographics'],
