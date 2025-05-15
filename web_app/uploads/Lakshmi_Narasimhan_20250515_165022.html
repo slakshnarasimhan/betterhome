@@ -3096,6 +3096,60 @@
             </footer>
         </div>
         
+        <!-- Immediately executed inline script for accordion functionality -->
+        <script>
+    
+            (function() {
+                
+                const accordionButtons = document.querySelectorAll('.accordion');
+                console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
+                
+                for (let i = 0; i < accordionButtons.length; i++) {
+                    const btn = accordionButtons[i];
+                    
+                    // Set active class on first button
+                    if (i === 0) {
+                        btn.classList.add('active');
+                    }
+                    
+                    // Direct event binding
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('DIRECT: Accordion button clicked:', this.textContent);
+                        
+                        const panel = this.nextElementSibling;
+                        console.log('DIRECT: Panel element:', panel);
+                        const isOpen = window.getComputedStyle(panel).display !== 'none';
+                        console.log('DIRECT: Is panel open?', isOpen);
+                        
+                        // Close all panels and remove active class
+                        const allPanels = document.querySelectorAll('.panel');
+                        for (let j = 0; j < allPanels.length; j++) {
+                            allPanels[j].style.display = 'none';
+                        }
+                        
+                        const allButtons = document.querySelectorAll('.accordion');
+                        for (let j = 0; j < allButtons.length; j++) {
+                            allButtons[j].classList.remove('active');
+                        }
+                        
+                        // If it wasn't open before, open it now
+                        if (!isOpen) {
+                            panel.style.display = 'block';
+                            this.classList.add('active');
+                            console.log('DIRECT: Panel opened');
+                        }
+                        
+                        return false;
+                    });
+                    console.log('DIRECT: Setup click handler for:', btn.textContent);
+                }
+                
+                console.log('DIRECT: Setting up accordion - complete');
+            })();
+        </script>
+        
         <!-- Create the final recommendation page -->
         <div id="final-recommendation-page" style="display: none;">
             <div class="container">

@@ -3827,9 +3827,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         
         <!-- Immediately executed inline script for accordion functionality -->
         <script>
-            // Direct script to set up accordion functionality
+    """
+
+    # Direct script to set up accordion functionality
+    html_content += """
             (function() {
-                console.log('DIRECT: Setting up accordion - start');
                 
                 const accordionButtons = document.querySelectorAll('.accordion');
                 console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
