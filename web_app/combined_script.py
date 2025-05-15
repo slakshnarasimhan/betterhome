@@ -3094,12 +3094,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 // Ensure only one product per category can be selected
                 const setupCategorySelections = () => {
                     const categories = {};
+                    const processedProducts = new Set(); // To prevent duplicate handling of products
                     
                     // Group checkboxes by category
                     document.querySelectorAll('.product-checkbox').forEach(checkbox => {
                         const category = checkbox.getAttribute('data-category');
                         const room = checkbox.getAttribute('data-room');
+                        const productId = checkbox.getAttribute('data-product-id');
                         const key = `${room}-${category}`;
+                        
+                        // Skip if already processed (for dupicate products)
+                        if (processedProducts.has(productId)) {
+                            return;
+                        }
+                        processedProducts.add(productId);
                         
                         if (!categories[key]) {
                             categories[key] = [];
@@ -3137,6 +3145,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         console.error('Generate button not found in the DOM');
                         return;
                     }
+                    
+                    // Automatically run initial selection for best products
+                    // This ensures initial visual state matches pre-selected products
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        const productCard = checkbox.closest('.product-card');
+                        if (productCard) {
+                            productCard.classList.add('selected');
+                        }
+                    });
                     
                     generateButton.addEventListener('click', function(e) {
                         console.log('Generate button clicked');
@@ -4130,11 +4147,25 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 // Direct function access for button clicks
                 function generateFinalRecommendation() {
                     const selectedProducts = [];
+                    // Track seen categories to prevent duplicates (especially for glass partitions)
+                    const seenCategories = new Set();
+                    
                     document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        const room = checkbox.getAttribute('data-room');
+                        const category = checkbox.getAttribute('data-category');
+                        const uniqueKey = `${room}-${category}`;
+                        
+                        // Skip if we've already seen this room-category combination
+                        if (seenCategories.has(uniqueKey)) {
+                            return;
+                        }
+                        
+                        seenCategories.add(uniqueKey);
+                        
                         selectedProducts.push({
                             id: checkbox.getAttribute('data-product-id'),
-                            room: checkbox.getAttribute('data-room'),
-                            category: checkbox.getAttribute('data-category'),
+                            room: room,
+                            category: category,
                             brand: checkbox.getAttribute('data-brand'),
                             model: checkbox.getAttribute('data-model'),
                             price: checkbox.getAttribute('data-price'),
