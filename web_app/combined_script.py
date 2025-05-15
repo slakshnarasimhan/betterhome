@@ -2591,33 +2591,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        
         <!-- Excel libraries with integrity checks and error handling -->
-        <script>
-            function loadScript(src, integrity, callback) {
-                console.log('Loading script:', src);
-                const script = document.createElement('script');
-                script.src = src;
-                if (integrity) script.integrity = integrity;
-                script.crossOrigin = 'anonymous';
-                script.onload = () => {
-                    console.log('Script loaded successfully:', src);
-                    if (callback) callback();
-                };
-                script.onerror = (e) => {
-                    console.error('Failed to load script:', src, e);
-                    alert('Failed to load required library: ' + src);
-                };
-                document.head.appendChild(script);
-            }
-            
-            // Load required libraries
-            window.addEventListener('DOMContentLoaded', function() {
-                <script src="../static/xlsx.full.min.js"></script>
-                <script src="../static/FileSaver.min.js"></script>
-
-            });
-        </script>
+        <script src="../static/xlsx.full.min.js"></script>
+        <script src="../static/FileSaver.min.js"></script>
         <style>
             /* Modern typography and base styles */
             body {
