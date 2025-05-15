@@ -111,7 +111,8 @@ def analyze_user_requirements(excel_file: str):
                     'water_heater_type': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?'],
                     'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
-                    'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'] == 'Yes'  # Add LED mirror preference
+                    'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
+                    'for_elders': df.iloc[0].get('Master: Is this bathroom for elders (above the age 60)?') == 'Yes'  # Add elder bathroom preference
                 },
                 'color_theme': df.iloc[0]['Master: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?', 140.0))  # Updated column name
@@ -122,7 +123,8 @@ def analyze_user_requirements(excel_file: str):
                     'water_heater_type': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?'],
                     'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
-                    'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'] == 'Yes'  # Add LED mirror preference
+                    'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
+                    'for_elders': df.iloc[0].get('Bedroom 2: Is this bathroom for elders (above the age 60?)') == 'Yes'  # Add elder bathroom preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
@@ -133,7 +135,8 @@ def analyze_user_requirements(excel_file: str):
                     'water_heater_type': df.iloc[0]['Bedroom 3: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 3: Exhaust fan size?'],
                     'water_heater_ceiling': df.iloc[0]['Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?'],
-                    'led_mirror': df.iloc[0]['Bedroom 3: Would you like to have a LED Mirror?'] == 'Yes'  # Add LED mirror preference
+                    'led_mirror': df.iloc[0]['Bedroom 3: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
+                    'for_elders': df.iloc[0].get('Bedroom 3: Is this bathroom for elders (above the age 60?)') == 'Yes'  # Add elder bathroom preference
                 },
                 'color_theme': df.iloc[0]['Bedroom 3: What is the colour theme?'],
                 'size_sqft': float(df.iloc[0].get('Bedroom 3: What is the area of the bedroom in square feet?', 120.0))  # Updated column name
@@ -205,6 +208,7 @@ def get_budget_category(total_budget: float, appliance_type: str, quantity: int 
         'bathroom_exhaust': {'priority': 3, 'allocation': 0.02},  # Comfort appliance
         'small_fan': {'priority': 3, 'allocation': 0.02},  # Optional appliance
         'led_mirror': {'priority': 3, 'allocation': 0.05},  # Optional appliance
+        'glass_partition': {'priority': 2, 'allocation': 0.08},  # Important for safety of elders
     }
 
     # Get appliance priority and allocation
@@ -276,7 +280,8 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
         'dryer': {'budget': 50000, 'mid': 75000},  # Updated dryer thresholds
         'shower_system': {'budget': 30000, 'mid': 50000},
         'gas_stove': {'budget': 15000, 'mid': 25000}, # Add gas stove
-        'hob_top': {'budget': 20000, 'mid': 40000}    # Add hob top
+        'hob_top': {'budget': 20000, 'mid': 40000},   # Add hob top
+        'glass_partition': {'budget': 15000, 'mid': 25000}  # Add glass partition
     }
     
     # Default ranges if appliance type is not in the categories
@@ -444,6 +449,11 @@ def get_specific_product_recommendations(
                 # Special case: dryer can be labeled as 'cloth dryer'
                 elif norm_type == 'dryer':
                     matches = 'cloth dryer' in product_type_norm or 'dryer' == product_type_norm
+                # Special case: glass_partition can be labeled as 'glass partition'
+                elif norm_type == 'glass partition':
+                    matches = ('glass partition' in product_type_norm or 
+                               'glass' in product_type_norm and 'partition' in product_type_norm or
+                               'glass' in product_type_norm and 'shower' in product_type_norm)
                 else:
                     matches = product_type_norm == norm_type
                 if matches:
@@ -2320,6 +2330,20 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['master_bedroom']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['master_bedroom']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
+        
+    # Add Glass Partition recommendations for master bedroom bathroom if used by elders
+    if user_data['master_bedroom'].get('bathroom', {}).get('for_elders', False):
+        print("\n=== Glass Partition Debug ===")
+        print("Master Bedroom Bathroom - For Elders: Adding Glass Partition")
+        budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
+        recommendations = get_specific_product_recommendations(
+            'glass partition', budget_category, user_data['demographics'],
+            user_data['master_bedroom'].get('color_theme'), user_data, None, 'master_bedroom'
+        )
+        print(f"Found {len(recommendations)} glass partitions")
+        final_list['master_bedroom']['bathroom']['glass_partition'] = deduplicate_recommendations(recommendations)
+        print(f"Added {len(final_list['master_bedroom']['bathroom']['glass_partition'])} unique glass partitions to recommendations")
+        print("=== End Glass Partition Debug ===\n")
 
     # Bedroom 2 Bathroom
     if user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type'):
@@ -2364,6 +2388,20 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_2']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['bedroom_2']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
+
+    # Add Glass Partition recommendations for bedroom 2 bathroom if used by elders
+    if user_data['bedroom_2'].get('bathroom', {}).get('for_elders', False):
+        print("\n=== Glass Partition Debug ===")
+        print("Bedroom 2 Bathroom - For Elders: Adding Glass Partition")
+        budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
+        recommendations = get_specific_product_recommendations(
+            'glass partition', budget_category, user_data['demographics'],
+            user_data['bedroom_2'].get('color_theme'), user_data, None, 'bedroom_2'
+        )
+        print(f"Found {len(recommendations)} glass partitions")
+        final_list['bedroom_2']['bathroom']['glass_partition'] = deduplicate_recommendations(recommendations)
+        print(f"Added {len(final_list['bedroom_2']['bathroom']['glass_partition'])} unique glass partitions to recommendations")
+        print("=== End Glass Partition Debug ===\n")
 #####
    # Bedroom 3 Bathroom
     if user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type'):
@@ -2408,6 +2446,20 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_3']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['bedroom_3']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
+        
+    # Add Glass Partition recommendations for bedroom 3 bathroom if used by elders
+    if user_data['bedroom_3'].get('bathroom', {}).get('for_elders', False):
+        print("\n=== Glass Partition Debug ===")
+        print("Bedroom 3 Bathroom - For Elders: Adding Glass Partition")
+        budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
+        recommendations = get_specific_product_recommendations(
+            'glass partition', budget_category, user_data['demographics'],
+            user_data['bedroom_3'].get('color_theme'), user_data, None, 'bedroom_3'
+        )
+        print(f"Found {len(recommendations)} glass partitions")
+        final_list['bedroom_3']['bathroom']['glass_partition'] = deduplicate_recommendations(recommendations)
+        print(f"Added {len(final_list['bedroom_3']['bathroom']['glass_partition'])} unique glass partitions to recommendations")
+        print("=== End Glass Partition Debug ===\n")
 
 #####
     if num_bedrooms == 2:
