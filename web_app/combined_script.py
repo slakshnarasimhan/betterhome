@@ -192,7 +192,7 @@ def calculate_total_cost(recommendations):
                 for nested_type, nested_options in options.items():
                     if not nested_options or not isinstance(nested_options, list):
                         continue
-                        
+                    
                     key = f"{room}-{product_type}-{nested_type}"
                     if key not in processed_keys:
                         try:
@@ -223,7 +223,7 @@ def calculate_total_cost(recommendations):
                     except (ValueError, TypeError):
                         continue
     
-    return total_cost 
+    return total_cost
 
 # Function to get budget category
 def get_budget_category(total_budget: float, appliance_type: str, quantity: int = 1) -> str:
@@ -487,6 +487,33 @@ def get_specific_product_recommendations(
                     matches = ('glass partition' in product_type_norm or 
                                'glass' in product_type_norm and 'partition' in product_type_norm or
                                'glass' in product_type_norm and 'shower' in product_type_norm)
+                # Special case: dishwasher - default to Free-standing unless user requests Built-in
+                elif norm_type == 'dishwasher':
+                    matches = product_type_norm == norm_type
+                    # Default: only include Free-standing unless user requests Built-in
+                    # Check for feature in product['features'] or product['features']['parsed_features']
+                    is_freestanding = False
+                    # Check in features list
+                    features_list = p.get('features', [])
+                    for feat in features_list:
+                        if isinstance(feat, str) and ('free-standing' in feat.lower() or 'freestanding' in feat.lower()):
+                            is_freestanding = True
+                        if isinstance(feat, str) and ('built-in' in feat.lower() or 'builtin' in feat.lower()):
+                            is_freestanding = False
+                    # Check in parsed_features if available
+                    parsed_features = p.get('features', {}).get('parsed_features', {}) if isinstance(p.get('features', {}), dict) else {}
+                    type_value = parsed_features.get('Built-in / Free-standing') or parsed_features.get('Dishwasher Type') or parsed_features.get('Dishwasher type')
+                    if type_value:
+                        if 'free' in type_value.lower():
+                            is_freestanding = True
+                        elif 'built' in type_value.lower():
+                            is_freestanding = False
+                    # Only include if Free-standing (unless user requests Built-in)
+                    user_requested_type = required_features.get('type', '').lower() if required_features else ''
+                    if user_requested_type == 'built-in':
+                        matches = matches and not is_freestanding
+                    else:
+                        matches = matches and is_freestanding
                 else:
                     matches = product_type_norm == norm_type
                 if matches:
@@ -2414,12 +2441,12 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         master_bath_ceiling = str(user_data['master_bedroom']['bathroom'].get('water_heater_ceiling', '')).strip().lower()
         all_geysers = get_specific_product_recommendations(
-                    'geyser', budget_category, user_data['demographics'],
-                    user_data['master_bedroom'].get('color_theme'), user_data,
-                    {'water_heater_ceiling': master_bath_ceiling}, 'master_bedroom'
-        )
-        if master_bath_ceiling == 'yes':
-            # For ceiling installations, prefer horizontal water heaters
+            'geyser', budget_category, user_data['demographics'],
+            user_data['master_bedroom'].get('color_theme'), user_data,
+            required_features={'installation_type': 'ceiling' if master_bath_ceiling == 'true' else 'wall'})
+
+        # For ceiling installations, prefer horizontal water heaters
+        if master_bath_ceiling == 'true':
             horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
             if horizontal_geysers:
                 recommendations = horizontal_geysers
@@ -2467,9 +2494,9 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         all_geysers = get_specific_product_recommendations(
             'geyser', budget_category, user_data['demographics'],
             user_data['bedroom_2'].get('color_theme'), user_data,
-            {'water_heater_ceiling': bedroom2_bath_ceiling}, 'bedroom_2'
-        )
-        if bedroom2_bath_ceiling == 'yes':
+            required_features={'installation_type': 'ceiling' if bedroom2_bath_ceiling == 'true' else 'wall'})
+
+        if bedroom2_bath_ceiling == 'true':
             horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
             recommendations = horizontal_geysers if horizontal_geysers else all_geysers
         else:
@@ -2512,9 +2539,9 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         all_geysers = get_specific_product_recommendations(
             'geyser', budget_category, user_data['demographics'],
             user_data['bedroom_3'].get('color_theme'), user_data,
-            {'water_heater_ceiling': bedroom3_bath_ceiling}, 'bedroom_3'
-        )
-        if bedroom3_bath_ceiling == 'yes':
+            required_features={'installation_type': 'ceiling' if bedroom3_bath_ceiling == 'true' else 'wall'})
+
+        if bedroom3_bath_ceiling == 'true':
             horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
             recommendations = horizontal_geysers if horizontal_geysers else all_geysers
         else:
@@ -3965,9 +3992,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 product_html = f'''
                     <div class="product-card{best_class}">
                         <div class="product-selection">
-                            <input type="checkbox"
+                            <input type="checkbox" 
                                 id="{product_id}" 
-                                class="product-checkbox"
+                                class="product-checkbox" 
                                 name="{room}-{appliance_type}"
                                 data-product-id="{product_id}"
                                 data-room="{room}"
