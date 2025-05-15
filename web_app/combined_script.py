@@ -1080,7 +1080,15 @@ def get_specific_product_recommendations(
 
 
 def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
-    """Generate a description for each room based on user requirements"""
+    """Generate a description for each room based on user requirements, calling out if it's for kids or elders."""
+    # Helper to get label
+    def get_special_label(room_data):
+        if room_data.get('is_for_kids', False):
+            return 'For Kids'
+        elif room_data.get('is_for_elders', False):
+            return 'For Elders'
+        return None
+
     if room == 'hall':
         room_size = user_data['hall'].get('size_sqft', 150.0)
         ac_info = ""
@@ -1089,60 +1097,71 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
             ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
         else:
             ac_info = "no AC"
-            
         return f"A welcoming space of approximately {room_size} sq ft with {user_data['hall'].get('fans', 'no')} fan(s) and {ac_info}, " \
                f"complemented by a {user_data['hall'].get('color_theme', 'neutral')} color theme."
-    
+
     elif room == 'kitchen':
         room_size = user_data['kitchen'].get('size_sqft', 100.0)
         return f"A functional kitchen of {room_size} sq ft with a {user_data['kitchen'].get('chimney_width', 'standard')} chimney, " \
                f"{user_data['kitchen'].get('stove_type', 'standard')} with {user_data['kitchen'].get('num_burners', '4')} burners, " \
                f"and {'a small fan' if user_data['kitchen'].get('small_fan', False) else 'no fan'}."
-    
+
     elif room == 'master_bedroom':
-        room_size = user_data['master_bedroom'].get('size_sqft', 140.0)
+        room_data = user_data['master_bedroom']
+        label = get_special_label(room_data)
+        room_size = room_data.get('size_sqft', 140.0)
         ac_info = ""
-        if user_data['master_bedroom'].get('ac', False):
+        if room_data.get('ac', False):
             recommended_tonnage = determine_ac_tonnage(room_size, 'master_bedroom')
             ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
         else:
             ac_info = "no AC"
-            
-        return f"Master bedroom of {room_size} sq ft with {user_data['master_bedroom'].get('color_theme', 'neutral')} theme, " \
+        prefix = "Master bedroom"
+        if label:
+            prefix += f" - {label}"
+        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, " \
                f"{ac_info}, " \
-               f"and a bathroom equipped with {user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
-    
+               f"and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+
     elif room == 'bedroom_2':
-        room_size = user_data['bedroom_2'].get('size_sqft', 120.0)
+        room_data = user_data['bedroom_2']
+        label = get_special_label(room_data)
+        room_size = room_data.get('size_sqft', 120.0)
         ac_info = ""
-        if user_data['bedroom_2'].get('ac', False):
+        if room_data.get('ac', False):
             recommended_tonnage = determine_ac_tonnage(room_size, 'bedroom_2')
             ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
         else:
             ac_info = "no AC"
-            
-        return f"Second bedroom of {room_size} sq ft with {user_data['bedroom_2'].get('color_theme', 'neutral')} theme, " \
+        prefix = "Second bedroom"
+        if label:
+            prefix += f" - {label}"
+        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, " \
                f"{ac_info}, " \
-               f"and a bathroom equipped with {user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
-    ######
+               f"and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+
     elif room == 'bedroom_3':
-        room_size = user_data['bedroom_3'].get('size_sqft', 120.0)
+        room_data = user_data['bedroom_3']
+        label = get_special_label(room_data)
+        room_size = room_data.get('size_sqft', 120.0)
         ac_info = ""
-        if user_data['bedroom_3'].get('ac', False):
+        if room_data.get('ac', False):
             recommended_tonnage = determine_ac_tonnage(room_size, 'bedroom_3')
             ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
         else:
             ac_info = "no AC"
-            
-        return f"Third bedroom of {room_size} sq ft with {user_data['bedroom_3'].get('color_theme', 'neutral')} theme, " \
+        prefix = "Third bedroom"
+        if label:
+            prefix += f" - {label}"
+        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, " \
                f"{ac_info}, " \
-               f"and a bathroom equipped with {user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
-    
+               f"and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+
     elif room == 'laundry':
         room_size = user_data['laundry'].get('size_sqft', 50.0)
         return f"Laundry area of {room_size} sq ft equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine" \
                f"{' and a dryer' if user_data['laundry'].get('dryer_type', '').lower() == 'yes' else ''}."
-    
+
     return ""
 
 def get_user_information(excel_filename: str) -> Dict[str, Any]:
@@ -3048,6 +3067,39 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     page-break-inside: avoid;
                 }
             }
+            
+            /* Accordion styles */
+            .accordion {
+                background-color: #f1f1f1;
+                color: #333;
+                cursor: pointer;
+                padding: 18px;
+                width: 100%;
+                border: none;
+                text-align: left;
+                outline: none;
+                font-size: 18px;
+                transition: background-color 0.2s;
+                border-radius: 8px 8px 0 0;
+                margin-bottom: 0;
+            }
+            
+            .accordion.active, .accordion:hover {
+                background-color: #e2e6ea;
+            }
+            
+            .panel {
+                padding: 0 18px 18px 18px;
+                background-color: white;
+                display: none;
+                overflow: hidden;
+                border-radius: 0 0 8px 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            }
+            
+            .panel[style*='display: block'] {
+                display: block;
+            }
         </style>
         <script>
             // Wait for the document to be fully loaded
@@ -3379,6 +3431,42 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         window.print();
                     });
                 };
+                
+                // Setup accordion for room sections
+                // Use a dedicated function for the accordion that will be called when DOM is ready
+                function setupAccordion() {
+                    console.log('Setting up accordion functionality');
+                    const accordionButtons = document.querySelectorAll('.accordion');
+                    console.log('Found accordion buttons:', accordionButtons.length);
+                    
+                    accordionButtons.forEach((btn, idx) => {
+                        // Mark the first one as active
+                        if (idx === 0) btn.classList.add('active');
+                        
+                        btn.onclick = function() {
+                            console.log('Accordion button clicked');
+                            const panel = this.nextElementSibling;
+                            console.log('Panel element:', panel);
+                            const isOpen = panel.style.display === 'block';
+                            console.log('Is panel open?', isOpen);
+                            
+                            // Close all panels and remove active class
+                            document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+                            document.querySelectorAll('.accordion').forEach(b => b.classList.remove('active'));
+                            
+                            // If it wasn't open before, open it now
+                            if (!isOpen) {
+                                panel.style.display = 'block';
+                                this.classList.add('active');
+                                console.log('Panel opened');
+                            }
+                        };
+                    });
+                }
+                
+                // Add setupAccordion to window load and also call it directly
+                window.addEventListener('DOMContentLoaded', setupAccordion);
+                window.addEventListener('load', setupAccordion);
 
                 // Initialize all event handlers
                 function initializeEventHandlers() {
@@ -3514,6 +3602,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         return products
 
     # Process each room
+    room_idx = 0
     for room, appliances in final_list.items():
         if room == 'summary':
             continue
@@ -3541,16 +3630,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         room_title = room.replace('_', ' ').title()
         html_content += f"""
             <div class="room-section">
-                <h2>{room_title}</h2>
+                <button class='accordion' type='button'>{room_title}</button>
+                <div class='panel' style='display: {'block' if room_idx == 0 else 'none'};'>
         """
         
         # Add room description
         room_desc = get_room_description(room, user_data)
         if room_desc:
-            html_content += f'                <div class="room-description">{room_desc}</div>\n'
+            html_content += f'                    <div class="room-description">{room_desc}</div>\n'
         
         html_content += """
-                <div class="products-grid">
+                    <div class="products-grid">
         """
         
         for appliance_type, products in appliances.items():
@@ -3560,7 +3650,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
             # For dryers, don't duplicate products; for other types, it's fine
             allow_duplication = appliance_type != 'dryer'
-            products = ensure_three_recommendations(products, allow_duplicates=allow_duplication)
+            products = ensure_three_recommendations(products, allow_duplication)
                 
             # Check if products list is not empty
             if not products:
@@ -3711,142 +3801,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 html_content += product_html
         
         html_content += """
-                </div>
-            </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
         """
-
-        # NEW: Render bathroom appliances for bedrooms
-        if room in ['master_bedroom', 'bedroom_2', 'bedroom_3'] and 'bathroom' in appliances:
-            for bath_appliance_type, bath_products in appliances['bathroom'].items():
-                # print(f"[DEBUG HTML] {room} bathroom {bath_appliance_type}: {bath_products}")
-                if not isinstance(bath_products, list) or not bath_products:
-                    continue
-                bath_title = bath_appliance_type.replace('_', ' ').title()
-                html_content += f"<h3>{bath_title} Recommendations</h3>\n<div class='products-grid'>"
-                
-                # Don't duplicate products for specific categories
-                allow_bath_duplication = bath_appliance_type not in ['dryer', 'water_heater', 'exhaust_fan']
-                bath_products = ensure_three_recommendations(bath_products, allow_duplicates=allow_bath_duplication)
-                
-                bath_products.sort(key=lambda x: -x.get('feature_match_score', 0))
-                best_product = bath_products[0]
-                if len(bath_products) >= 3:
-                    bath_products = [bath_products[1], best_product, bath_products[2]]
-                for idx, product in enumerate(bath_products):
-                    if not isinstance(product, dict):
-                        continue
-                    brand = product.get('brand', 'Unknown Brand')
-                    model = product.get('model', product.get('title', 'Unknown Model'))
-                    image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
-                    description = product.get('description', 'No description available')
-                    better_home_price = float(product.get('better_home_price', 0.0))
-                    retail_price = float(product.get('retail_price', 0.0))
-                    if better_home_price <= 0:
-                        better_home_price = float(product.get('price', retail_price * 0.8))
-                    if retail_price <= 0:
-                        retail_price = better_home_price * 1.25
-                    if retail_price <= better_home_price:
-                        retail_price = better_home_price * 1.25
-                    savings = retail_price - better_home_price
-                    warranty = product.get('warranty', 'Standard warranty applies')
-                    delivery_time = product.get('delivery_time', 'Contact store for details')
-                    purchase_url = product.get('url', '#')
-                    product_type_title = bath_appliance_type.replace('_', ' ').title()
-
-                    # Matched color display
-                    matched_color_html = ""
-                    if product.get('matched_color'):
-                        matched_color_html = f'''
-                        <div class="product-info-item">
-                            <span class="product-info-label">Matched Color:</span> {product['matched_color']}
-                        </div>'''
-
-                    reason_text = get_product_recommendation_reason(
-                        product,
-                        bath_appliance_type,
-                        room,
-                        user_data['demographics'],
-                        user_data['total_budget'],
-                        {},
-                        user_data  # Add user_data parameter for smart control detection
-                    )
-                    reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
-                    bestseller_badge = ""
-                    if product.get('is_bestseller', False):
-                        bestseller_badge = '<div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>'
-                    better_home_price_num = float(better_home_price)
-                    retail_price_num = float(retail_price)
-                    better_home_price = f"₹{better_home_price_num:,.2f}"
-                    retail_price = f"₹{retail_price_num:,.2f}"
-                    savings = f"₹{retail_price_num - better_home_price_num:,.2f}"
-                    savings_pct = 0
-                    if retail_price_num > 0:
-                        savings_pct = ((retail_price_num - better_home_price_num) / retail_price_num) * 100
-                    reasons_with_icons = []
-                    for reason in reasons:
-                        icon = "check-circle"
-                        if any(keyword in reason.lower() for keyword in ["save", "budget", "price"]):
-                            icon = "money-bill-wave"
-                        elif any(keyword in reason.lower() for keyword in ["energy", "efficient", "power", "consumption"]):
-                            icon = "leaf"
-                        elif any(keyword in reason.lower() for keyword in ["feature", "advanced", "smart"]):
-                            icon = "cogs"
-                        elif any(keyword in reason.lower() for keyword in ["quality", "durable", "reliable"]):
-                            icon = "medal"
-                        elif any(keyword in reason.lower() for keyword in ["popular", "bestseller", "best-selling"]):
-                            icon = "star"
-                        reasons_with_icons.append(f'<li><i class="fas fa-{icon}"></i> {reason}</li>')
-                    best_class = " best-product" if product == best_product else ""
-                    
-                    # Generate a unique ID for the bathroom product
-                    product_id = f"{room}-{bath_appliance_type}-{idx}"
-                    
-                    product_html = f'''
-                        <div class="product-card{best_class}">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="{product_id}"
-                                    class="product-radio"
-                                    name="{room}-{bath_appliance_type}"
-                                    data-product-id="{product_id}"
-                                    data-room="{room}"
-                                    data-category="{bath_appliance_type}"
-                                    data-brand="{brand}"
-                                    data-model="{model}"
-                                    data-price="{better_home_price_num}"
-                                    data-image="{image_src}">
-                                <label for="{product_id}"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="{image_src}" alt="{brand} {model}">
-                            {bestseller_badge}
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">{bath_appliance_type.replace('_', ' ').upper()}</span>
-                            <h3 class="product-title">{brand} {model}</h3>
-                                <div class="price-container">
-                                <span class="current-price">{better_home_price}</span>
-                                <span class="retail-price">{retail_price}</span>
-                                <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> {product.get('concise_description', product.get('description', 'No description available'))}
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
-                                </div>
-                                {matched_color_html}
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                {"".join(reasons_with_icons)}
-                                </ul>
-                            <a href="{product.get('url', '#')}" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    '''
-                    html_content += product_html
-                html_content += "</div>"
+        room_idx += 1
 
     # Add the generate final recommendation button
     html_content += """
