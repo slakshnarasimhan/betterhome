@@ -2171,17 +2171,9 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['laundry']['washing_machine'] = recommendations
     else: # User selected "No", "None", or it's empty, so no washing machine
         final_list['laundry']['washing_machine'] = []
-    print(f"[DEBUG DRYER_TYPE] Current dryer_type value: '{user_data['laundry'].get('dryer_type')}', Lowercased check value: '{str(user_data['laundry'].get('dryer_type', '')).strip().lower()}'")
-    if user_data['laundry'].get('dryer_type', '').lower() == 'yes':
-        budget_category = get_budget_category(user_data['total_budget'], 'dryer')
-        recommendations = get_specific_product_recommendations(
-            'dryer', 
-            budget_category, 
-            user_data['demographics'], 
-            user_data['laundry'].get('color_theme'), # Restoring color_theme argument
-            user_data
-        )
-        final_list['laundry']['dryer'] = deduplicate_recommendations(recommendations) # Restoring deduplication
+    # DEBUG print statement left for troubleshooting - Dryer recommendations are now handled in one place below
+    # print(f"[DEBUG DRYER_TYPE] Current dryer_type value: '{user_data['laundry'].get('dryer_type')}', Lowercased check value: '{str(user_data['laundry'].get('dryer_type', '')).strip().lower()}'")
+    # Dryer recommendations will be processed in a single location further below
   
     # Process dining room requirements
     if user_data['dining'].get('fan_size'):
@@ -2249,6 +2241,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     # Add dryer recommendations if needed - standardized logic
     if user_data['laundry'].get('dryer_type', '').lower() == 'yes': # Standardized to use dryer_type
         print("\n=== Dryer Debug ===")
+        print(f"Looking for dryer products. Dryer type value: '{user_data['laundry'].get('dryer_type')}'")
+        
         budget_category = get_budget_category(user_data['total_budget'], 'dryer')
         # Standardized to use 'dryer' appliance type
         recommendations = get_specific_product_recommendations(
@@ -2258,11 +2252,30 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             user_data['laundry'].get('color_theme'), 
             user_data
         )
-        print(f"Found {len(recommendations)} dryers")
+        print(f"Found {len(recommendations)} dryers before deduplication")
+        
+        # Check for identical products in recommendations
+        dryer_ids = {}
+        for dryer in recommendations:
+            dryer_id = f"{dryer.get('brand', 'Unknown')}_{dryer.get('title', 'Unknown')}"
+            if dryer_id in dryer_ids:
+                print(f"  WARNING: Duplicate dryer found in recommendations: {dryer_id}")
+                dryer_ids[dryer_id] += 1
+            else:
+                dryer_ids[dryer_id] = 1
+        
+        # Create a debug list of dryer products before deduplication
+        for i, dryer in enumerate(recommendations):
+            print(f"  Dryer {i+1}: {dryer.get('brand', 'Unknown')} - {dryer.get('title', 'Unknown')}")
         
         # Use standard deduplicate_recommendations function
         final_list['laundry']['dryer'] = deduplicate_recommendations(recommendations)
         print(f"Added {len(final_list['laundry']['dryer'])} unique dryers to recommendations")
+        
+        # Debug the final deduped list
+        for i, dryer in enumerate(final_list['laundry']['dryer']):
+            print(f"  Final Dryer {i+1}: {dryer.get('brand', 'Unknown')} - {dryer.get('title', 'Unknown')}")
+            
         print("=== End Dryer Debug ===\n")
 
  
@@ -2886,8 +2899,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # print("[DEBUG FINAL LIST] Kitchen hob tops:", final_list['kitchen']['hob_top'])
 
     # Add logic to ensure at least three recommendations are displayed
-    def ensure_three_recommendations(products):
-        if len(products) < 3:
+    def ensure_three_recommendations(products, allow_duplicates=False):
+        """
+        Ensure that there are at least three product recommendations.
+        
+        If allow_duplicates is True and there are fewer than 3 products, 
+        duplicate existing products to reach 3 total.
+        Otherwise, return the original list without duplication.
+        """
+        if allow_duplicates and len(products) < 3 and len(products) > 0:
+            # Only duplicate if explicitly allowed and there's at least one product
+            products = products.copy()  # Work on a copy to avoid modifying the original
             products.extend(products[:3 - len(products)])  # Duplicate some products if less than 3
         return products
 
@@ -2935,7 +2957,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             # Ensure products is a list
             if not isinstance(products, list):
                 continue
-            products = ensure_three_recommendations(products)  # Ensure at least 3 products
+                
+            # For dryers, don't duplicate products; for other types, it's fine
+            allow_duplication = appliance_type != 'dryer'
+            products = ensure_three_recommendations(products, allow_duplicates=allow_duplication)
+                
             # Check if products list is not empty
             if not products:
                 continue
@@ -3078,7 +3104,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     continue
                 bath_title = bath_appliance_type.replace('_', ' ').title()
                 html_content += f"<h3>{bath_title} Recommendations</h3>\n<div class='products-grid'>"
-                bath_products = ensure_three_recommendations(bath_products)
+                
+                # Don't duplicate products for specific categories
+                allow_bath_duplication = bath_appliance_type not in ['dryer', 'water_heater', 'exhaust_fan']
+                bath_products = ensure_three_recommendations(bath_products, allow_duplicates=allow_bath_duplication)
+                
                 bath_products.sort(key=lambda x: -x.get('feature_match_score', 0))
                 best_product = bath_products[0]
                 if len(bath_products) >= 3:
