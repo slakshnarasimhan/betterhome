@@ -2491,17 +2491,27 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type'):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         bedroom2_bath_ceiling = str(user_data['bedroom_2']['bathroom'].get('water_heater_ceiling', '')).strip().lower()
+        
+        # Get all geysers first
         all_geysers = get_specific_product_recommendations(
             'geyser', budget_category, user_data['demographics'],
             user_data['bedroom_2'].get('color_theme'), user_data,
             required_features={'installation_type': 'ceiling' if bedroom2_bath_ceiling == 'true' else 'wall'})
 
-        if bedroom2_bath_ceiling == 'true':
-            horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
-            recommendations = horizontal_geysers if horizontal_geysers else all_geysers
+        # For kids' rooms, prefer instant water heaters
+        instant_geysers = [g for g in all_geysers if 'instant' in g.get('title', '').lower() or 'instant' in g.get('description', '').lower()]
+        if instant_geysers:
+            recommendations = instant_geysers
         else:
-            vertical_geysers = [g for g in all_geysers if not is_horizontal_water_heater(g)]
-            recommendations = vertical_geysers if vertical_geysers else all_geysers
+            if bedroom2_bath_ceiling == 'true':
+                # For ceiling installations, prefer horizontal water heaters
+                horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
+                recommendations = horizontal_geysers if horizontal_geysers else all_geysers
+            else:
+                # For non-ceiling installations, filter out horizontal water heaters
+                vertical_geysers = [g for g in all_geysers if not is_horizontal_water_heater(g)]
+                recommendations = vertical_geysers if vertical_geysers else all_geysers
+        
         final_list['bedroom_2']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
 
     # Add LED mirror recommendations for bedroom 2 bathroom
@@ -2536,17 +2546,27 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type'):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         bedroom3_bath_ceiling = str(user_data['bedroom_3']['bathroom'].get('water_heater_ceiling', '')).strip().lower()
+        
+        # Get all geysers first
         all_geysers = get_specific_product_recommendations(
             'geyser', budget_category, user_data['demographics'],
             user_data['bedroom_3'].get('color_theme'), user_data,
             required_features={'installation_type': 'ceiling' if bedroom3_bath_ceiling == 'true' else 'wall'})
 
-        if bedroom3_bath_ceiling == 'true':
-            horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
-            recommendations = horizontal_geysers if horizontal_geysers else all_geysers
+        # For kids' rooms, prefer instant water heaters
+        instant_geysers = [g for g in all_geysers if 'instant' in g.get('title', '').lower() or 'instant' in g.get('description', '').lower()]
+        if instant_geysers:
+            recommendations = instant_geysers
         else:
-            vertical_geysers = [g for g in all_geysers if not is_horizontal_water_heater(g)]
-            recommendations = vertical_geysers if vertical_geysers else all_geysers
+            if bedroom3_bath_ceiling == 'true':
+                # For ceiling installations, prefer horizontal water heaters
+                horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
+                recommendations = horizontal_geysers if horizontal_geysers else all_geysers
+            else:
+                # For non-ceiling installations, filter out horizontal water heaters
+                vertical_geysers = [g for g in all_geysers if not is_horizontal_water_heater(g)]
+                recommendations = vertical_geysers if vertical_geysers else all_geysers
+        
         final_list['bedroom_3']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
 
     # Add LED mirror recommendations for bedroom 3 bathroom
