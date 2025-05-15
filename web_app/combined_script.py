@@ -3580,9 +3580,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             products.extend(products[:3 - len(products)])  # Duplicate some products if less than 3
         return products
 
-    # Process each room
+    # Process each room in specified order
     room_idx = 0
-    for room, appliances in final_list.items():
+    
+    # Define the room order
+    room_order = ['hall', 'kitchen', 'dining', 'laundry', 'master_bedroom', 'bedroom_2', 'bedroom_3']
+    
+    # Process rooms in the specified order
+    for room in room_order:
+        # Skip if room doesn't exist in final_list
+        if room not in final_list:
+            continue
+            
+        appliances = final_list[room]
+        
         if room == 'summary':
             continue
         
