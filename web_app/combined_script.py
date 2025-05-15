@@ -3876,6 +3876,18 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 '''
                 html_content += product_html
             html_content += "</div>"
+            
+    # Close the HTML document
+    html_content += """
+            </div>
+        </div>
+    </body>
+</html>
+"""
+    
+    # Write the HTML to file
+    with open(html_filename, 'w', encoding='utf-8') as f:
+        f.write(html_content)
 
 def estimate_washing_machine_capacity(demographics: Dict[str, int]) -> float:
     """Estimate the required washing machine capacity based on household demographics."""
@@ -3945,8 +3957,8 @@ if __name__ == "__main__":
     txt_filename = f"{output_base_path}.txt"
     html_filename = f"{output_base_path}.html"
     required_features = {}  # Initialize as an empty dictionary or populate as needed
-    # create_styled_pdf(pdf_filename, user_data, final_list, required_features)
-    #generate_text_file(user_data, final_list, txt_filename)
+    create_styled_pdf(pdf_filename, user_data, final_list, required_features)
+    generate_text_file(user_data, final_list, txt_filename)
     generate_html_file(user_data, final_list, html_filename)
         
     print("\nProduct recommendations have been generated!")
