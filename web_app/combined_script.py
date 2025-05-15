@@ -2762,12 +2762,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 transform: scale(1.05);
             }
             
-            /* Bestseller badge styling */
-            .bestseller-badge {
+            /* Badge styling */
+            .bestseller-badge, .recommended-badge {
                 position: absolute;
                 top: 10px;
                 right: 10px;
-                background-color: #ff6b00;
                 color: white;
                 padding: 5px 10px;
                 border-radius: 4px;
@@ -2779,7 +2778,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 gap: 5px;
             }
             
-            .bestseller-badge i {
+            .bestseller-badge {
+                background-color: #ff6b00;
+            }
+            
+            .recommended-badge {
+                background-color: #27ae60;
+            }
+            
+            .bestseller-badge i, .recommended-badge i {
                 font-size: 14px;
             }
             
@@ -3711,10 +3718,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 # Parse reasons into a list for better display
                 reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
                 
-                # Check if product is a bestseller
-                bestseller_badge = ""
+                # Check if product is a bestseller or the best recommended product
+                badges = ""
                 if product.get('is_bestseller', False):
-                    bestseller_badge = '<div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>'
+                    badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
+                # Add recommended badge for the best product
+                if product == best_product:
+                    badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
 
                 # Format prices for display
                 better_home_price_num = float(better_home_price)
@@ -3774,7 +3784,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         </div>
                         <div class="product-image-container">
                         <img class="product-image" src="{image_src}" alt="{brand} {model}">
-                        {bestseller_badge}
+                        {badges}
                         </div>
                         <div class="product-details">
                         <span class="product-type">{appliance_type.replace('_', ' ').upper()}</span>
