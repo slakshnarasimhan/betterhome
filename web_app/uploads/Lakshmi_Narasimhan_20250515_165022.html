@@ -832,15 +832,22 @@
                 };
                 
                 // Setup accordion for room sections
-                window.addEventListener('DOMContentLoaded', function() {
+                // Use a dedicated function for the accordion that will be called when DOM is ready
+                function setupAccordion() {
                     console.log('Setting up accordion functionality');
-                    document.querySelectorAll('.accordion').forEach((btn, idx) => {
+                    const accordionButtons = document.querySelectorAll('.accordion');
+                    console.log('Found accordion buttons:', accordionButtons.length);
+                    
+                    accordionButtons.forEach((btn, idx) => {
                         // Mark the first one as active
                         if (idx === 0) btn.classList.add('active');
                         
-                        btn.addEventListener('click', function() {
+                        btn.onclick = function() {
+                            console.log('Accordion button clicked');
                             const panel = this.nextElementSibling;
+                            console.log('Panel element:', panel);
                             const isOpen = panel.style.display === 'block';
+                            console.log('Is panel open?', isOpen);
                             
                             // Close all panels and remove active class
                             document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
@@ -850,10 +857,15 @@
                             if (!isOpen) {
                                 panel.style.display = 'block';
                                 this.classList.add('active');
+                                console.log('Panel opened');
                             }
-                        });
+                        };
                     });
-                });
+                }
+                
+                // Add setupAccordion to window load and also call it directly
+                window.addEventListener('DOMContentLoaded', setupAccordion);
+                window.addEventListener('load', setupAccordion);
 
                 // Initialize all event handlers
                 function initializeEventHandlers() {
