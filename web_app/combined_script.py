@@ -112,6 +112,7 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?'],
+                    'exhaust_fan_color': df.iloc[0].get('Master: Exhaust fan colour?'),  # Add exhaust fan color
                     'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
                     'glass_partition': df.iloc[0].get('Master: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
@@ -125,6 +126,7 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?'],
+                    'exhaust_fan_color': df.iloc[0].get('Bedroom 2: Exhaust fan colour?'),  # Add exhaust fan color
                     'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
                     'glass_partition': df.iloc[0].get('Bedroom 2: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
@@ -138,6 +140,7 @@ def analyze_user_requirements(excel_file: str):
                 'bathroom': {
                     'water_heater_type': df.iloc[0]['Bedroom 3: How do you bath with the hot & cold water?'],
                     'exhaust_fan_size': df.iloc[0]['Bedroom 3: Exhaust fan size?'],
+                    'exhaust_fan_color': df.iloc[0].get('Bedroom 3: Exhaust fan colour?'),  # Add exhaust fan color
                     'water_heater_ceiling': df.iloc[0]['Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?'],
                     'led_mirror': df.iloc[0]['Bedroom 3: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
                     'glass_partition': df.iloc[0].get('Bedroom 3: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
@@ -2135,14 +2138,19 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # print(f"[DEBUG][Geyser] (Ceiling) Number of geyser products returned: {len(geyser_recommendations)}")
     final_list['master_bedroom']['bathroom']['water_heater'] = geyser_recommendations
 
-    # Process exhaust fan for master (updated to use color)
+    # Process exhaust fan for master (using specific exhaust fan color)
     if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'):
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+        # Use specific exhaust fan color if available, otherwise fall back to room color theme
+        exhaust_color = user_data['master_bedroom']['bathroom'].get('exhaust_fan_color')
+        if not exhaust_color:
+            exhaust_color = user_data['master_bedroom'].get('color_theme')
+        
         required_features = {
             'dimensions': user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'),
-            'color': user_data['master_bedroom'].get('color_theme')
+            'color': exhaust_color
         }
-        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
+        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], exhaust_color, user_data, required_features)
         final_list['master_bedroom']['bathroom']['exhaust_fan'] = recommendations
 
     # Process bedroom 2 requirements
@@ -2188,14 +2196,19 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             geyser_recommendations_2 = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
         final_list['bedroom_2']['bathroom']['water_heater'] = geyser_recommendations_2
 
-    # Process exhaust fan for bedroom 2 (updated to use color)
+    # Process exhaust fan for bedroom 2 (using specific exhaust fan color)
     if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
         budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+        # Use specific exhaust fan color if available, otherwise fall back to room color theme
+        exhaust_color = user_data['bedroom_2']['bathroom'].get('exhaust_fan_color')
+        if not exhaust_color:
+            exhaust_color = user_data['bedroom_2'].get('color_theme')
+            
         required_features = {
             'dimensions': user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'),
-            'color': user_data['bedroom_2'].get('color_theme')
+            'color': exhaust_color
         }
-        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
+        recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], exhaust_color, user_data, required_features)
         final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
 
 ######
@@ -2255,14 +2268,19 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             
             final_list['bedroom_3']['bathroom']['water_heater'] = geyser_recommendations_3
 
-        # Process exhaust fan for bedroom 3 (updated to use color)
+        # Process exhaust fan for bedroom 3 (using specific exhaust fan color)
         if user_data['bedroom_3'].get('bathroom') and user_data['bedroom_3']['bathroom'].get('exhaust_fan_size'):
             budget_category = get_budget_category(user_data['total_budget'], 'bathroom_exhaust')
+            # Use specific exhaust fan color if available, otherwise fall back to room color theme
+            exhaust_color = user_data['bedroom_3']['bathroom'].get('exhaust_fan_color')
+            if not exhaust_color:
+                exhaust_color = user_data['bedroom_3'].get('color_theme')
+                
             required_features = {
                 'dimensions': user_data['bedroom_3']['bathroom'].get('exhaust_fan_size'),
-                'color': user_data['bedroom_3'].get('color_theme')
+                'color': exhaust_color
             }
-            recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data, required_features)
+            recommendations = get_specific_product_recommendations('bathroom_exhaust', budget_category, user_data['demographics'], exhaust_color, user_data, required_features)
             final_list['bedroom_3']['bathroom']['exhaust_fan'] = recommendations
 
 ######
