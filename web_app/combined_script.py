@@ -174,28 +174,54 @@ def analyze_user_requirements(excel_file: str):
         return None
 
 def calculate_total_cost(recommendations):
-    """Calculate total cost of recommendations"""
+    """Calculate total cost of recommendations
+    
+    This estimates what the customer would pay if they selected the best product (highest score/recommended)
+    from each product category.
+    """
     total_cost = 0
-    processed_types = set()  # Track which product types we've already counted
+    processed_keys = set()  # Track room-product_type combinations we've already counted
     
     for room, products in recommendations.items():
         if not isinstance(products, dict):
             continue
         
         for product_type, options in products.items():
-            if not options or not isinstance(options, list):
-                continue
+            # For nested structures like bathroom
+            if isinstance(options, dict):
+                for nested_type, nested_options in options.items():
+                    if not nested_options or not isinstance(nested_options, list):
+                        continue
+                        
+                    key = f"{room}-{product_type}-{nested_type}"
+                    if key not in processed_keys:
+                        try:
+                            # Use better_home_price (what customers pay) when available
+                            if nested_options and isinstance(nested_options[0], dict):
+                                best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0))
+                                price = float(best_product.get('better_home_price', 
+                                             best_product.get('price', 
+                                             best_product.get('retail_price', 0))))
+                                total_cost += price
+                            processed_keys.add(key)
+                        except (ValueError, TypeError):
+                            continue
             
-            # Only count the highest-priced option for each product type
-            if product_type not in processed_types:
-                try:
-                    prices = [float(option.get('retail_price', option.get('price', option.get('better_home_price', 0)))) for option in options if isinstance(option, dict)]
-                    if prices:
-                        max_price = max(prices)
-                        total_cost += max_price
-                    processed_types.add(product_type)
-                except (ValueError, TypeError):
-                    continue
+            # For regular product lists
+            elif isinstance(options, list) and options:
+                key = f"{room}-{product_type}"
+                if key not in processed_keys:
+                    try:
+                        # Use better_home_price (what customers pay) when available
+                        if options and isinstance(options[0], dict):
+                            best_product = max(options, key=lambda x: x.get('feature_match_score', 0))
+                            price = float(best_product.get('better_home_price', 
+                                         best_product.get('price', 
+                                         best_product.get('retail_price', 0))))
+                            total_cost += price
+                        processed_keys.add(key)
+                    except (ValueError, TypeError):
+                        continue
     
     return total_cost 
 
@@ -4216,14 +4242,21 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         section.appendChild(grid);
                         container.appendChild(section);
                     }
-                    // Get the total price from the initial page to ensure consistency
-                    const initialTotalPrice = parseFloat(document.querySelector('.budget-item:first-child .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
-                    document.getElementById('final-total-cost').textContent = initialTotalPrice.toLocaleString('en-IN', {
+                    // Calculate the accurate total price of selected products
+                    // 1. Only count unique room-category combinations
+                    // 2. Use better_home_price values (what customers actually pay)
+                    // 3. Only count products the customer selects
+                    
+                    // We already have the deduplicated selectedProducts array
+                    const totalSelectedPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+                    
+                    document.getElementById('final-total-cost').textContent = totalSelectedPrice.toLocaleString('en-IN', {
                         style: 'currency',
                         currency: 'INR'
                     });
+                    
                     const budget = parseFloat(document.querySelector('.budget-item:nth-child(2) .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
-                    const utilization = (initialTotalPrice / budget) * 100;
+                    const utilization = (totalSelectedPrice / budget) * 100;
                     document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
                     const budgetStatus = document.getElementById('final-budget-status');
                     if (utilization > 100) {
