@@ -1820,18 +1820,18 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         f.write("DINING ROOM\n")
         f.write("-----------\n")
         for fan in final_list['dining']['fans']:
-            f.write(f"Ceiling Fan: {fan['brand']} {fan['model']}\n")
-            f.write(f"Price: {format_currency(fan['price'])} (Retail: {format_currency(fan['retail_price'])})\n")
-            f.write(f"Features: {', '.join(fan['features'])}\n")
+            f.write(f"Ceiling Fan: {fan.get('brand', 'Unknown Brand')} {fan.get('model', fan.get('title', 'Unknown Model'))}\n")
+            f.write(f"Price: {format_currency(fan.get('price', 0))} (Retail: {format_currency(fan.get('retail_price', 0))})\n")
+            f.write(f"Features: {', '.join(fan.get('features', []))}\n")
             if fan.get('color_match', False):
                 f.write(f"Color Options: {', '.join(fan.get('color_options', []))} - Matches your room's color theme!\n")
             reason = get_product_recommendation_reason(fan, 'ceiling_fan', 'dining', user_data['demographics'], final_list['summary']['total_budget'])
             f.write(f"Why we recommend this:\n{reason}\n\n")
 
         for ac in final_list['dining']['ac']:
-            f.write(f"Air Conditioner: {ac['brand']} {ac['model']}\n")
-            f.write(f"Price: {format_currency(ac['price'])} (Retail: {format_currency(ac['retail_price'])})\n")
-            f.write(f"Features: {', '.join(ac['features'])}\n")
+            f.write(f"Air Conditioner: {ac.get('brand', 'Unknown Brand')} {ac.get('model', ac.get('title', 'Unknown Model'))}\n")
+            f.write(f"Price: {format_currency(ac.get('price', 0))} (Retail: {format_currency(ac.get('retail_price', 0))})\n")
+            f.write(f"Features: {', '.join(ac.get('features', []))}\n")
             if ac.get('color_match', False):
                 f.write(f"Color Options: {', '.join(ac.get('color_options', []))} - Matches your room's color theme!\n")
             reason = get_product_recommendation_reason(ac, 'ac', 'dining', user_data['demographics'], final_list['summary']['total_budget'])
@@ -2832,16 +2832,30 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             }
             
             /* Product card and grid styling */
+            .room-section {
+                margin-bottom: 40px;
+                padding-bottom: 20px;
+                border-bottom: 1px solid #eaeaea;
+            }
+            
+            .room-section h3 {
+                margin-top: 30px;
+                margin-bottom: 20px;
+                color: #333;
+                font-size: 1.4rem;
+            }
+            
             .products-grid {
                 display: grid;
                 grid-template-columns: 1fr;
                 gap: 30px;
                 margin-top: 20px;
+                margin-bottom: 40px;
             }
             
             @media (min-width: 768px) {
                 .products-grid {
-                    grid-template-columns: repeat(3, 1fr);  // Change to 3 columns
+                    grid-template-columns: repeat(3, 1fr);
                 }
             }
             
@@ -3716,10 +3730,6 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         if room_desc:
             html_content += f'                <div class="room-description">{room_desc}</div>\n'
         
-        html_content += """
-                <div class="products-grid">
-        """
-        
         for appliance_type, products in appliances.items():
             # Ensure products is a list
             if not isinstance(products, list):
@@ -3732,6 +3742,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             # Check if products list is not empty
             if not products:
                 continue
+                
+            # Add appliance type header and start a new products grid
+            appliance_title = appliance_type.replace('_', ' ').title()
+            html_content += f"""
+                <h3>{appliance_title}</h3>
+                <div class="products-grid">
+            """
+                
             # Sort products to find the best one
             products.sort(key=lambda x: -x.get('feature_match_score', 0))
             best_product = products[0]  # Assume the first one is the best after sorting
@@ -3875,12 +3893,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     </div>
                 '''
                 html_content += product_html
-            html_content += "</div>"
+            
+            # Close the products-grid div for this appliance type
+            html_content += """
+                </div><!-- End of products-grid -->
+            """
+            
+            # Close the room section
+            html_content += """
+            </div><!-- End of room-section -->
+            """
             
     # Close the HTML document
     html_content += """
-            </div>
-        </div>
+        </div><!-- End of container -->
     </body>
 </html>
 """
@@ -3957,8 +3983,8 @@ if __name__ == "__main__":
     txt_filename = f"{output_base_path}.txt"
     html_filename = f"{output_base_path}.html"
     required_features = {}  # Initialize as an empty dictionary or populate as needed
-    create_styled_pdf(pdf_filename, user_data, final_list, required_features)
-    generate_text_file(user_data, final_list, txt_filename)
+    #create_styled_pdf(pdf_filename, user_data, final_list, required_features)
+    #generate_text_file(user_data, final_list, txt_filename)
     generate_html_file(user_data, final_list, html_filename)
         
     print("\nProduct recommendations have been generated!")
