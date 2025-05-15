@@ -466,6 +466,39 @@
                     page-break-inside: avoid;
                 }
             }
+            
+            /* Accordion styles */
+            .accordion {
+                background-color: #f1f1f1;
+                color: #333;
+                cursor: pointer;
+                padding: 18px;
+                width: 100%;
+                border: none;
+                text-align: left;
+                outline: none;
+                font-size: 18px;
+                transition: background-color 0.2s;
+                border-radius: 8px 8px 0 0;
+                margin-bottom: 0;
+            }
+            
+            .accordion.active, .accordion:hover {
+                background-color: #e2e6ea;
+            }
+            
+            .panel {
+                padding: 0 18px 18px 18px;
+                background-color: white;
+                display: none;
+                overflow: hidden;
+                border-radius: 0 0 8px 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            }
+            
+            .panel[style*='display: block'] {
+                display: block;
+            }
         </style>
         <script>
             // Wait for the document to be fully loaded
@@ -797,6 +830,30 @@
                         window.print();
                     });
                 };
+                
+                // Setup accordion for room sections
+                window.addEventListener('DOMContentLoaded', function() {
+                    console.log('Setting up accordion functionality');
+                    document.querySelectorAll('.accordion').forEach((btn, idx) => {
+                        // Mark the first one as active
+                        if (idx === 0) btn.classList.add('active');
+                        
+                        btn.addEventListener('click', function() {
+                            const panel = this.nextElementSibling;
+                            const isOpen = panel.style.display === 'block';
+                            
+                            // Close all panels and remove active class
+                            document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+                            document.querySelectorAll('.accordion').forEach(b => b.classList.remove('active'));
+                            
+                            // If it wasn't open before, open it now
+                            if (!isOpen) {
+                                panel.style.display = 'block';
+                                this.classList.add('active');
+                            }
+                        });
+                    });
+                });
 
                 // Initialize all event handlers
                 function initializeEventHandlers() {
@@ -882,10 +939,11 @@
             </div>
     
             <div class="room-section">
-                <h2>Hall</h2>
-                        <div class="room-description">A welcoming space of approximately 150.0 sq ft with 2 fan(s) and an AC (1.5 Ton recommended), complemented by a White color theme.</div>
+                <button class='accordion' type='button'>Hall</button>
+                <div class='panel' style='display: block;'>
+                            <div class="room-description">A welcoming space of approximately 150.0 sq ft with 2 fan(s) and an AC (1.5 Ton recommended), complemented by a White color theme.</div>
 
-                <div class="products-grid">
+                    <div class="products-grid">
         
                     <div class="product-card">
                         <div class="product-selection">
@@ -1139,14 +1197,16 @@
                         </div>
                     </div>
                 
-                </div>
-            </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
         
             <div class="room-section">
-                <h2>Kitchen</h2>
-                        <div class="room-description">A functional kitchen of 100.0 sq ft with a 90 cm chimney, standard with 4 burners, and a small fan.</div>
+                <button class='accordion' type='button'>Kitchen</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">A functional kitchen of 100.0 sq ft with a 90 cm chimney, standard with 4 burners, and a small fan.</div>
 
-                <div class="products-grid">
+                    <div class="products-grid">
         
                     <div class="product-card">
                         <div class="product-selection">
@@ -1778,14 +1838,16 @@
                         </div>
                     </div>
                 
-                </div>
-            </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
         
             <div class="room-section">
-                <h2>Master Bedroom</h2>
-                        <div class="room-description">Master bedroom of 100.0 sq ft with Brown theme, an AC (1.0 Ton recommended), and a bathroom equipped with Shower water heating.</div>
+                <button class='accordion' type='button'>Master Bedroom</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Master bedroom of 100.0 sq ft with Brown theme, an AC (1.0 Ton recommended), and a bathroom equipped with Shower water heating.</div>
 
-                <div class="products-grid">
+                    <div class="products-grid">
         
                     <div class="product-card">
                         <div class="product-selection">
@@ -2039,491 +2101,16 @@
                         </div>
                     </div>
                 
-                </div>
-            </div>
-        <h3>Water Heater Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-water_heater-0"
-                                    class="product-radio"
-                                    name="master_bedroom-water_heater"
-                                    data-product-id="master_bedroom-water_heater-0"
-                                    data-room="master_bedroom"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Elegance Slim Storage Water Heater 15 Ltr - RHS"
-                                    data-price="9800.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_RHS_015-Right-Merged.png?v=1725538914">
-                                <label for="master_bedroom-water_heater-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_RHS_015-Right-Merged.png?v=1725538914" alt="AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - RHS">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - RHS</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹9,800.00</span>
-                                <span class="retail-price">₹12,700.00</span>
-                                <span class="savings">Save ₹2,900.00 (23%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience efficient and reliable hot water supply with our 15-liter Water Heater. Featuring a powerful 2000W heating element, a durable design suitable for 8 bars of water pressure, and a clean white finish, this water heater ensures consistent performance and a sleek look for your home. Elevate your daily routine with instant hot water at the perfect temperature, making this water heater a smart choice for your comfort and convenience.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-elegance-slim-storage-water-heater-15-ltr-rhs" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-water_heater-1"
-                                    class="product-radio"
-                                    name="master_bedroom-water_heater"
-                                    data-product-id="master_bedroom-water_heater-1"
-                                    data-room="master_bedroom"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Elegance Prime Horizontal Water Heater 10 Ltr"
-                                    data-price="8200.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Elegance_Prime_Horizontal_10_Litres_Right_View-1.png?v=1725530671">
-                                <label for="master_bedroom-water_heater-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Elegance_Prime_Horizontal_10_Litres_Right_View-1.png?v=1725530671" alt="AO Smith AO Smith Elegance Prime Horizontal Water Heater 10 Ltr">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Elegance Prime Horizontal Water Heater 10 Ltr</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹8,200.00</span>
-                                <span class="retail-price">₹10,500.00</span>
-                                <span class="savings">Save ₹2,300.00 (22%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience instant hot water with our efficient 10-litre Water Heater, boasting a powerful 2000W motor that operates at 230V/50Hz to deliver a steady flow even under 8 bars of pressure. Its sleek white design adds a touch of elegance to your space while ensuring a reliable supply of hot water for your daily needs. Upgrade to this Water Heater for a seamless and enjoyable hot water experience every time you turn on the tap.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 7 years manufacturer warranty on tank, 3 years manufacturer warranty on heating element and 2 years manufacturer warranty on product.
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-horizontal-water-heater-10lt" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-water_heater-2"
-                                    class="product-radio"
-                                    name="master_bedroom-water_heater"
-                                    data-product-id="master_bedroom-water_heater-2"
-                                    data-room="master_bedroom"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Elegance Slim Storage Water Heater 15 Ltr - LHS"
-                                    data-price="9800.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_LHS_015-Left-Merged.png?v=1725537937">
-                                <label for="master_bedroom-water_heater-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_LHS_015-Left-Merged.png?v=1725537937" alt="AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - LHS">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - LHS</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹9,800.00</span>
-                                <span class="retail-price">₹11,700.00</span>
-                                <span class="savings">Save ₹1,900.00 (16%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience instant hot water with this efficient Water Heater boasting a generous 15-liter capacity, 2000W power, and a rated water pressure of 8 bars. Its sleek white design complements any bathroom decor while delivering consistent performance at 230V/50Hz. Choose this Water Heater for a reliable and powerful solution to meet your hot water needs effortlessly.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-elegance-slim-storage-water-heater-15-ltr-lhs" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Exhaust Fan Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-exhaust_fan-0"
-                                    class="product-radio"
-                                    name="master_bedroom-exhaust_fan"
-                                    data-product-id="master_bedroom-exhaust_fan-0"
-                                    data-room="master_bedroom"
-                                    data-category="exhaust_fan"
-                                    data-brand="Atomberg"
-                                    data-model="Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan"
-                                    data-price="2170.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/exhaust_size_pli_amazon-01_-_copy_2.jpg?v=1720610457">
-                                <label for="master_bedroom-exhaust_fan-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/exhaust_size_pli_amazon-01_-_copy_2.jpg?v=1720610457" alt="Atomberg Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Atomberg Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹2,170.00</span>
-                                <span class="retail-price">₹3,960.00</span>
-                                <span class="savings">Save ₹1,790.00 (45%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Eliminate cooking odors and improve air circulation with this powerful Exhaust Fan. Operating at 7.5 watts and 220-240 volts, this fan is equipped with durable ABS plastic blades and a convenient push button switch control method. With a lightweight design of 1 kg, this exhaust fan is the perfect choice for efficient and reliable ventilation in your kitchen or bathroom.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 2 Years Manufacturer Warranty
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/atomberg-studio-plus-150mm-bldc-motor-energy-saving-exhaust-fan" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-exhaust_fan-1"
-                                    class="product-radio"
-                                    name="master_bedroom-exhaust_fan"
-                                    data-product-id="master_bedroom-exhaust_fan-1"
-                                    data-room="master_bedroom"
-                                    data-category="exhaust_fan"
-                                    data-brand="Almonard"
-                                    data-model="Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan"
-                                    data-price="1982.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/839f5b1f-0dc2-454e-bd60-48b45d72f3f2_tinywow_a218356c-320f-4f46-870e-41b9a5155c17_A1_31413640_20_1.webp?v=1695239719">
-                                <label for="master_bedroom-exhaust_fan-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/839f5b1f-0dc2-454e-bd60-48b45d72f3f2_tinywow_a218356c-320f-4f46-870e-41b9a5155c17_A1_31413640_20_1.webp?v=1695239719" alt="Almonard Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Almonard Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹1,982.00</span>
-                                <span class="retail-price">₹2,100.00</span>
-                                <span class="savings">Save ₹118.00 (6%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Introducing the powerful 300mm Exhaust Fan designed to efficiently ventilate your space with its high performance. Operating at 230V, this exhaust fan ensures optimal air circulation to maintain a fresh atmosphere. Choose this reliable exhaust fan for its superior sweep size, voltage compatibility, and effective ventilation capabilities to enhance your indoor air quality.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> Manufacturer Warranty - 2 Years
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/almonard-12-inch-medium-duty-fresh-air-300mm-exhaust-fan" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-exhaust_fan-2"
-                                    class="product-radio"
-                                    name="master_bedroom-exhaust_fan"
-                                    data-product-id="master_bedroom-exhaust_fan-2"
-                                    data-room="master_bedroom"
-                                    data-category="exhaust_fan"
-                                    data-brand="Atomberg"
-                                    data-model="Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan"
-                                    data-price="2310.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/20221117atombergefficioexh150amzpli_white3_1.jpg?v=1720583392">
-                                <label for="master_bedroom-exhaust_fan-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/20221117atombergefficioexh150amzpli_white3_1.jpg?v=1720583392" alt="Atomberg Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Atomberg Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹2,310.00</span>
-                                <span class="retail-price">₹3,760.00</span>
-                                <span class="savings">Save ₹1,450.00 (39%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Keep your kitchen fresh and smoke-free with this powerful Exhaust Fan. Featuring a voltage range of 220-240 V, durable ABS plastic blades, and a convenient push button switch for easy control, this fan weighs just 1.9 Kg and operates at a speed of 1300 RPM. Choose this Exhaust Fan for efficient ventilation, reliable performance, and effortless operation in your home.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 2 Years Manufacturer Warranty
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/atomberg-efficio-200mm-bldc-motor-energy-saving-exhaust-fan-copy-1" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Led Mirror Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-led_mirror-0"
-                                    class="product-radio"
-                                    name="master_bedroom-led_mirror"
-                                    data-product-id="master_bedroom-led_mirror-0"
-                                    data-room="master_bedroom"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/b787145d-ef74-4c37-9534-95938d0ab047_5-a-Zigzag-Front-View-5-A.jpg?v=1695240757">
-                                <label for="master_bedroom-led_mirror-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/b787145d-ef74-4c37-9534-95938d0ab047_5-a-Zigzag-Front-View-5-A.jpg?v=1695240757" alt="S3 S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your daily grooming routine with our LED Mirror, offering three colour temperature options to suit your lighting preferences. This 24 x 18 inch mirror features a sleek black PVC frame and a double-coated, 4mm thick reflective surface for clarity and durability. Elevate your space with this stylish and functional LED Mirror that brings versatile lighting and modern design to your home.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-zigzag-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-led_mirror-1"
-                                    class="product-radio"
-                                    name="master_bedroom-led_mirror"
-                                    data-product-id="master_bedroom-led_mirror-1"
-                                    data-room="master_bedroom"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/eb1de1d1-a4f2-4c0c-923d-a8b673c03170_3-Front-View-3-B.jpg?v=1695240722">
-                                <label for="master_bedroom-led_mirror-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/eb1de1d1-a4f2-4c0c-923d-a8b673c03170_3-Front-View-3-B.jpg?v=1695240722" alt="S3 S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Illuminate your daily beauty routine with our LED Mirror, offering 3 color temperature options and a sleek 24 x 18 inch PVC frame in black. Featuring a double-coated 4mm mirror for crystal-clear reflection, this mirror is a must-have for flawless makeup application and grooming. Elevate your space with the modern design and versatile lighting of this LED Mirror, ensuring you look your best every day.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-classic-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-led_mirror-2"
-                                    class="product-radio"
-                                    name="master_bedroom-led_mirror"
-                                    data-product-id="master_bedroom-led_mirror-2"
-                                    data-room="master_bedroom"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/9c48493b-da33-48ec-b851-118aaac30b60_4-Front-View-4-C.jpg?v=1695812984">
-                                <label for="master_bedroom-led_mirror-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/9c48493b-da33-48ec-b851-118aaac30b60_4-Front-View-4-C.jpg?v=1695812984" alt="S3 S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Illuminate your beauty routine with our LED Mirror, offering 3 adjustable colour temperatures to create the perfect ambiance for flawless makeup application. Measuring 24 x 18 inches and framed in sleek black PVC, this double-coated mirror ensures clarity and durability with its 4mm thickness. Elevate your grooming experience with this modern LED Mirror that seamlessly combines style, functionality, and versatility in one elegant package.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-twist-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Glass Partition Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-glass_partition-0"
-                                    class="product-radio"
-                                    name="master_bedroom-glass_partition"
-                                    data-product-id="master_bedroom-glass_partition-0"
-                                    data-room="master_bedroom"
-                                    data-category="glass_partition"
-                                    data-brand="S3"
-                                    data-model="S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings"
-                                    data-price="690.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579">
-                                <label for="master_bedroom-glass_partition-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579" alt="S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">GLASS PARTITION</span>
-                            <h3 class="product-title">S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹690.00</span>
-                                <span class="retail-price">₹1,150.00</span>
-                                <span class="savings">Save ₹460.00 (40%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your space with our sleek Glass Partition, designed for a modern and sophisticated look. Featuring a sliding shower operation, durable 10mm toughened glass, and a generous 5-year warranty for auto-burst protection, this partition offers both style and peace of mind. Elevate your bathroom with this premium quality partition that combines functionality, durability, and a touch of elegance.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-glass-partition-for-washroom-sliding-type-with-ozone-fittings" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="master_bedroom-glass_partition-1"
-                                    class="product-radio"
-                                    name="master_bedroom-glass_partition"
-                                    data-product-id="master_bedroom-glass_partition-1"
-                                    data-room="master_bedroom"
-                                    data-category="glass_partition"
-                                    data-brand="S3"
-                                    data-model="S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings"
-                                    data-price="690.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579">
-                                <label for="master_bedroom-glass_partition-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579" alt="S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">GLASS PARTITION</span>
-                            <h3 class="product-title">S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹690.00</span>
-                                <span class="retail-price">₹1,150.00</span>
-                                <span class="savings">Save ₹460.00 (40%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your space with our sleek Glass Partition, designed for a modern and sophisticated look. Featuring a sliding shower operation, durable 10mm toughened glass, and a generous 5-year warranty for auto-burst protection, this partition offers both style and peace of mind. Elevate your bathroom with this premium quality partition that combines functionality, durability, and a touch of elegance.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-glass-partition-for-washroom-sliding-type-with-ozone-fittings" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
+        
             <div class="room-section">
-                <h2>Bedroom 2</h2>
-                        <div class="room-description">Second bedroom of 100.0 sq ft with White theme, an AC (1.0 Ton recommended), and a bathroom equipped with Shower water heating.</div>
+                <button class='accordion' type='button'>Bedroom 2</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Second bedroom of 100.0 sq ft with White theme, an AC (1.0 Ton recommended), and a bathroom equipped with Shower water heating.</div>
 
-                <div class="products-grid">
+                    <div class="products-grid">
         
                     <div class="product-card">
                         <div class="product-selection">
@@ -2777,491 +2364,16 @@
                         </div>
                     </div>
                 
-                </div>
-            </div>
-        <h3>Water Heater Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-water_heater-0"
-                                    class="product-radio"
-                                    name="bedroom_2-water_heater"
-                                    data-product-id="bedroom_2-water_heater-0"
-                                    data-room="bedroom_2"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Elegance Prime Storage Water Heater 25 Ltr"
-                                    data-price="9782.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Elegance_Prime_Storage_WaterHeater4.png?v=1740223503">
-                                <label for="bedroom_2-water_heater-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Elegance_Prime_Storage_WaterHeater4.png?v=1740223503" alt="AO Smith AO Smith Elegance Prime Storage Water Heater 25 Ltr">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Elegance Prime Storage Water Heater 25 Ltr</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹9,782.00</span>
-                                <span class="retail-price">₹13,100.00</span>
-                                <span class="savings">Save ₹3,318.00 (25%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience instant hot water with our efficient 25 Litre Water Heater boasting a powerful 2000W heating element, suitable for a water pressure of up to 8 Bar. This sleek white unit operates at 230V/50Hz, ensuring a reliable supply of hot water for your everyday needs. Upgrade to this water heater for a dependable and high-performance solution that delivers consistent hot water whenever you need it.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-25-ltr" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-water_heater-1"
-                                    class="product-radio"
-                                    name="bedroom_2-water_heater"
-                                    data-product-id="bedroom_2-water_heater-1"
-                                    data-room="bedroom_2"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Finesse Storage Water Heater 15 Litres"
-                                    data-price="11000.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Finesse_StorageWater_Heater_Finesse_Front_View-1.png?v=1740217459">
-                                <label for="bedroom_2-water_heater-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Finesse_StorageWater_Heater_Finesse_Front_View-1.png?v=1740217459" alt="AO Smith AO Smith Finesse Storage Water Heater 15 Litres">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Finesse Storage Water Heater 15 Litres</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹11,000.00</span>
-                                <span class="retail-price">₹15,200.00</span>
-                                <span class="savings">Save ₹4,200.00 (28%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience instant hot water with our 15L Electric Water Heater that boasts a powerful 2000W motor and a sleek white design. Operating at 230V/50Hz, this water heater delivers efficient performance at a rated water pressure of 8 Bar, ensuring a steady supply of hot water for your needs. Choose this reliable and energy-efficient water heater for quick and convenient access to hot water anytime, anywhere.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 7 years warranty on tank, 3 years on heating element and 2 years on product
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-finesse-storage-water-heater-15-litres" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-water_heater-2"
-                                    class="product-radio"
-                                    name="bedroom_2-water_heater"
-                                    data-product-id="bedroom_2-water_heater-2"
-                                    data-room="bedroom_2"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Finesse Storage Water Heater 10 Litres"
-                                    data-price="8790.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Finesse_StorageWater_Heater_Finesse_Front_View-1.png?v=1740217459">
-                                <label for="bedroom_2-water_heater-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Finesse_StorageWater_Heater_Finesse_Front_View-1.png?v=1740217459" alt="AO Smith AO Smith Finesse Storage Water Heater 10 Litres">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Finesse Storage Water Heater 10 Litres</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹8,790.00</span>
-                                <span class="retail-price">₹13,100.00</span>
-                                <span class="savings">Save ₹4,310.00 (33%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience instant hot water with our efficient 10L Water Heater, boasting a powerful 2000W heating element and a pressure rating of 8 bars. Designed in sleek white, this heater operates at 230V/50Hz, ensuring a reliable and consistent supply of hot water for your daily needs. Upgrade to this Water Heater for fast heating, high capacity, and stylish design that delivers convenience and comfort to your home.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 7 years warranty on tank, 3 years on heating element and 2 years on product
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-finesse-storage-water-heater-10-litres" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Exhaust Fan Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-exhaust_fan-0"
-                                    class="product-radio"
-                                    name="bedroom_2-exhaust_fan"
-                                    data-product-id="bedroom_2-exhaust_fan-0"
-                                    data-room="bedroom_2"
-                                    data-category="exhaust_fan"
-                                    data-brand="Atomberg"
-                                    data-model="Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan"
-                                    data-price="2170.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/exhaust_size_pli_amazon-01_-_copy_2.jpg?v=1720610457">
-                                <label for="bedroom_2-exhaust_fan-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/exhaust_size_pli_amazon-01_-_copy_2.jpg?v=1720610457" alt="Atomberg Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Atomberg Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹2,170.00</span>
-                                <span class="retail-price">₹3,960.00</span>
-                                <span class="savings">Save ₹1,790.00 (45%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Eliminate cooking odors and improve air circulation with this powerful Exhaust Fan. Operating at 7.5 watts and 220-240 volts, this fan is equipped with durable ABS plastic blades and a convenient push button switch control method. With a lightweight design of 1 kg, this exhaust fan is the perfect choice for efficient and reliable ventilation in your kitchen or bathroom.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 2 Years Manufacturer Warranty
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/atomberg-studio-plus-150mm-bldc-motor-energy-saving-exhaust-fan" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-exhaust_fan-1"
-                                    class="product-radio"
-                                    name="bedroom_2-exhaust_fan"
-                                    data-product-id="bedroom_2-exhaust_fan-1"
-                                    data-room="bedroom_2"
-                                    data-category="exhaust_fan"
-                                    data-brand="Almonard"
-                                    data-model="Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan"
-                                    data-price="1982.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/839f5b1f-0dc2-454e-bd60-48b45d72f3f2_tinywow_a218356c-320f-4f46-870e-41b9a5155c17_A1_31413640_20_1.webp?v=1695239719">
-                                <label for="bedroom_2-exhaust_fan-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/839f5b1f-0dc2-454e-bd60-48b45d72f3f2_tinywow_a218356c-320f-4f46-870e-41b9a5155c17_A1_31413640_20_1.webp?v=1695239719" alt="Almonard Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Almonard Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹1,982.00</span>
-                                <span class="retail-price">₹2,100.00</span>
-                                <span class="savings">Save ₹118.00 (6%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Introducing the powerful 300mm Exhaust Fan designed to efficiently ventilate your space with its high performance. Operating at 230V, this exhaust fan ensures optimal air circulation to maintain a fresh atmosphere. Choose this reliable exhaust fan for its superior sweep size, voltage compatibility, and effective ventilation capabilities to enhance your indoor air quality.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> Manufacturer Warranty - 2 Years
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/almonard-12-inch-medium-duty-fresh-air-300mm-exhaust-fan" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-exhaust_fan-2"
-                                    class="product-radio"
-                                    name="bedroom_2-exhaust_fan"
-                                    data-product-id="bedroom_2-exhaust_fan-2"
-                                    data-room="bedroom_2"
-                                    data-category="exhaust_fan"
-                                    data-brand="Atomberg"
-                                    data-model="Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan"
-                                    data-price="2310.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/20221117atombergefficioexh150amzpli_white3_1.jpg?v=1720583392">
-                                <label for="bedroom_2-exhaust_fan-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/20221117atombergefficioexh150amzpli_white3_1.jpg?v=1720583392" alt="Atomberg Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Atomberg Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹2,310.00</span>
-                                <span class="retail-price">₹3,760.00</span>
-                                <span class="savings">Save ₹1,450.00 (39%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Keep your kitchen fresh and smoke-free with this powerful Exhaust Fan. Featuring a voltage range of 220-240 V, durable ABS plastic blades, and a convenient push button switch for easy control, this fan weighs just 1.9 Kg and operates at a speed of 1300 RPM. Choose this Exhaust Fan for efficient ventilation, reliable performance, and effortless operation in your home.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 2 Years Manufacturer Warranty
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/atomberg-efficio-200mm-bldc-motor-energy-saving-exhaust-fan-copy-1" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Led Mirror Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-led_mirror-0"
-                                    class="product-radio"
-                                    name="bedroom_2-led_mirror"
-                                    data-product-id="bedroom_2-led_mirror-0"
-                                    data-room="bedroom_2"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/b787145d-ef74-4c37-9534-95938d0ab047_5-a-Zigzag-Front-View-5-A.jpg?v=1695240757">
-                                <label for="bedroom_2-led_mirror-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/b787145d-ef74-4c37-9534-95938d0ab047_5-a-Zigzag-Front-View-5-A.jpg?v=1695240757" alt="S3 S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your daily grooming routine with our LED Mirror, offering three colour temperature options to suit your lighting preferences. This 24 x 18 inch mirror features a sleek black PVC frame and a double-coated, 4mm thick reflective surface for clarity and durability. Elevate your space with this stylish and functional LED Mirror that brings versatile lighting and modern design to your home.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-zigzag-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-led_mirror-1"
-                                    class="product-radio"
-                                    name="bedroom_2-led_mirror"
-                                    data-product-id="bedroom_2-led_mirror-1"
-                                    data-room="bedroom_2"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/eb1de1d1-a4f2-4c0c-923d-a8b673c03170_3-Front-View-3-B.jpg?v=1695240722">
-                                <label for="bedroom_2-led_mirror-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/eb1de1d1-a4f2-4c0c-923d-a8b673c03170_3-Front-View-3-B.jpg?v=1695240722" alt="S3 S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Illuminate your daily beauty routine with our LED Mirror, offering 3 color temperature options and a sleek 24 x 18 inch PVC frame in black. Featuring a double-coated 4mm mirror for crystal-clear reflection, this mirror is a must-have for flawless makeup application and grooming. Elevate your space with the modern design and versatile lighting of this LED Mirror, ensuring you look your best every day.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-classic-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-led_mirror-2"
-                                    class="product-radio"
-                                    name="bedroom_2-led_mirror"
-                                    data-product-id="bedroom_2-led_mirror-2"
-                                    data-room="bedroom_2"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/9c48493b-da33-48ec-b851-118aaac30b60_4-Front-View-4-C.jpg?v=1695812984">
-                                <label for="bedroom_2-led_mirror-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/9c48493b-da33-48ec-b851-118aaac30b60_4-Front-View-4-C.jpg?v=1695812984" alt="S3 S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Illuminate your beauty routine with our LED Mirror, offering 3 adjustable colour temperatures to create the perfect ambiance for flawless makeup application. Measuring 24 x 18 inches and framed in sleek black PVC, this double-coated mirror ensures clarity and durability with its 4mm thickness. Elevate your grooming experience with this modern LED Mirror that seamlessly combines style, functionality, and versatility in one elegant package.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-twist-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Glass Partition Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-glass_partition-0"
-                                    class="product-radio"
-                                    name="bedroom_2-glass_partition"
-                                    data-product-id="bedroom_2-glass_partition-0"
-                                    data-room="bedroom_2"
-                                    data-category="glass_partition"
-                                    data-brand="S3"
-                                    data-model="S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings"
-                                    data-price="690.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579">
-                                <label for="bedroom_2-glass_partition-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579" alt="S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">GLASS PARTITION</span>
-                            <h3 class="product-title">S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹690.00</span>
-                                <span class="retail-price">₹1,150.00</span>
-                                <span class="savings">Save ₹460.00 (40%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your space with our sleek Glass Partition, designed for a modern and sophisticated look. Featuring a sliding shower operation, durable 10mm toughened glass, and a generous 5-year warranty for auto-burst protection, this partition offers both style and peace of mind. Elevate your bathroom with this premium quality partition that combines functionality, durability, and a touch of elegance.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-glass-partition-for-washroom-sliding-type-with-ozone-fittings" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_2-glass_partition-1"
-                                    class="product-radio"
-                                    name="bedroom_2-glass_partition"
-                                    data-product-id="bedroom_2-glass_partition-1"
-                                    data-room="bedroom_2"
-                                    data-category="glass_partition"
-                                    data-brand="S3"
-                                    data-model="S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings"
-                                    data-price="690.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579">
-                                <label for="bedroom_2-glass_partition-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579" alt="S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">GLASS PARTITION</span>
-                            <h3 class="product-title">S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹690.00</span>
-                                <span class="retail-price">₹1,150.00</span>
-                                <span class="savings">Save ₹460.00 (40%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your space with our sleek Glass Partition, designed for a modern and sophisticated look. Featuring a sliding shower operation, durable 10mm toughened glass, and a generous 5-year warranty for auto-burst protection, this partition offers both style and peace of mind. Elevate your bathroom with this premium quality partition that combines functionality, durability, and a touch of elegance.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-glass-partition-for-washroom-sliding-type-with-ozone-fittings" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
+        
             <div class="room-section">
-                <h2>Bedroom 3</h2>
-                        <div class="room-description">Third bedroom of 75.0 sq ft with Green theme, an AC (0.75 Ton recommended), and a bathroom equipped with Shower water heating.</div>
+                <button class='accordion' type='button'>Bedroom 3</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Third bedroom - For Kids of 75.0 sq ft with Green theme, an AC (0.75 Ton recommended), and a bathroom equipped with Shower water heating.</div>
 
-                <div class="products-grid">
+                    <div class="products-grid">
         
                     <div class="product-card">
                         <div class="product-selection">
@@ -3515,491 +2627,16 @@
                         </div>
                     </div>
                 
-                </div>
-            </div>
-        <h3>Water Heater Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-water_heater-0"
-                                    class="product-radio"
-                                    name="bedroom_3-water_heater"
-                                    data-product-id="bedroom_3-water_heater-0"
-                                    data-room="bedroom_3"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Elegance Slim Storage Water Heater 15 Ltr - RHS"
-                                    data-price="9800.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_RHS_015-Right-Merged.png?v=1725538914">
-                                <label for="bedroom_3-water_heater-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_RHS_015-Right-Merged.png?v=1725538914" alt="AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - RHS">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - RHS</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹9,800.00</span>
-                                <span class="retail-price">₹12,700.00</span>
-                                <span class="savings">Save ₹2,900.00 (23%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience efficient and reliable hot water supply with our 15-liter Water Heater. Featuring a powerful 2000W heating element, a durable design suitable for 8 bars of water pressure, and a clean white finish, this water heater ensures consistent performance and a sleek look for your home. Elevate your daily routine with instant hot water at the perfect temperature, making this water heater a smart choice for your comfort and convenience.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-elegance-slim-storage-water-heater-15-ltr-rhs" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-water_heater-1"
-                                    class="product-radio"
-                                    name="bedroom_3-water_heater"
-                                    data-product-id="bedroom_3-water_heater-1"
-                                    data-room="bedroom_3"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Elegance Prime Horizontal Water Heater 10 Ltr"
-                                    data-price="8200.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Elegance_Prime_Horizontal_10_Litres_Right_View-1.png?v=1725530671">
-                                <label for="bedroom_3-water_heater-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/AO_Smith_Elegance_Prime_Horizontal_10_Litres_Right_View-1.png?v=1725530671" alt="AO Smith AO Smith Elegance Prime Horizontal Water Heater 10 Ltr">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Elegance Prime Horizontal Water Heater 10 Ltr</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹8,200.00</span>
-                                <span class="retail-price">₹10,500.00</span>
-                                <span class="savings">Save ₹2,300.00 (22%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience instant hot water with our efficient 10-litre Water Heater, boasting a powerful 2000W motor that operates at 230V/50Hz to deliver a steady flow even under 8 bars of pressure. Its sleek white design adds a touch of elegance to your space while ensuring a reliable supply of hot water for your daily needs. Upgrade to this Water Heater for a seamless and enjoyable hot water experience every time you turn on the tap.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 7 years manufacturer warranty on tank, 3 years manufacturer warranty on heating element and 2 years manufacturer warranty on product.
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-horizontal-water-heater-10lt" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-water_heater-2"
-                                    class="product-radio"
-                                    name="bedroom_3-water_heater"
-                                    data-product-id="bedroom_3-water_heater-2"
-                                    data-room="bedroom_3"
-                                    data-category="water_heater"
-                                    data-brand="AO Smith"
-                                    data-model="AO Smith Elegance Slim Storage Water Heater 15 Ltr - LHS"
-                                    data-price="9800.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_LHS_015-Left-Merged.png?v=1725537937">
-                                <label for="bedroom_3-water_heater-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Elegance-Slim_LHS_015-Left-Merged.png?v=1725537937" alt="AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - LHS">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">WATER HEATER</span>
-                            <h3 class="product-title">AO Smith AO Smith Elegance Slim Storage Water Heater 15 Ltr - LHS</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹9,800.00</span>
-                                <span class="retail-price">₹11,700.00</span>
-                                <span class="savings">Save ₹1,900.00 (16%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Experience instant hot water with this efficient Water Heater boasting a generous 15-liter capacity, 2000W power, and a rated water pressure of 8 bars. Its sleek white design complements any bathroom decor while delivering consistent performance at 230V/50Hz. Choose this Water Heater for a reliable and powerful solution to meet your hot water needs effortlessly.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/ao-smith-elegance-slim-storage-water-heater-15-ltr-lhs" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Exhaust Fan Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-exhaust_fan-0"
-                                    class="product-radio"
-                                    name="bedroom_3-exhaust_fan"
-                                    data-product-id="bedroom_3-exhaust_fan-0"
-                                    data-room="bedroom_3"
-                                    data-category="exhaust_fan"
-                                    data-brand="Atomberg"
-                                    data-model="Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan"
-                                    data-price="2170.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/exhaust_size_pli_amazon-01_-_copy_2.jpg?v=1720610457">
-                                <label for="bedroom_3-exhaust_fan-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/exhaust_size_pli_amazon-01_-_copy_2.jpg?v=1720610457" alt="Atomberg Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Atomberg Atomberg Studio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹2,170.00</span>
-                                <span class="retail-price">₹3,960.00</span>
-                                <span class="savings">Save ₹1,790.00 (45%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Eliminate cooking odors and improve air circulation with this powerful Exhaust Fan. Operating at 7.5 watts and 220-240 volts, this fan is equipped with durable ABS plastic blades and a convenient push button switch control method. With a lightweight design of 1 kg, this exhaust fan is the perfect choice for efficient and reliable ventilation in your kitchen or bathroom.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 2 Years Manufacturer Warranty
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/atomberg-studio-plus-150mm-bldc-motor-energy-saving-exhaust-fan" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-exhaust_fan-1"
-                                    class="product-radio"
-                                    name="bedroom_3-exhaust_fan"
-                                    data-product-id="bedroom_3-exhaust_fan-1"
-                                    data-room="bedroom_3"
-                                    data-category="exhaust_fan"
-                                    data-brand="Almonard"
-                                    data-model="Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan"
-                                    data-price="1982.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/839f5b1f-0dc2-454e-bd60-48b45d72f3f2_tinywow_a218356c-320f-4f46-870e-41b9a5155c17_A1_31413640_20_1.webp?v=1695239719">
-                                <label for="bedroom_3-exhaust_fan-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/839f5b1f-0dc2-454e-bd60-48b45d72f3f2_tinywow_a218356c-320f-4f46-870e-41b9a5155c17_A1_31413640_20_1.webp?v=1695239719" alt="Almonard Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Almonard Almonard 12 Inch Medium Duty Fresh Air 300mm Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹1,982.00</span>
-                                <span class="retail-price">₹2,100.00</span>
-                                <span class="savings">Save ₹118.00 (6%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Introducing the powerful 300mm Exhaust Fan designed to efficiently ventilate your space with its high performance. Operating at 230V, this exhaust fan ensures optimal air circulation to maintain a fresh atmosphere. Choose this reliable exhaust fan for its superior sweep size, voltage compatibility, and effective ventilation capabilities to enhance your indoor air quality.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> Manufacturer Warranty - 2 Years
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/almonard-12-inch-medium-duty-fresh-air-300mm-exhaust-fan" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-exhaust_fan-2"
-                                    class="product-radio"
-                                    name="bedroom_3-exhaust_fan"
-                                    data-product-id="bedroom_3-exhaust_fan-2"
-                                    data-room="bedroom_3"
-                                    data-category="exhaust_fan"
-                                    data-brand="Atomberg"
-                                    data-model="Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan"
-                                    data-price="2310.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/20221117atombergefficioexh150amzpli_white3_1.jpg?v=1720583392">
-                                <label for="bedroom_3-exhaust_fan-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/20221117atombergefficioexh150amzpli_white3_1.jpg?v=1720583392" alt="Atomberg Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">EXHAUST FAN</span>
-                            <h3 class="product-title">Atomberg Atomberg Efficio 250mm BLDC motor Energy Saving Exhaust Fan</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹2,310.00</span>
-                                <span class="retail-price">₹3,760.00</span>
-                                <span class="savings">Save ₹1,450.00 (39%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Keep your kitchen fresh and smoke-free with this powerful Exhaust Fan. Featuring a voltage range of 220-240 V, durable ABS plastic blades, and a convenient push button switch for easy control, this fan weighs just 1.9 Kg and operates at a speed of 1300 RPM. Choose this Exhaust Fan for efficient ventilation, reliable performance, and effortless operation in your home.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> 2 Years Manufacturer Warranty
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/atomberg-efficio-200mm-bldc-motor-energy-saving-exhaust-fan-copy-1" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Led Mirror Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-led_mirror-0"
-                                    class="product-radio"
-                                    name="bedroom_3-led_mirror"
-                                    data-product-id="bedroom_3-led_mirror-0"
-                                    data-room="bedroom_3"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/b787145d-ef74-4c37-9534-95938d0ab047_5-a-Zigzag-Front-View-5-A.jpg?v=1695240757">
-                                <label for="bedroom_3-led_mirror-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/b787145d-ef74-4c37-9534-95938d0ab047_5-a-Zigzag-Front-View-5-A.jpg?v=1695240757" alt="S3 S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Zigzag Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your daily grooming routine with our LED Mirror, offering three colour temperature options to suit your lighting preferences. This 24 x 18 inch mirror features a sleek black PVC frame and a double-coated, 4mm thick reflective surface for clarity and durability. Elevate your space with this stylish and functional LED Mirror that brings versatile lighting and modern design to your home.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-zigzag-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-led_mirror-1"
-                                    class="product-radio"
-                                    name="bedroom_3-led_mirror"
-                                    data-product-id="bedroom_3-led_mirror-1"
-                                    data-room="bedroom_3"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/eb1de1d1-a4f2-4c0c-923d-a8b673c03170_3-Front-View-3-B.jpg?v=1695240722">
-                                <label for="bedroom_3-led_mirror-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/eb1de1d1-a4f2-4c0c-923d-a8b673c03170_3-Front-View-3-B.jpg?v=1695240722" alt="S3 S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Classic Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Illuminate your daily beauty routine with our LED Mirror, offering 3 color temperature options and a sleek 24 x 18 inch PVC frame in black. Featuring a double-coated 4mm mirror for crystal-clear reflection, this mirror is a must-have for flawless makeup application and grooming. Elevate your space with the modern design and versatile lighting of this LED Mirror, ensuring you look your best every day.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-classic-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-led_mirror-2"
-                                    class="product-radio"
-                                    name="bedroom_3-led_mirror"
-                                    data-product-id="bedroom_3-led_mirror-2"
-                                    data-room="bedroom_3"
-                                    data-category="led_mirror"
-                                    data-brand="S3"
-                                    data-model="S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger"
-                                    data-price="3100.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/9c48493b-da33-48ec-b851-118aaac30b60_4-Front-View-4-C.jpg?v=1695812984">
-                                <label for="bedroom_3-led_mirror-2"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/9c48493b-da33-48ec-b851-118aaac30b60_4-Front-View-4-C.jpg?v=1695812984" alt="S3 S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger">
-                            
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">LED MIRROR</span>
-                            <h3 class="product-title">S3 S3 Twist Rectangular LED Mirror 24x18 inch - 3 Colour without Defogger</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹3,100.00</span>
-                                <span class="retail-price">₹5,000.00</span>
-                                <span class="savings">Save ₹1,900.00 (38%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Illuminate your beauty routine with our LED Mirror, offering 3 adjustable colour temperatures to create the perfect ambiance for flawless makeup application. Measuring 24 x 18 inches and framed in sleek black PVC, this double-coated mirror ensures clarity and durability with its 4mm thickness. Elevate your grooming experience with this modern LED Mirror that seamlessly combines style, functionality, and versatility in one elegant package.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-twist-rectangular-led-mirror-24x18-inch-3-colour-without-defogger" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div><h3>Glass Partition Recommendations</h3>
-<div class='products-grid'>
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-glass_partition-0"
-                                    class="product-radio"
-                                    name="bedroom_3-glass_partition"
-                                    data-product-id="bedroom_3-glass_partition-0"
-                                    data-room="bedroom_3"
-                                    data-category="glass_partition"
-                                    data-brand="S3"
-                                    data-model="S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings"
-                                    data-price="690.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579">
-                                <label for="bedroom_3-glass_partition-0"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579" alt="S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">GLASS PARTITION</span>
-                            <h3 class="product-title">S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹690.00</span>
-                                <span class="retail-price">₹1,150.00</span>
-                                <span class="savings">Save ₹460.00 (40%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your space with our sleek Glass Partition, designed for a modern and sophisticated look. Featuring a sliding shower operation, durable 10mm toughened glass, and a generous 5-year warranty for auto-burst protection, this partition offers both style and peace of mind. Elevate your bathroom with this premium quality partition that combines functionality, durability, and a touch of elegance.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-glass-partition-for-washroom-sliding-type-with-ozone-fittings" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    
-                        <div class="product-card best-product">
-                            <div class="product-selection">
-                                <input type="radio"
-                                    id="bedroom_3-glass_partition-1"
-                                    class="product-radio"
-                                    name="bedroom_3-glass_partition"
-                                    data-product-id="bedroom_3-glass_partition-1"
-                                    data-room="bedroom_3"
-                                    data-category="glass_partition"
-                                    data-brand="S3"
-                                    data-model="S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings"
-                                    data-price="690.0"
-                                    data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579">
-                                <label for="bedroom_3-glass_partition-1"></label>
-                                <span class="selection-label">Selected</span>
-                            </div>
-                            <div class="product-image-container">
-                            <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/S3_Bathroom_Separator_Glass_Sliding_Type-7.webp?v=1742468579" alt="S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings">
-                            <div class="bestseller-badge"><i class="fa fa-star"></i> BESTSELLER</div>
-                            </div>
-                            <div class="product-details">
-                            <span class="product-type">GLASS PARTITION</span>
-                            <h3 class="product-title">S3 S3 Glass Partition for Washroom - 7 x 5 Feet - Sliding Type With Ozone Fittings</h3>
-                                <div class="price-container">
-                                <span class="current-price">₹690.00</span>
-                                <span class="retail-price">₹1,150.00</span>
-                                <span class="savings">Save ₹460.00 (40%)</span>
-                                </div>
-                                <div class="product-info-item">
-                                    <span class="product-info-label">Description:</span> Enhance your space with our sleek Glass Partition, designed for a modern and sophisticated look. Featuring a sliding shower operation, durable 10mm toughened glass, and a generous 5-year warranty for auto-burst protection, this partition offers both style and peace of mind. Elevate your bathroom with this premium quality partition that combines functionality, durability, and a touch of elegance.
-                                </div>
-                                <div class="product-info-item">
-                                <span class="product-info-label">Warranty:</span> nan
-                                </div>
-                                
-                                <h4>Why We Recommend This:</h4>
-                                <ul class="reasons-list">
-                                <li><i class="fas fa-star"></i> Top-rated bestseller with excellent customer reviews</li>
-                                </ul>
-                            <a href="https://betterhomeapp.com/products/s3-glass-partition-for-washroom-sliding-type-with-ozone-fittings" class="buy-button" target="_blank">View Details</a>
-                            </div>
-                        </div>
-                    </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
+        
             <div class="room-section">
-                <h2>Laundry</h2>
-                        <div class="room-description">Laundry area of 50.0 sq ft equipped with a Front-Load washing machine and a dryer.</div>
+                <button class='accordion' type='button'>Laundry</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Laundry area of 50.0 sq ft equipped with a Front-Load washing machine and a dryer.</div>
 
-                <div class="products-grid">
+                    <div class="products-grid">
         
                     <div class="product-card">
                         <div class="product-selection">
@@ -4169,13 +2806,15 @@
                         </div>
                     </div>
                 
-                </div>
-            </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
         
             <div class="room-section">
-                <h2>Dining</h2>
+                <button class='accordion' type='button'>Dining</button>
+                <div class='panel' style='display: none;'>
         
-                <div class="products-grid">
+                    <div class="products-grid">
         
                     <div class="product-card">
                         <div class="product-selection">
@@ -4429,8 +3068,9 @@
                         </div>
                     </div>
                 
-                </div>
-            </div>
+                    </div> <!-- products-grid -->
+                </div> <!-- panel -->
+            </div> <!-- room-section -->
         
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
