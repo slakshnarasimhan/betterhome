@@ -1,0 +1,60 @@
+
+=== Refrigerator Debug ===
+Required capacity: 300 to 400 litres
+Found 5 refrigerators
+Sample: Bosch - Bosch Max Flex 302L 3 Star Triple Door Refrigerator Series 6 - CMC33S03NI
+Added 3 refrigerators to recommendations
+=== End Debug ===
+
+
+=== Master Bedroom Exhaust Fan Debug ===
+Exhaust fan size: 250mm
+Exhaust fan color: None
+Parsed size: 250.0 mm
+Products after size filtering: 0
+Required color: 
+Found 3 recommendations
+=== End Master Bedroom Exhaust Fan Debug ===
+
+
+=== Bedroom 2 Exhaust Fan Debug ===
+Exhaust fan size: 250mm
+Exhaust fan color: None
+Parsed size: 250.0 mm
+Products after size filtering: 0
+Required color: 
+Found 3 recommendations
+=== End Bedroom 2 Exhaust Fan Debug ===
+
+
+=== Bedroom 3 Exhaust Fan Debug ===
+Exhaust fan size: 250mm
+Exhaust fan color: None
+Parsed size: 250.0 mm
+Products after size filtering: 0
+Required color: 
+Found 3 recommendations
+=== End Bedroom 3 Exhaust Fan Debug ===
+
+[DEBUG DINING FAN] fan_size_str=60 CM, size_cm=60.0, required_features={'fan_size_cm': 60.0}
+
+=== Dryer Debug ===
+Looking for dryer products. Dryer type value: 'Yes'
+Found 1 dryers before deduplication
+  Dryer 1: Bosch - Bosch 8Kg Fully Automatic Front Load Condenser Tumble Dryer Series 4 - WPG23108IN Silver
+Added 1 unique dryers to recommendations
+  Final Dryer 1: Bosch - Bosch 8Kg Fully Automatic Front Load Condenser Tumble Dryer Series 4 - WPG23108IN Silver
+=== End Dryer Debug ===
+
+
+=== Glass Partition Debug ===
+Master Bedroom Bathroom - For Elders: Adding Glass Partition
+Found 1 glass partitions
+Added 1 unique glass partitions to recommendations
+=== End Glass Partition Debug ===
+
+Found logo at: /Users/narasimhan/workarea/betterhome/web_app/better_home_logo.png
+Generated professional HTML brochure: uploads/Lakshmi_Narasimhan_20250514_162436.html
+
+Product recommendations have been generated!
+Check uploads/Lakshmi_Narasimhan_20250514_162436.pdf, uploads/Lakshmi_Narasimhan_20250514_162436.txt, and uploads/Lakshmi_Narasimhan_20250514_162436.html for details.

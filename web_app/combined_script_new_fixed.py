@@ -2574,7 +2574,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     if logo_exists:
         if is_web_app:
             # Use a relative URL path that will be handled by Flask
-            logo_html = '<img src="../static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+            logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
         else:
             # Use the file path for direct HTML viewing
             logo_html = f'<img src="{logo_path}" alt="BetterHome Logo" class="logo">'
@@ -2613,9 +2613,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             // Load required libraries
             window.addEventListener('DOMContentLoaded', function() {
-                <script src="../static/xlsx.full.min.js"></script>
-                <script src="../static/FileSaver.min.js"></script>
-
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 
+                    'sha512-rePnB9Ctz717fxdHiJmXJftsHsVbxk3yOHYCWBJP43y3dBK6aSn+Y0lOu3M3xFax4p0+nyd4cfN6PyS/sXQFg==');
+                    
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js',
+                    'sha512-Qlv6VSKh1gDKGoJbnyA5RMXYcvnpIqhO++MhIM2fStMcGT9i2T//tSwYFlcyoRRDcDZ+TYHpH8azBBCyhpSeqw==');
             });
         </script>
         <style>
@@ -3089,22 +3091,22 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     const categories = {};
                     
                     // Group checkboxes by category
-                    document.querySelectorAll('.product-radio').forEach(radio => {
-                        const category = radio.getAttribute('data-category');
-                        const room = radio.getAttribute('data-room');
+                    document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+                        const category = checkbox.getAttribute('data-category');
+                        const room = checkbox.getAttribute('data-room');
                         const key = `${room}-${category}`;
                         
                         if (!categories[key]) {
                             categories[key] = [];
                         }
-                        categories[key].push(radio);
+                        categories[key].push(checkbox);
                         
                         // Add change listener
-                        radio.addEventListener('change', function() {
+                        checkbox.addEventListener('change', function() {
                             if (this.checked) {
                                 // Uncheck other checkboxes in the same category
-                                categories[key].forEach(rb => {
-                                    if (rb !== this) rb.checked = false;
+                                categories[key].forEach(cb => {
+                                    if (cb !== this) cb.checked = false;
                                 });
                             }
                         });
@@ -3126,14 +3128,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         
                         // Collect all selected products
                         const selectedProducts = [];
-                        document.querySelectorAll('.product-radio:checked').forEach(radio => {
-                            const productId = radio.getAttribute('data-product-id');
-                            const room = radio.getAttribute('data-room');
-                            const category = radio.getAttribute('data-category');
-                            const brand = radio.getAttribute('data-brand');
-                            const model = radio.getAttribute('data-model');
-                            const price = radio.getAttribute('data-price');
-                            const image = radio.getAttribute('data-image');
+                        document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                            const productId = checkbox.getAttribute('data-product-id');
+                            const room = checkbox.getAttribute('data-room');
+                            const category = checkbox.getAttribute('data-category');
+                            const brand = checkbox.getAttribute('data-brand');
+                            const model = checkbox.getAttribute('data-model');
+                            const price = checkbox.getAttribute('data-price');
+                            const image = checkbox.getAttribute('data-image');
                             
                             selectedProducts.push({
                                 id: productId,
@@ -3206,13 +3208,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 
                                 productCard.innerHTML = `
                                     <div class="product-image-container">
-                                        <img class="product-image" src="${product.image || 'https://via.placeholder.com/300x300?text=No+Image+Available'}" alt="${product.brand} ${product.model}">
+                                        <img class="product-image" src="${{\1}}" alt="${product.brand} ${product.model}">
                                     </div>
                                     <div class="product-details">
-                                        <span class="product-type">${categoryTitle}</span>
+                                        <span class="product-type">${{\1}}</span>
                                         <h3 class="product-title">${product.brand} ${product.model}</h3>
                                         <div class="price-container">
-                                            <span class="current-price">${price}</span>
+                                            <span class="current-price">${{\1}}</span>
                                         </div>
                                     </div>
                                 `;
@@ -3235,7 +3237,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         // Calculate budget utilization
                         const budget = parseFloat(totalElement.nextElementSibling.nextElementSibling.textContent.replace(/[^0-9.]/g, ''));
                         const utilization = (totalPrice / budget) * 100;
-                        document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
+                        document.getElementById('final-budget-utilization').textContent = `${{\1}}%`;
                         
                         // Update budget status
                         const budgetStatus = document.getElementById('final-budget-status');
@@ -3692,10 +3694,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 product_html = f'''
                     <div class="product-card{best_class}">
                         <div class="product-selection">
-                            <input type="radio"
-                                id="{product_id}"
-                                class="product-radio"
-                                name="{room}-{appliance_type}"
+                            <input type="checkbox" 
+                                id="{product_id}" 
+                                class="product-checkbox" 
                                 data-product-id="{product_id}"
                                 data-room="{room}"
                                 data-category="{appliance_type}"
@@ -3828,10 +3829,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     product_html = f'''
                         <div class="product-card{best_class}">
                             <div class="product-selection">
-                                <input type="radio"
-                                    id="{product_id}"
-                                    class="product-radio"
-                                    name="{room}-{bath_appliance_type}"
+                                <input type="checkbox" 
+                                    id="{product_id}" 
+                                    class="product-checkbox" 
                                     data-product-id="{product_id}"
                                     data-room="{room}"
                                     data-category="{bath_appliance_type}"
@@ -3877,16 +3877,176 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
                 <p>Please select one product from each category above that best suits your needs.</p>
-                <button id="generate-final" class="generate-button" onclick="try { generateFinalRecommendation() } catch(e) { console.error(e) }">Generate Final Recommendation</button>
+                <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendation</button>
+                <button id="export-excel" class="generate-button download-button" onclick="exportToExcel()">Export to Excel</button>
             </div>
+
+            <script>
+                function generateFinalRecommendation() {
+                    const selectedProducts = [];
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        selectedProducts.push({
+                            id: checkbox.getAttribute('data-product-id'),
+                            room: checkbox.getAttribute('data-room'),
+                        });
+                    });
+                }
+            </script>
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        selectedProducts.push({
+                            id: checkbox.getAttribute('data-product-id'),
+                            room: checkbox.getAttribute('data-room'),
+                            category: checkbox.getAttribute('data-category'),
+                            brand: checkbox.getAttribute('data-brand'),
+                            model: checkbox.getAttribute('data-model'),
+                            price: checkbox.getAttribute('data-price'),
+                            image: checkbox.getAttribute('data-image')
+                        });
+                    });
+                    
+                    if (selectedProducts.length === 0) {
+                        alert('Please select at least one product first');
+                        return;
+                    }
+                    
+                    // Hide recommendation page and show final page
+                    document.querySelector('.container').style.display = 'none';
+                    document.getElementById('final-recommendation-page').style.display = 'block';
+                    
+                    // Populate products
+                    const container = document.getElementById('selected-products-container');
+                    container.innerHTML = '';
+                    
+                    // Group by room
+                    const roomMap = {};
+                    selectedProducts.forEach(product => {
+                        if (!roomMap[product.room]) {
+                            roomMap[product.room] = [];
+                        }
+                        roomMap[product.room].push(product);
+                    });
+                    
+                    // Create sections
+                    for (const [room, products] of Object.entries(roomMap)) {
+                        const section = document.createElement('div');
+                        section.className = 'room-section';
+                        section.innerHTML = `<h2>${room.replace('_', ' ').toUpperCase()}</h2>`;
+                        
+                        const grid = document.createElement('div');
+                        grid.className = 'products-grid';
+                        
+                        products.forEach(product => {
+                            const price = parseFloat(product.price).toLocaleString('en-IN', {
+                                style: 'currency',
+                                currency: 'INR'
+                            });
+                            
+                            grid.innerHTML += `
+                                <div class="product-card">
+                                    <div class="product-image-container">
+                                        <img class="product-image" src="${{product.image || 'https://via.placeholder.com/300'}}" alt="${{product.brand}} ${{product.model}}">
+                                    </div>
+                                    <div class="product-details">
+                                        <span class="product-type">${{product.category.replace('_', ' ').toUpperCase()}}</span>
+                                        <h3 class="product-title">${{product.brand}} ${{product.model}}</h3>
+                                        <div class="price-container">
+                                            <span class="current-price">${{price}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        section.appendChild(grid);
+                        container.appendChild(section);
+                    }
+                    
+                    // Update price info
+                    const totalPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+                    document.getElementById('final-total-cost').textContent = totalPrice.toLocaleString('en-IN', {
+                        style: 'currency',
+                        currency: 'INR'
+                    });
+                    
+                    // Calculate utilization
+                    const budget = parseFloat(document.querySelector('.budget-item:nth-child(2) .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
+                    const utilization = (totalPrice / budget) * 100;
+                    document.getElementById('final-budget-utilization').textContent = `${{\1}}%`;
+                    
+                    // Update budget status
+                    const budgetStatus = document.getElementById('final-budget-status');
+                    if (utilization > 100) {
+                        budgetStatus.className = 'budget-status warning';
+                        budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
+                    }
+                }
+                
+                function exportToExcel() {
+                    console.log('Direct call to export to Excel');
+                    // Check if XLSX is loaded
+                    if (typeof XLSX === 'undefined') {
+                        alert('Excel export library not loaded. Please check your internet connection and try again.');
+                        return;
+                    }
+                    
+                    // Get selected products
+                    const selectedProducts = [];
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        selectedProducts.push({
+                            room: checkbox.getAttribute('data-room').replace('_', ' ').toUpperCase(),
+                            category: checkbox.getAttribute('data-category').replace('_', ' ').toUpperCase(),
+                            brand: checkbox.getAttribute('data-brand'),
+                            model: checkbox.getAttribute('data-model'),
+                            price: checkbox.getAttribute('data-price')
+                        });
+                    });
+                    
+                    if (selectedProducts.length === 0) {
+                        alert('Please select at least one product first');
+                        return;
+                    }
+                    
+                    // Create worksheet data
+                    const data = [
+                        ['Room', 'Category', 'Brand', 'Model', 'Price']
+                    ];
+                    
+                    selectedProducts.forEach(product => {
+                        data.push([
+                            product.room,
+                            product.category,
+                            product.brand,
+                            product.model,
+                            product.price
+                        ]);
+                    });
+                    
+                    // Add total row
+                    const totalPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+                    data.push(['', '', '', 'TOTAL', totalPrice.toFixed(2)]);
+                    
+                    try {
+                        // Create workbook and worksheet
+                        const ws = XLSX.utils.aoa_to_sheet(data);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Products');
+                        
+                        // Write file
+                        XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                    } catch (error) {
+                        console.error('Excel export error:', error);
+                        alert('Error exporting to Excel: ' + error.message);
+                    }
+                }
+'''            </script>
     """
     
     # Add footer
     current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
-    html_content += f"""
+    html_content += """
             <footer>
                 <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
-                <p> © {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
+                <p>© {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
             </footer>
         </div>
         
@@ -3894,14 +4054,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <div id="final-recommendation-page" style="display: none;">
             <div class="container">
                 <header>
-    """
-    html_content += f"""
                     {logo_html}
                     <h1>Your Final Product Selections</h1>
                     <p>Specially curated for {user_data['name']}</p>
                 </header>
-    """
-    html_content += f"""
+                
                 <div class="client-info">
                     <div class="client-info-item">
                         <div class="client-info-label">Name</div>
@@ -3955,101 +4112,75 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         ✓ Your selected products fit comfortably within your budget!
                     </div>
                 </div>
-        """
-    html_content += """
+                
                 <div class="generate-container">
-                    <button id="back-to-selection" class="generate-button" onclick="backToSelection()">Back to Product Selection</button>
-                    <button id="print-final" class="generate-button" onclick="try { window.print(); } catch(e) { console.error(e); }">Print</button>
+                    <button id="download-final-excel" class="generate-button download-button" onclick="downloadFinalExcel()">Download Excel</button>
+                    <button id="print-final" class="generate-button" onclick="window.print()">Print</button>
                 </div>
                 
-                <script>
-        """
-    html_content += """
-                    function backToSelection() {
-                        document.getElementById('final-recommendation-page').style.display = 'none';
-                        document.querySelector('.container').style.display = 'block';
-                    }
-
-                // Direct function access for button clicks
-                function generateFinalRecommendation() {
-                    const selectedProducts = [];
-                    document.querySelectorAll('.product-radio:checked').forEach(radio => {
-                        selectedProducts.push({
-                            id: radio.getAttribute('data-product-id'),
-                            room: radio.getAttribute('data-room'),
-                            category: radio.getAttribute('data-category'),
-                            brand: radio.getAttribute('data-brand'),
-                            model: radio.getAttribute('data-model'),
-                            price: radio.getAttribute('data-price'),
-                            image: radio.getAttribute('data-image')
-                        });
-                    });
-                    if (selectedProducts.length === 0) {
-                        alert('Please select at least one product first');
-                        return;
-                    }
-                    document.querySelector('.container').style.display = 'none';
-                    document.getElementById('final-recommendation-page').style.display = 'block';
-                    const container = document.getElementById('selected-products-container');
-                    container.innerHTML = '';
-                    const roomMap = {};
-                    selectedProducts.forEach(product => {
-                        if (!roomMap[product.room]) {
-                            roomMap[product.room] = [];
-                        }
-                        roomMap[product.room].push(product);
-                    });
-                    for (const [room, products] of Object.entries(roomMap)) {
-                        const section = document.createElement('div');
-                        section.className = 'room-section';
-                        section.innerHTML = `<h2>${room.replace('_', ' ').toUpperCase()}</h2>`;
-                        const grid = document.createElement('div');
-                        grid.className = 'products-grid';
-                        products.forEach(product => {
-                            const price = parseFloat(product.price).toLocaleString('en-IN', {
-                                style: 'currency',
-                                currency: 'INR'
+                <script>'''
+                    function downloadFinalExcel() {
+                        console.log('Downloading final recommendation as Excel');
+                        
+                        try {
+                            // Check if XLSX is loaded
+                            if (typeof XLSX === 'undefined') {
+                                alert('Excel library is not available. Please check your internet connection.');
+                                return;
+                            }
+                            
+                            // Collect products from the DOM
+                            const products = [];
+                            const sections = document.querySelectorAll('#selected-products-container .room-section');
+                            
+                            sections.forEach(section => {
+                                const room = section.querySelector('h2').textContent;
+                                
+                                section.querySelectorAll('.product-card').forEach(card => {
+                                    products.push({
+                                        room: room,
+                                        category: card.querySelector('.product-type').textContent,
+                                        title: card.querySelector('.product-title').textContent,
+                                        price: card.querySelector('.current-price').textContent.replace(/[^0-9.]/g, '')
+                                    });
+                                });
                             });
-                            grid.innerHTML += `
-                                <div class="product-card">
-                                    <div class="product-image-container">
-                                        <img class="product-image" src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.brand} ${product.model}">
-                                    </div>
-                                    <div class="product-details">
-                                        <span class="product-type">${product.category.replace('_', ' ').toUpperCase()}</span>
-                                        <h3 class="product-title">${product.brand} ${product.model}</h3>
-                                        <div class="price-container">
-                                            <span class="current-price">${price}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        section.appendChild(grid);
-                        container.appendChild(section);
+                            
+                            // Create Excel data
+                            const data = [
+                                ['Room', 'Category', 'Product', 'Price']
+                            ];
+                            
+                            products.forEach(p => {
+                                // Extract brand and model from title
+                                const parts = p.title.split(' ');
+                                const brand = parts[0];
+                                const model = parts.slice(1).join(' ');
+                                
+                                data.push([p.room, p.category, p.title, p.price]);
+                            });
+                            
+                            // Add total
+                            const totalPrice = products.reduce((sum, p) => sum + parseFloat(p.price), 0);
+                            data.push(['', '', 'TOTAL', totalPrice.toFixed(2)]);
+                            
+                            // Create workbook
+                            const ws = XLSX.utils.aoa_to_sheet(data);
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'Final Selections');
+                            
+                            // Save file
+                            XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                        } catch (error) {
+                            console.error('Error exporting final recommendation to Excel:', error);
+                            alert('Failed to export: ' + error.message);
+                        }
                     }
-                    const totalPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
-                    document.getElementById('final-total-cost').textContent = totalPrice.toLocaleString('en-IN', {
-                        style: 'currency',
-                        currency: 'INR'
-                    });
-                    const budget = parseFloat(document.querySelector('.budget-item:nth-child(2) .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
-                    const utilization = (totalPrice / budget) * 100;
-                    document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
-                    const budgetStatus = document.getElementById('final-budget-status');
-                    if (utilization > 100) {
-                        budgetStatus.className = 'budget-status warning';
-                        budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
-                    }
-                }
-            
-                </script>
+'''                </script>
                 
                 <footer>
-    """
-    html_content += f"""
                     <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
-                    <p> {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
+                    <p>© {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
                 </footer>
             </div>
         </div>
