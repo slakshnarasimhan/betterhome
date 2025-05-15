@@ -4216,13 +4216,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         section.appendChild(grid);
                         container.appendChild(section);
                     }
-                    const totalPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
-                    document.getElementById('final-total-cost').textContent = totalPrice.toLocaleString('en-IN', {
+                    // Get the total price from the initial page to ensure consistency
+                    const initialTotalPrice = parseFloat(document.querySelector('.budget-item:first-child .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
+                    document.getElementById('final-total-cost').textContent = initialTotalPrice.toLocaleString('en-IN', {
                         style: 'currency',
                         currency: 'INR'
                     });
                     const budget = parseFloat(document.querySelector('.budget-item:nth-child(2) .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
-                    const utilization = (totalPrice / budget) * 100;
+                    const utilization = (initialTotalPrice / budget) * 100;
                     document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
                     const budgetStatus = document.getElementById('final-budget-status');
                     if (utilization > 100) {
