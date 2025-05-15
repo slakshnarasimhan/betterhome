@@ -47,13 +47,34 @@
 </head>
 <body>
     <div class="recommendations-container">
+        <h1 style="position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 2000; background: rgba(255,255,255,0.8); padding: 10px; display: none;">
+            Your Recommendations
+        </h1>
+        
         <!-- Display the HTML file in an iframe -->
         <iframe src="{{ url_for('view_html', filename=html_file) }}" title="BetterHome Recommendations"></iframe>
         
         <!-- Download PDF button -->
+        {% if pdf_path %}
         <a href="{{ pdf_path }}" class="download-button" target="_blank">
             Download PDF
         </a>
+        {% else %}
+        <div class="download-button" style="background-color: #e74c3c;">
+            PDF not available
+        </div>
+        {% endif %}
     </div>
+    
+    <script>
+        // Log the iframe source for debugging
+        console.log("Loading iframe with URL: {{ url_for('view_html', filename=html_file) }}");
+        
+        // Handle iframe load errors
+        document.querySelector('iframe').onerror = function() {
+            console.error("Error loading iframe");
+            alert("Error loading recommendations. Please try again.");
+        };
+    </script>
 </body>
 </html> 
