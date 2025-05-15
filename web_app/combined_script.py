@@ -2591,6 +2591,35 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        
+        <!-- Excel libraries with integrity checks and error handling -->
+        <script>
+            function loadScript(src, integrity, callback) {
+                console.log('Loading script:', src);
+                const script = document.createElement('script');
+                script.src = src;
+                if (integrity) script.integrity = integrity;
+                script.crossOrigin = 'anonymous';
+                script.onload = () => {
+                    console.log('Script loaded successfully:', src);
+                    if (callback) callback();
+                };
+                script.onerror = (e) => {
+                    console.error('Failed to load script:', src, e);
+                    alert('Failed to load required library: ' + src);
+                };
+                document.head.appendChild(script);
+            }
+            
+            // Load required libraries
+            window.addEventListener('DOMContentLoaded', function() {
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 
+                    'sha512-rePnB9Ctz717fxdHiJmXJftsHsVbxk3yOHYCWBJP43y3dBK6aSn+Y0lOu3M3xFax4p0+nyd4cfN6PyS/sXQFg==');
+                    
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js',
+                    'sha512-Qlv6VSKh1gDKGoJbnyA5RMXYcvnpIqhO++MhIM2fStMcGT9i2T//tSwYFlcyoRRDcDZ+TYHpH8azBBCyhpSeqw==');
+            });
+        </script>
         <style>
             /* Modern typography and base styles */
             body {
@@ -2683,11 +2712,44 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 display: flex;
                 flex-direction: column;
                 transition: transform 0.3s ease;
+                position: relative;
             }
 
             .product-card.best-product {
                 border: 2px solid #3498db;  // Emphasize the best product
                 transform: scale(1.05);  // Slightly enlarge the best product
+            }
+            
+            .product-selection {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                z-index: 10;
+            }
+            
+            .product-checkbox {
+                width: 20px;
+                height: 20px;
+                cursor: pointer;
+            }
+            
+            .product-checkbox:checked + label {
+                font-weight: bold;
+                color: #3498db;
+            }
+            
+            .selection-label {
+                background: #3498db;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                margin-left: 5px;
+                display: none;
+            }
+            
+            .product-checkbox:checked ~ .selection-label {
+                display: inline-block;
             }
             
             .product-image-container {
@@ -2916,6 +2978,51 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 line-height: 1.5;
             }
             
+            /* Generate Recommendation Button */
+            .generate-container {
+                text-align: center;
+                margin: 40px 0;
+                padding: 20px;
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            
+            .generate-button {
+                display: inline-block;
+                background-color: #2ecc71;
+                color: white;
+                padding: 15px 30px;
+                border-radius: 6px;
+                font-size: 18px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: background-color 0.3s;
+                border: none;
+                cursor: pointer;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            
+            .generate-button:hover {
+                background-color: #27ae60;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+            }
+            
+            .generate-button:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            .download-button {
+                background-color: #3498db;
+                margin-left: 10px;
+            }
+            
+            .download-button:hover {
+                background-color: #2980b9;
+            }
+
             /* Footer styling */
             footer {
                 margin-top: 50px;
@@ -2925,7 +3032,402 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 color: #7f8c8d;
                 font-size: 14px;
             }
+            
+            /* Print styles */
+            @media print {
+                body {
+                    background-color: white;
+                }
+                
+                .container {
+                    max-width: 100%;
+                    padding: 0;
+                    margin: 0;
+                }
+                
+                .generate-container,
+                .product-selection,
+                .buy-button {
+                    display: none !important;
+                }
+                
+                .product-card {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                    box-shadow: none;
+                    border: 1px solid #eaeaea;
+                }
+                
+                .room-section {
+                    page-break-before: always;
+                }
+                
+                .room-section:first-child {
+                    page-break-before: avoid;
+                }
+                
+                header {
+                    page-break-after: avoid;
+                }
+                
+                .client-info, .budget-summary {
+                    page-break-inside: avoid;
+                }
+            }
         </style>
+        <script>
+            // Wait for the document to be fully loaded
+            window.addEventListener('load', function() {
+                console.log('Document fully loaded');
+                
+                // Debug helper to check if elements exist
+                function checkElement(id) {
+                    const element = document.getElementById(id);
+                    console.log(`Element ${id} exists: ${!!element}`);
+                    return element;
+                }
+                // Ensure only one product per category can be selected
+                const setupCategorySelections = () => {
+                    const categories = {};
+                    
+                    // Group checkboxes by category
+                    document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+                        const category = checkbox.getAttribute('data-category');
+                        const room = checkbox.getAttribute('data-room');
+                        const key = `${room}-${category}`;
+                        
+                        if (!categories[key]) {
+                            categories[key] = [];
+                        }
+                        categories[key].push(checkbox);
+                        
+                        // Add change listener
+                        checkbox.addEventListener('change', function() {
+                            if (this.checked) {
+                                // Uncheck other checkboxes in the same category
+                                categories[key].forEach(cb => {
+                                    if (cb !== this) cb.checked = false;
+                                });
+                            }
+                        });
+                    });
+                };
+                
+                // Handle generate final recommendation
+                const setupGenerateButton = () => {
+                    console.log('Setting up generate button');
+                    const generateButton = checkElement('generate-final');
+                    if (!generateButton) {
+                        console.error('Generate button not found in the DOM');
+                        return;
+                    }
+                    
+                    generateButton.addEventListener('click', function(e) {
+                        console.log('Generate button clicked');
+                        e.preventDefault();
+                        
+                        // Collect all selected products
+                        const selectedProducts = [];
+                        document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                            const productId = checkbox.getAttribute('data-product-id');
+                            const room = checkbox.getAttribute('data-room');
+                            const category = checkbox.getAttribute('data-category');
+                            const brand = checkbox.getAttribute('data-brand');
+                            const model = checkbox.getAttribute('data-model');
+                            const price = checkbox.getAttribute('data-price');
+                            const image = checkbox.getAttribute('data-image');
+                            
+                            selectedProducts.push({
+                                id: productId,
+                                room: room,
+                                category: category,
+                                brand: brand,
+                                model: model,
+                                price: price,
+                                image: image
+                            });
+                        });
+                        
+                        if (selectedProducts.length === 0) {
+                            alert("Please select at least one product before generating the final recommendation.");
+                            return;
+                        }
+                        
+                        // Store selected products in local storage
+                        localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+                        
+                        // Calculate total price
+                        const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
+                        localStorage.setItem('totalPrice', totalPrice);
+                        
+                        // Hide recommendation page and show final page
+                        document.querySelector('.container').style.display = 'none';
+                        const finalPage = document.getElementById('final-recommendation-page');
+                        finalPage.style.display = 'block';
+                        
+                        // Populate selected products
+                        displayFinalRecommendation(selectedProducts, totalPrice);
+                    });
+                    
+                    // Function to display final recommendation
+                    function displayFinalRecommendation(products, totalPrice) {
+                        const container = document.getElementById('selected-products-container');
+                        container.innerHTML = '';
+                        
+                        // Group products by room
+                        const roomProducts = {};
+                        products.forEach(product => {
+                            if (!roomProducts[product.room]) {
+                                roomProducts[product.room] = [];
+                            }
+                            roomProducts[product.room].push(product);
+                        });
+                        
+                        // Create room sections
+                        for (const [room, roomItems] of Object.entries(roomProducts)) {
+                            const roomTitle = room.replace('_', ' ').toUpperCase();
+                            const roomSection = document.createElement('div');
+                            roomSection.className = 'room-section';
+                            roomSection.innerHTML = `<h2>${roomTitle}</h2>`;
+                            
+                            // Create product grid
+                            const productGrid = document.createElement('div');
+                            productGrid.className = 'products-grid';
+                            
+                            // Add products
+                            roomItems.forEach(product => {
+                                const productCard = document.createElement('div');
+                                productCard.className = 'product-card';
+                                
+                                const categoryTitle = product.category.replace('_', ' ').toUpperCase();
+                                const price = parseFloat(product.price).toLocaleString('en-IN', {
+                                    style: 'currency',
+                                    currency: 'INR',
+                                    maximumFractionDigits: 2
+                                });
+                                
+                                productCard.innerHTML = `
+                                    <div class="product-image-container">
+                                        <img class="product-image" src="${product.image || 'https://via.placeholder.com/300x300?text=No+Image+Available'}" alt="${product.brand} ${product.model}">
+                                    </div>
+                                    <div class="product-details">
+                                        <span class="product-type">${categoryTitle}</span>
+                                        <h3 class="product-title">${product.brand} ${product.model}</h3>
+                                        <div class="price-container">
+                                            <span class="current-price">${price}</span>
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                productGrid.appendChild(productCard);
+                            });
+                            
+                            roomSection.appendChild(productGrid);
+                            container.appendChild(roomSection);
+                        }
+                        
+                        // Update budget information
+                        const totalElement = document.getElementById('final-total-cost');
+                        totalElement.textContent = totalPrice.toLocaleString('en-IN', {
+                            style: 'currency',
+                            currency: 'INR',
+                            maximumFractionDigits: 2
+                        });
+                        
+                        // Calculate budget utilization
+                        const budget = parseFloat(totalElement.nextElementSibling.nextElementSibling.textContent.replace(/[^0-9.]/g, ''));
+                        const utilization = (totalPrice / budget) * 100;
+                        document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
+                        
+                        // Update budget status
+                        const budgetStatus = document.getElementById('final-budget-status');
+                        if (utilization > 100) {
+                            budgetStatus.className = 'budget-status warning';
+                            budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
+                        }
+                    }
+                };
+                };
+                
+                // Function to export to Excel
+                const setupExportButton = () => {
+                    console.log('Setting up export button');
+                    const exportButton = checkElement('export-excel');
+                    if (!exportButton) {
+                        console.error('Export button not found in the DOM');
+                        return;
+                    }
+                    
+                    exportButton.addEventListener('click', function() {
+                        console.log('Export button clicked');
+                        const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+                        if (selectedProducts.length === 0) {
+                            alert('Please select at least one product first');
+                            return;
+                        }
+                        
+                        // Prepare data for Excel
+                        const data = [
+                            ['Room', 'Category', 'Brand', 'Model', 'Price']
+                        ];
+                        
+                        selectedProducts.forEach(product => {
+                            data.push([
+                                product.room.replace('_', ' ').toUpperCase(),
+                                product.category.replace('_', ' ').toUpperCase(),
+                                product.brand,
+                                product.model,
+                                product.price
+                            ]);
+                        });
+                        
+                        // Add total row
+                        const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
+                        data.push(['', '', '', 'TOTAL', totalPrice.toFixed(2)]);
+                        
+                        try {
+                            console.log('Creating Excel file with data:', data);
+                            
+                            // Check if XLSX is available
+                            if (typeof XLSX === 'undefined') {
+                                console.error('XLSX library not loaded');
+                                alert('Excel export library not loaded. Please check your internet connection.');
+                                return;
+                            }
+                            
+                            // Create worksheet
+                            const ws = XLSX.utils.aoa_to_sheet(data);
+                            
+                            // Create workbook
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
+                            
+                            // Save file
+                            XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                            console.log('Excel file created successfully');
+                        } catch (error) {
+                            console.error('Error creating Excel file:', error);
+                            alert('Failed to create Excel file. Error: ' + error.message);
+                        }
+                    });
+                };
+                
+                // Setup the download button for final recommendation
+                const setupFinalDownloadButton = () => {
+                    console.log('Setting up final download button');
+                    const downloadButton = checkElement('download-final-excel');
+                    if (!downloadButton) {
+                        console.error('Final download button not found in the DOM');
+                        return;
+                    }
+                    
+                    downloadButton.addEventListener('click', function() {
+                        console.log('Download final button clicked');
+                        const selectedProducts = [];
+                        
+                        // Collect all products from the selected-products-container
+                        const roomSections = document.querySelectorAll('#selected-products-container .room-section');
+                        roomSections.forEach(section => {
+                            const roomName = section.querySelector('h2').textContent;
+                            const productCards = section.querySelectorAll('.product-card');
+                            
+                            productCards.forEach(card => {
+                                const category = card.querySelector('.product-type').textContent;
+                                const title = card.querySelector('.product-title').textContent;
+                                const price = card.querySelector('.current-price').textContent;
+                                
+                                // Split title into brand and model - assumes format "Brand Model"
+                                const titleParts = title.split(' ');
+                                const brand = titleParts[0];
+                                const model = titleParts.slice(1).join(' ');
+                                
+                                selectedProducts.push({
+                                    room: roomName,
+                                    category: category,
+                                    brand: brand,
+                                    model: model,
+                                    price: price.replace(/[^0-9.]/g, '') // Remove currency symbols
+                                });
+                            });
+                        });
+                        
+                        // Prepare data for Excel
+                        const data = [
+                            ['Room', 'Category', 'Brand', 'Model', 'Price']
+                        ];
+                        
+                        selectedProducts.forEach(product => {
+                            data.push([
+                                product.room,
+                                product.category,
+                                product.brand,
+                                product.model,
+                                product.price
+                            ]);
+                        });
+                        
+                        // Add total price
+                        const totalElement = document.getElementById('final-total-cost');
+                        const totalPrice = totalElement.textContent.replace(/[^0-9.]/g, '');
+                        data.push(['', '', '', 'TOTAL', totalPrice]);
+                        
+                        // Add client information
+                        data.push([]);
+                        data.push(['Client Information']);
+                        const clientInfoItems = document.querySelectorAll('.client-info .client-info-item');
+                        clientInfoItems.forEach(item => {
+                            const label = item.querySelector('.client-info-label').textContent;
+                            const value = item.querySelector('.client-info-value').textContent;
+                            data.push([label, value]);
+                        });
+                        
+                        // Create worksheet
+                        const ws = XLSX.utils.aoa_to_sheet(data);
+                        
+                        // Create workbook
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
+                        
+                        // Save file
+                        XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                    });
+                    
+                    // Setup print button
+                    console.log('Setting up print button');
+                    const printButton = checkElement('print-final');
+                    if (!printButton) {
+                        console.error('Print button not found in the DOM');
+                        return;
+                    }
+                    
+                    printButton.addEventListener('click', function() {
+                        console.log('Print button clicked');
+                        window.print();
+                    });
+                };
+
+                // Initialize all event handlers
+                function initializeEventHandlers() {
+                    console.log('Initializing all event handlers');
+                    
+                    // Add a small delay to ensure DOM is fully processed
+                    setTimeout(() => {
+                        try {
+                            setupCategorySelections();
+                            setupGenerateButton();
+                            setupExportButton();
+                            setupFinalDownloadButton();
+                            console.log('All event handlers initialized successfully');
+                        } catch (error) {
+                            console.error('Error initializing event handlers:', error);
+                        }
+                    }, 500);
+                }
+                
+                // Call initialization
+                initializeEventHandlers();
+            });
+        </script>
     </head>
     <body>
         <div class="container">
@@ -3185,9 +3687,26 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 # Determine if this is the best product and apply special styling
                 best_class = " best-product" if product == best_product else ""
 
+                # Generate a unique ID for the product
+                product_id = f"{room}-{appliance_type}-{idx}"
+                
                 # Create the HTML for the product card
                 product_html = f'''
                     <div class="product-card{best_class}">
+                        <div class="product-selection">
+                            <input type="checkbox" 
+                                id="{product_id}" 
+                                class="product-checkbox" 
+                                data-product-id="{product_id}"
+                                data-room="{room}"
+                                data-category="{appliance_type}"
+                                data-brand="{brand}"
+                                data-model="{model}"
+                                data-price="{better_home_price_num}"
+                                data-image="{image_src}">
+                            <label for="{product_id}"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
                         <div class="product-image-container">
                         <img class="product-image" src="{image_src}" alt="{brand} {model}">
                         {bestseller_badge}
@@ -3303,8 +3822,26 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             icon = "star"
                         reasons_with_icons.append(f'<li><i class="fas fa-{icon}"></i> {reason}</li>')
                     best_class = " best-product" if product == best_product else ""
+                    
+                    # Generate a unique ID for the bathroom product
+                    product_id = f"{room}-{bath_appliance_type}-{idx}"
+                    
                     product_html = f'''
                         <div class="product-card{best_class}">
+                            <div class="product-selection">
+                                <input type="checkbox" 
+                                    id="{product_id}" 
+                                    class="product-checkbox" 
+                                    data-product-id="{product_id}"
+                                    data-room="{room}"
+                                    data-category="{bath_appliance_type}"
+                                    data-brand="{brand}"
+                                    data-model="{model}"
+                                    data-price="{better_home_price_num}"
+                                    data-image="{image_src}">
+                                <label for="{product_id}"></label>
+                                <span class="selection-label">Selected</span>
+                            </div>
                             <div class="product-image-container">
                             <img class="product-image" src="{image_src}" alt="{brand} {model}">
                             {bestseller_badge}
@@ -3335,6 +3872,170 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     html_content += product_html
                 html_content += "</div>"
 
+    # Add the generate final recommendation button
+    html_content += f"""
+            <div class="generate-container">
+                <h2>Select Your Preferred Products</h2>
+                <p>Please select one product from each category above that best suits your needs.</p>
+                <button id="generate-final" class="generate-button" onclick="try { generateFinalRecommendation(); } catch(e) { console.error(e); }">Generate Final Recommendation</button>
+                <button id="export-excel" class="generate-button download-button" onclick="try { exportToExcel(); } catch(e) { console.error(e); }">Export to Excel</button>
+            </div>
+            
+            <script>
+                // Direct function access for button clicks
+                function generateFinalRecommendation() {
+                    console.log('Direct call to generate final recommendation');
+                    // Collect selected products
+                    const selectedProducts = [];
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        selectedProducts.push({
+                            id: checkbox.getAttribute('data-product-id'),
+                            room: checkbox.getAttribute('data-room'),
+                            category: checkbox.getAttribute('data-category'),
+                            brand: checkbox.getAttribute('data-brand'),
+                            model: checkbox.getAttribute('data-model'),
+                            price: checkbox.getAttribute('data-price'),
+                            image: checkbox.getAttribute('data-image')
+                        });
+                    });
+                    
+                    if (selectedProducts.length === 0) {
+                        alert('Please select at least one product first');
+                        return;
+                    }
+                    
+                    // Hide recommendation page and show final page
+                    document.querySelector('.container').style.display = 'none';
+                    document.getElementById('final-recommendation-page').style.display = 'block';
+                    
+                    // Populate products
+                    const container = document.getElementById('selected-products-container');
+                    container.innerHTML = '';
+                    
+                    // Group by room
+                    const roomMap = {};
+                    selectedProducts.forEach(product => {
+                        if (!roomMap[product.room]) {
+                            roomMap[product.room] = [];
+                        }
+                        roomMap[product.room].push(product);
+                    });
+                    
+                    // Create sections
+                    for (const [room, products] of Object.entries(roomMap)) {
+                        const section = document.createElement('div');
+                        section.className = 'room-section';
+                        section.innerHTML = `<h2>${room.replace('_', ' ').toUpperCase()}</h2>`;
+                        
+                        const grid = document.createElement('div');
+                        grid.className = 'products-grid';
+                        
+                        products.forEach(product => {
+                            const price = parseFloat(product.price).toLocaleString('en-IN', {
+                                style: 'currency',
+                                currency: 'INR'
+                            });
+                            
+                            grid.innerHTML += `
+                                <div class="product-card">
+                                    <div class="product-image-container">
+                                        <img class="product-image" src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.brand} ${product.model}">
+                                    </div>
+                                    <div class="product-details">
+                                        <span class="product-type">${product.category.replace('_', ' ').toUpperCase()}</span>
+                                        <h3 class="product-title">${product.brand} ${product.model}</h3>
+                                        <div class="price-container">
+                                            <span class="current-price">${price}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        section.appendChild(grid);
+                        container.appendChild(section);
+                    }
+                    
+                    // Update price info
+                    const totalPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+                    document.getElementById('final-total-cost').textContent = totalPrice.toLocaleString('en-IN', {
+                        style: 'currency',
+                        currency: 'INR'
+                    });
+                    
+                    // Calculate utilization
+                    const budget = parseFloat(document.querySelector('.budget-item:nth-child(2) .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
+                    const utilization = (totalPrice / budget) * 100;
+                    document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
+                    
+                    // Update budget status
+                    const budgetStatus = document.getElementById('final-budget-status');
+                    if (utilization > 100) {
+                        budgetStatus.className = 'budget-status warning';
+                        budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
+                    }
+                }
+                
+                function exportToExcel() {
+                    console.log('Direct call to export to Excel');
+                    // Check if XLSX is loaded
+                    if (typeof XLSX === 'undefined') {
+                        alert('Excel export library not loaded. Please check your internet connection and try again.');
+                        return;
+                    }
+                    
+                    // Get selected products
+                    const selectedProducts = [];
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        selectedProducts.push({
+                            room: checkbox.getAttribute('data-room').replace('_', ' ').toUpperCase(),
+                            category: checkbox.getAttribute('data-category').replace('_', ' ').toUpperCase(),
+                            brand: checkbox.getAttribute('data-brand'),
+                            model: checkbox.getAttribute('data-model'),
+                            price: checkbox.getAttribute('data-price')
+                        });
+                    });
+                    
+                    if (selectedProducts.length === 0) {
+                        alert('Please select at least one product first');
+                        return;
+                    }
+                    
+                    // Create worksheet data
+                    const data = [
+                        ['Room', 'Category', 'Brand', 'Model', 'Price']
+                    ];
+                    
+                    selectedProducts.forEach(product => {
+                        data.push([
+                            product.room,
+                            product.category,
+                            product.brand,
+                            product.model,
+                            product.price
+                        ]);
+                    });
+                    
+                    // Add total row
+                    const totalPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
+                    data.push(['', '', '', 'TOTAL', totalPrice.toFixed(2)]);
+                    
+                    try {
+                        // Create workbook and worksheet
+                        const ws = XLSX.utils.aoa_to_sheet(data);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Products');
+                        
+                        // Write file
+                        XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                    } catch (error) {
+                        console.error('Excel export error:', error);
+                        alert('Error exporting to Excel: ' + error.message);
+                    }
+                }
+            </script>
+    """
+    
     # Add footer
     current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
     html_content += f"""
@@ -3342,6 +4043,141 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
                 <p>© {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
             </footer>
+        </div>
+        
+        <!-- Create the final recommendation page -->
+        <div id="final-recommendation-page" style="display: none;">
+            <div class="container">
+                <header>
+                    {logo_html}
+                    <h1>Your Final Product Selections</h1>
+                    <p>Specially curated for {user_data['name']}</p>
+                </header>
+                
+                <div class="client-info">
+                    <div class="client-info-item">
+                        <div class="client-info-label">Name</div>
+                        <div class="client-info-value">{user_data['name']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Mobile</div>
+                        <div class="client-info-value">{user_data['mobile']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Email</div>
+                        <div class="client-info-value">{user_data['email']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Address</div>
+                        <div class="client-info-value">{user_data['address']}</div>
+                    </div>
+                    
+                    <div class="client-info-item">
+                        <div class="client-info-label">Total Budget</div>
+                        <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
+                    </div>
+                </div>
+                
+                <div id="selected-products-container">
+                    <!-- This will be populated by JavaScript -->
+                </div>
+                
+                <div class="budget-summary">
+                    <h2>Budget Analysis</h2>
+                    <div class="budget-info">
+                        <div class="budget-item">
+                            <div class="budget-item-label">Total Selected Products</div>
+                            <div id="final-total-cost" class="budget-item-value">₹0.00</div>
+                        </div>
+                        
+                        <div class="budget-item">
+                            <div class="budget-item-label">Your Budget</div>
+                            <div class="budget-item-value">₹{user_data['total_budget']:,.2f}</div>
+                        </div>
+                        
+                        <div class="budget-item">
+                            <div class="budget-item-label">Budget Utilization</div>
+                            <div id="final-budget-utilization" class="budget-item-value">0%</div>
+                        </div>
+                    </div>
+                    <div id="final-budget-status" class="budget-status good">
+                        ✓ Your selected products fit comfortably within your budget!
+                    </div>
+                </div>
+                
+                <div class="generate-container">
+                    <button id="download-final-excel" class="generate-button download-button" onclick="try { downloadFinalExcel(); } catch(e) { console.error(e); }">Download Excel</button>
+                    <button id="print-final" class="generate-button" onclick="try { window.print(); } catch(e) { console.error(e); }">Print</button>
+                </div>
+                
+                <script>
+                    function downloadFinalExcel() {
+                        console.log('Downloading final recommendation as Excel');
+                        
+                        try {
+                            // Check if XLSX is loaded
+                            if (typeof XLSX === 'undefined') {
+                                alert('Excel library is not available. Please check your internet connection.');
+                                return;
+                            }
+                            
+                            // Collect products from the DOM
+                            const products = [];
+                            const sections = document.querySelectorAll('#selected-products-container .room-section');
+                            
+                            sections.forEach(section => {
+                                const room = section.querySelector('h2').textContent;
+                                
+                                section.querySelectorAll('.product-card').forEach(card => {
+                                    products.push({
+                                        room: room,
+                                        category: card.querySelector('.product-type').textContent,
+                                        title: card.querySelector('.product-title').textContent,
+                                        price: card.querySelector('.current-price').textContent.replace(/[^0-9.]/g, '')
+                                    });
+                                });
+                            });
+                            
+                            // Create Excel data
+                            const data = [
+                                ['Room', 'Category', 'Product', 'Price']
+                            ];
+                            
+                            products.forEach(p => {
+                                // Extract brand and model from title
+                                const parts = p.title.split(' ');
+                                const brand = parts[0];
+                                const model = parts.slice(1).join(' ');
+                                
+                                data.push([p.room, p.category, p.title, p.price]);
+                            });
+                            
+                            // Add total
+                            const totalPrice = products.reduce((sum, p) => sum + parseFloat(p.price), 0);
+                            data.push(['', '', 'TOTAL', totalPrice.toFixed(2)]);
+                            
+                            // Create workbook
+                            const ws = XLSX.utils.aoa_to_sheet(data);
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'Final Selections');
+                            
+                            // Save file
+                            XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                        } catch (error) {
+                            console.error('Error exporting final recommendation to Excel:', error);
+                            alert('Failed to export: ' + error.message);
+                        }
+                    }
+                </script>
+                
+                <footer>
+                    <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
+                    <p>© {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
+                </footer>
+            </div>
         </div>
     </body>
     </html>
