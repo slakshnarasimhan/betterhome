@@ -3692,103 +3692,67 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         # Skip if room doesn't exist in final_list
         if room not in final_list:
             continue
-            
         appliances = final_list[room]
-        
         if room == 'summary':
             continue
-        
-        # Debug: Print what's in the kitchen section
-        if room == 'kitchen':
-            # print(f"[DEBUG HTML] Kitchen appliances keys: {list(appliances.keys())}")
-            # for key, value in appliances.items():
-            #     print(f"[DEBUG HTML] {key}: {len(value)} items")
-            #     if key == 'hob_top':
-            #         for item in value:
-            #             print(f"[DEBUG HTML] Hob top item: {item.get('brand', 'Unknown')} - {item.get('model', item.get('title', 'Unknown'))}")
-            pass
-        
         # Check if the room has any products before creating the section
         has_products = False
         for appliance_type, products in appliances.items():
             if isinstance(products, list) and products:
                 has_products = True
                 break
-        
+            if isinstance(products, dict):
+                for sub_products in products.values():
+                    if isinstance(sub_products, list) and sub_products:
+                        has_products = True
+                        break
         if not has_products:
             continue
-            
         room_title = room.replace('_', ' ').title()
         html_content += f"""
-            <div class="room-section">
+            <div class=\"room-section\">
                 <button class='accordion' type='button'>{room_title}</button>
                 <div class='panel' style='display: {'block' if room_idx == 0 else 'none'};'>
         """
-        
-        # Add room description
         room_desc = get_room_description(room, user_data)
         if room_desc:
             html_content += f'                    <div class="room-description">{room_desc}</div>\n'
-        
-        html_content += """
-                <div class="products-grid">
-        """
-        
+        # Group by appliance type (and sub-type)
         for appliance_type, products in appliances.items():
+            # Handle nested appliance groups (e.g., bathroom)
             if isinstance(products, dict):
-                # Nested appliance group (e.g., bathroom)
                 for sub_appliance_type, sub_products in products.items():
-                    if not isinstance(sub_products, list):
+                    if not isinstance(sub_products, list) or not sub_products:
                         continue
-                    
-                    # For dryers, don't duplicate products; for other types, it's fine
-                    allow_duplication = sub_appliance_type != 'dryer'
-                    sub_products = ensure_three_recommendations(sub_products, allow_duplication)
-                    
-                    # Check if products list is not empty
-                    if not sub_products:
-                        continue
-                    
-                    # Sort products to find the best one
-                    sub_products.sort(key=lambda x: -x.get('feature_match_score', 0))
-                    best_product = sub_products[0]  # Assume the first one is the best after sorting
-
-                    # Reorder products to place the best product in the middle
-                    if len(sub_products) >= 3:
-                        sub_products = [sub_products[1], best_product, sub_products[2]]
-
-                    for idx, product in enumerate(sub_products):
-                        if not isinstance(product, dict):
-                            continue
-                        
-                        # Ensure required data is available
+                    # Only allow duplication for certain types
+                    allow_duplication = sub_appliance_type not in ['glass_partition', 'partition', 'shower_partition']
+                    grouped_products = ensure_three_recommendations(sub_products, allow_duplication)
+                    # Sort by feature match score if available
+                    grouped_products.sort(key=lambda x: -x.get('feature_match_score', 0))
+                    # Section heading for sub-type
+                    sub_type_title = sub_appliance_type.replace('_', ' ').title()
+                    html_content += f'<h4 style="margin-top:20px;">{sub_type_title}</h4>'
+                    html_content += '<div class="products-grid">'
+                    # Identify the best product (highest feature_match_score)
+                    best_product = grouped_products[0] if grouped_products else None
+                    for idx, product in enumerate(grouped_products):
                         brand = product.get('brand', 'Unknown Brand')
                         model = product.get('model', product.get('title', 'Unknown Model'))
                         image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                         description = product.get('description', 'No description available')
-                        
-                        # Use the correct pricing fields
                         better_home_price = float(product.get('better_home_price', 0.0))
                         retail_price = float(product.get('retail_price', 0.0))
-                        
                         if better_home_price <= 0:
                             better_home_price = float(product.get('price', retail_price * 0.8))
-                        
                         if retail_price <= 0:
                             retail_price = better_home_price * 1.25
-                        
                         if retail_price <= better_home_price:
                             retail_price = better_home_price * 1.25
-                        
                         savings = retail_price - better_home_price
                         warranty = product.get('warranty', 'Standard warranty applies')
                         delivery_time = product.get('delivery_time', 'Contact store for details')
                         purchase_url = product.get('url', '#')
-                        
-                        # Get formatted product type for display
                         product_type_title = sub_appliance_type.replace('_', ' ').title()
-                        
-                        # Get recommendation reason
                         reason_text = get_product_recommendation_reason(
                             product, 
                             sub_appliance_type, 
@@ -3798,268 +3762,132 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             {},
                             user_data
                         )
-                        
-                        # Parse reasons into a list for better display
-                        reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
-                        
-                        # Check badges
+                        # Badges
                         badges = ""
                         if product.get('is_bestseller', False):
                             badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
                         if product == best_product:
                             badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
-
-                        # Format prices for display
-                        better_home_price_num = float(better_home_price)
-                        retail_price_num = float(retail_price)
-
-                        better_home_price = f"₹{better_home_price_num:,.2f}"
-                        retail_price = f"₹{retail_price_num:,.2f}"
-                        savings = f"₹{retail_price_num - better_home_price_num:,.2f}"
-
-                        # Calculate savings percentage
-                        savings_pct = 0
-                        if retail_price_num > 0:
-                            savings_pct = ((retail_price_num - better_home_price_num) / retail_price_num) * 100
-
-                        # Add icons for reasons
-                        reasons_with_icons = []
-                        for reason in reasons:
-                            icon = "check-circle"  # Default icon
-
-                            if any(keyword in reason.lower() for keyword in ["save", "budget", "price"]):
-                                icon = "money-bill-wave"
-                            elif any(keyword in reason.lower() for keyword in ["energy", "efficient", "power", "consumption"]):
-                                icon = "leaf"
-                            elif any(keyword in reason.lower() for keyword in ["feature", "advanced", "smart"]):
-                                icon = "cogs"
-                            elif any(keyword in reason.lower() for keyword in ["quality", "durable", "reliable"]):
-                                icon = "medal"
-                            elif any(keyword in reason.lower() for keyword in ["popular", "bestseller", "best-selling"]):
-                                icon = "star"
-
-                            reasons_with_icons.append(f'<li><i class="fas fa-{icon}"></i> {reason}</li>')
-
-                        # Apply special styling
-                        best_class = " best-product" if product == best_product else ""
-
-                        # Generate a unique ID for the product
+                        # Checkbox and selection
                         product_id = f"{room}-{sub_appliance_type}-{idx}"
-                        
-                        # Create the HTML for the product card
-                        product_html = f'''
-                            <div class="product-card{best_class}">
-                                <div class="product-selection">
-                                    <input type="checkbox"
-                                        id="{product_id}" 
-                                        class="product-checkbox"
-                                        name="{room}-{sub_appliance_type}"
-                                        data-product-id="{product_id}"
-                                        data-room="{room}"
-                                        data-category="{sub_appliance_type}"
-                                        data-brand="{brand}"
-                                        data-model="{model}"
-                                        data-price="{better_home_price_num}"
-                                        data-image="{image_src}"
-                                        {' checked' if product == best_product else ''}>
-                                    <label for="{product_id}"></label>
-                                    <span class="selection-label">Selected</span>
-                                </div>
-                                <div class="product-image-container">
+                        checked = 'checked' if product == best_product else ''
+                        selected_class = ' selected' if product == best_product else ''
+                        html_content += f'''<div class="product-card{selected_class}">
+                            <div class="product-selection">
+                                <input type="checkbox"
+                                    id="{product_id}"
+                                    class="product-checkbox"
+                                    name="{room}-{sub_appliance_type}"
+                                    data-product-id="{product_id}"
+                                    data-room="{room}"
+                                    data-category="{sub_appliance_type}"
+                                    data-brand="{brand}"
+                                    data-model="{model}"
+                                    data-price="{better_home_price}"
+                                    data-image="{image_src}"
+                                    {checked}>
+                                <label for="{product_id}"></label>
+                                <span class="selection-label">Selected</span>
+                            </div>
+                            <div class="product-image-container">
                                 <img class="product-image" src="{image_src}" alt="{brand} {model}">
                                 {badges}
-                                </div>
-                                <div class="product-details">
-                                <span class="product-type">{sub_appliance_type.replace('_', ' ').upper()}</span>
-                                <h3 class="product-title">{brand} {model}</h3>
-                                    <div class="price-container">
-                                    <span class="current-price">{better_home_price}</span>
-                                    <span class="retail-price">{retail_price}</span>
-                                    <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
-                                    </div>
-                                    <div class="product-info-item">
-                                        <span class="product-info-label">Description:</span> {product.get('concise_description', product.get('description', 'No description available'))}
-                                    </div>
-                                    <div class="product-info-item">
-                                    <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
-                                    </div>
-                                    <h4>Why We Recommend This:</h4>
-                                    <ul class="reasons-list">
-                                    {"".join(reasons_with_icons)}
-                                    </ul>
-                                <a href="{product.get('url', '#')}" class="buy-button" target="_blank">View Details</a>
-                                </div>
                             </div>
-                        '''
-                        html_content += product_html
-                continue  # Skip to next appliance_type after processing all nested items
-                
-            # For normal appliances (non-nested)
-            # Ensure products is a list
-            if not isinstance(products, list):
-                continue
-                
-            # For dryers, don't duplicate products; for other types, it's fine
-            allow_duplication = appliance_type != 'dryer'
-            products = ensure_three_recommendations(products, allow_duplication)
-                
-            # Check if products list is not empty
-            if not products:
-                continue
-            # Sort products to find the best one
-            products.sort(key=lambda x: -x.get('feature_match_score', 0))
-            best_product = products[0]  # Assume the first one is the best after sorting
-
-            # Reorder products to place the best product in the middle
-            if len(products) >= 3:
-                products = [products[1], best_product, products[2]]
-
-            for idx, product in enumerate(products):
-                if not isinstance(product, dict):
-                    continue
-                
-                # Ensure required data is available
-                brand = product.get('brand', 'Unknown Brand')
-                model = product.get('model', product.get('title', 'Unknown Model'))
-                image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
-                description = product.get('description', 'No description available')
-                
-                # Use the correct pricing fields - better_home_price as the current price and retail_price as the original price
-                better_home_price = float(product.get('better_home_price', 0.0))
-                retail_price = float(product.get('retail_price', 0.0))
-                
-                # If better_home_price is missing or 0, use price as fallback
-                if better_home_price <= 0:
-                    better_home_price = float(product.get('price', retail_price * 0.8))  # Estimate if missing
-                
-                # If retail_price is missing or 0, estimate from better_home_price
-                if retail_price <= 0:
-                    retail_price = better_home_price * 1.25  # Estimate a 25% markup if missing
-                
-                # Ensure retail price is higher than better home price for proper display
-                if retail_price <= better_home_price:
-                    retail_price = better_home_price * 1.25  # Ensure a reasonable markup
-                
-                savings = retail_price - better_home_price
-                warranty = product.get('warranty', 'Standard warranty applies')
-                delivery_time = product.get('delivery_time', 'Contact store for details')
-                purchase_url = product.get('url', '#')
-                
-                # Get formatted product type for display
-                product_type_title = appliance_type.replace('_', ' ').title()
-                
-                # Get recommendation reason
-                reason_text = get_product_recommendation_reason(
-                    product, 
-                    appliance_type, 
-                    room, 
-                    user_data['demographics'],
-                    user_data['total_budget'],
-                    {},  # Required features
-                    user_data  # Add user_data parameter for smart control detection
-                )
-                
-                # Parse reasons into a list for better display
-                reasons = [r.strip() for r in reason_text.split('•') if r.strip()]
-                
-                # Check if product is a bestseller or the best recommended product
-                badges = ""
-                if product.get('is_bestseller', False):
-                    badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
-                # Add recommended badge for the best product
-                if product == best_product:
-                    badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
-
-                # Format prices for display
-                better_home_price_num = float(better_home_price)
-                retail_price_num = float(retail_price)
-
-                better_home_price = f"₹{better_home_price_num:,.2f}"
-                retail_price = f"₹{retail_price_num:,.2f}"
-                savings = f"₹{retail_price_num - better_home_price_num:,.2f}"
-
-                # Calculate savings percentage
-                savings_pct = 0
-                if retail_price_num > 0:
-                    savings_pct = ((retail_price_num - better_home_price_num) / retail_price_num) * 100
-
-                # Add an icon for the reason text
-                reasons_with_icons = []
-                for reason in reasons:
-                    icon = "check-circle"  # Default icon
-
-                    # Choose different icons based on keywords in the reason
-                    if any(keyword in reason.lower() for keyword in ["save", "budget", "price"]):
-                        icon = "money-bill-wave"
-                    elif any(keyword in reason.lower() for keyword in ["energy", "efficient", "power", "consumption"]):
-                        icon = "leaf"
-                    elif any(keyword in reason.lower() for keyword in ["feature", "advanced", "smart"]):
-                        icon = "cogs"
-                    elif any(keyword in reason.lower() for keyword in ["quality", "durable", "reliable"]):
-                        icon = "medal"
-                    elif any(keyword in reason.lower() for keyword in ["popular", "bestseller", "best-selling"]):
-                        icon = "star"
-
-                    reasons_with_icons.append(f'<li><i class="fas fa-{icon}"></i> {reason}</li>')
-
-                # Determine if this is the best product and apply special styling
-                best_class = " best-product" if product == best_product else ""
-
-                # Generate a unique ID for the product
-                product_id = f"{room}-{appliance_type}-{idx}"
-                
-                # Create the HTML for the product card
-                product_html = f'''
-                    <div class="product-card{best_class}">
+                            <div class="product-details">
+                                <span class="product-type">{product_type_title}</span>
+                                <h3 class="product-title">{brand} {model}</h3>
+                                <div class="price-container">
+                                    <span class="current-price">₹{better_home_price:,.2f}</span>
+                                    <span class="retail-price">₹{retail_price:,.2f}</span>
+                                    <span class="savings">Save ₹{savings:,.2f}</span>
+                                </div>
+                                <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
+                                <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
+                                <ul class="reasons-list"><li>{reason_text}</li></ul>
+                                <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
+                            </div>
+                        </div>'''
+                    html_content += '</div>'
+            elif isinstance(products, list) and products:
+                allow_duplication = appliance_type not in ['glass_partition', 'partition', 'shower_partition']
+                grouped_products = ensure_three_recommendations(products, allow_duplication)
+                grouped_products.sort(key=lambda x: -x.get('feature_match_score', 0))
+                type_title = appliance_type.replace('_', ' ').title()
+                html_content += f'<h4 style="margin-top:20px;">{type_title}</h4>'
+                html_content += '<div class="products-grid">'
+                best_product = grouped_products[0] if grouped_products else None
+                for idx, product in enumerate(grouped_products):
+                    brand = product.get('brand', 'Unknown Brand')
+                    model = product.get('model', product.get('title', 'Unknown Model'))
+                    image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
+                    description = product.get('description', 'No description available')
+                    better_home_price = float(product.get('better_home_price', 0.0))
+                    retail_price = float(product.get('retail_price', 0.0))
+                    if better_home_price <= 0:
+                        better_home_price = float(product.get('price', retail_price * 0.8))
+                    if retail_price <= 0:
+                        retail_price = better_home_price * 1.25
+                    if retail_price <= better_home_price:
+                        retail_price = better_home_price * 1.25
+                    savings = retail_price - better_home_price
+                    warranty = product.get('warranty', 'Standard warranty applies')
+                    delivery_time = product.get('delivery_time', 'Contact store for details')
+                    purchase_url = product.get('url', '#')
+                    product_type_title = appliance_type.replace('_', ' ').title()
+                    reason_text = get_product_recommendation_reason(
+                        product, 
+                        appliance_type, 
+                        room, 
+                        user_data['demographics'],
+                        user_data['total_budget'],
+                        {},
+                        user_data
+                    )
+                    badges = ""
+                    if product.get('is_bestseller', False):
+                        badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
+                    if product == best_product:
+                        badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
+                    product_id = f"{room}-{appliance_type}-{idx}"
+                    checked = 'checked' if product == best_product else ''
+                    selected_class = ' selected' if product == best_product else ''
+                    html_content += f'''<div class="product-card{selected_class}">
                         <div class="product-selection">
-                            <input type="checkbox" 
-                                id="{product_id}" 
-                                class="product-checkbox" 
+                            <input type="checkbox"
+                                id="{product_id}"
+                                class="product-checkbox"
                                 name="{room}-{appliance_type}"
                                 data-product-id="{product_id}"
                                 data-room="{room}"
                                 data-category="{appliance_type}"
                                 data-brand="{brand}"
                                 data-model="{model}"
-                                data-price="{better_home_price_num}"
+                                data-price="{better_home_price}"
                                 data-image="{image_src}"
-                                {' checked' if product == best_product else ''}>
+                                {checked}>
                             <label for="{product_id}"></label>
                             <span class="selection-label">Selected</span>
                         </div>
                         <div class="product-image-container">
-                        <img class="product-image" src="{image_src}" alt="{brand} {model}">
-                        {badges}
+                            <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                            {badges}
                         </div>
                         <div class="product-details">
-                        <span class="product-type">{appliance_type.replace('_', ' ').upper()}</span>
-                        <h3 class="product-title">{brand} {model}</h3>
+                            <span class="product-type">{product_type_title}</span>
+                            <h3 class="product-title">{brand} {model}</h3>
                             <div class="price-container">
-                            <span class="current-price">{better_home_price}</span>
-                            <span class="retail-price">{retail_price}</span>
-                            <span class="savings">Save {savings} ({savings_pct:.0f}%)</span>
+                                <span class="current-price">₹{better_home_price:,.2f}</span>
+                                <span class="retail-price">₹{retail_price:,.2f}</span>
+                                <span class="savings">Save ₹{savings:,.2f}</span>
                             </div>
-                            <div class="product-info-item">
-                                <span class="product-info-label">Description:</span> {product.get('concise_description', product.get('description', 'No description available'))}
-                            </div>
-                            <div class="product-info-item">
-                            <span class="product-info-label">Warranty:</span> {product.get('warranty', 'Standard warranty')}
-                            </div>
-                            <h4>Why We Recommend This:</h4>
-                            <ul class="reasons-list">
-                            {"".join(reasons_with_icons)}
-                            </ul>
-                        <a href="{product.get('url', '#')}" class="buy-button" target="_blank">View Details</a>
+                            <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
+                            <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
+                            <ul class="reasons-list"><li>{reason_text}</li></ul>
+                            <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
                         </div>
-                    </div>
-                '''
-                html_content += product_html
-        
-        html_content += """
-                    </div> <!-- products-grid -->
-                </div> <!-- panel -->
-            </div> <!-- room-section -->
-        """
+                    </div>'''
+                html_content += '</div>'
+        html_content += '</div></div>'
         room_idx += 1
 
     # Add the generate final recommendation button
