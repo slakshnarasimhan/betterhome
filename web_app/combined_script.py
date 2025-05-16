@@ -4263,9 +4263,14 @@ if __name__ == "__main__":
     
     # Generate output files with the correct suffixes
     output_base_path = excel_filename.replace('.xlsx', '')
-    pdf_filename = f"{output_base_path}.pdf"
-    txt_filename = f"{output_base_path}.txt"
-    html_filename = f"{output_base_path}.html"
+    # Get the directory of the Excel file
+    output_dir = os.path.dirname(output_base_path)
+    # Get just the filename without path
+    base_filename = os.path.basename(output_base_path)
+    
+    pdf_filename = f"{output_dir}/{base_filename}.pdf"
+    txt_filename = f"{output_dir}/{base_filename}.txt"
+    html_filename = f"{output_dir}/{base_filename}.html"
     required_features = {}  # Initialize as an empty dictionary or populate as needed
     # create_styled_pdf(pdf_filename, user_data, final_list, required_features)
     #generate_text_file(user_data, final_list, txt_filename)
@@ -4273,5 +4278,3 @@ if __name__ == "__main__":
     
     print("\nProduct recommendations have been generated!")
     print(f"Check {pdf_filename}, {txt_filename}, and {html_filename} for details.")
-
-                  
