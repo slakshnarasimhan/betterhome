@@ -151,8 +151,13 @@ def submit():
         # Capture the timestamp once for consistent file naming
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
+        # Create a subfolder for this user's recommendations
+        user_folder = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}"
+        if not os.path.exists(user_folder):
+            os.makedirs(user_folder)
+        
         # Generate a unique filename for the Excel file
-        excel_filename = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}.xlsx"
+        excel_filename = f"{user_folder}/{form_data['Name'].replace(' ', '_')}_{timestamp}.xlsx"
         
         print(f"Creating Excel file at: {excel_filename}")
         
@@ -229,15 +234,19 @@ def submit():
                 pdf_basename = os.path.basename(pdf_filename) if os.path.exists(pdf_filename) else None
                 html_basename = os.path.basename(html_filename)
                 
+                # Get the relative path from uploads directory
+                html_relative_path = os.path.relpath(html_filename, UPLOAD_FOLDER)
+                pdf_relative_path = os.path.relpath(pdf_filename, UPLOAD_FOLDER) if pdf_basename else None
+                
                 # Create the URLs for the files
-                html_url = url_for('view_html', filename=html_basename)
-                pdf_url = url_for('download_file', filename=pdf_basename) if pdf_basename else None
+                html_url = url_for('view_html', filename=html_relative_path)
+                pdf_url = url_for('download_file', filename=pdf_relative_path) if pdf_relative_path else None
                 
                 print(f"HTML URL: {html_url}")
                 print(f"PDF URL: {pdf_url}")
                 
                 return render_template('results.html', 
-                                     html_file=html_basename,
+                                     html_file=html_relative_path,
                                      pdf_path=pdf_url)
             else:
                 print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
@@ -257,20 +266,12 @@ def submit():
         print(traceback.format_exc())
         return "Error processing form data. Please try again."
 
-@app.route('/download/<filename>')
-def download_file(filename):
-    return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True)
-
-@app.route('/uploads/<path:filename>')
-def serve_uploads(filename):
-    """Serve files from the uploads directory (for images in HTML)"""
-    return send_from_directory(UPLOAD_FOLDER, filename)
-
-@app.route('/view_html/<filename>')
+@app.route('/view_html/<path:filename>')
 def view_html(filename):
     """Serve the HTML file with proper content type"""
     try:
         # Get the full path to the HTML file
+        # The filename will now include the subfolder name
         file_path = os.path.join(UPLOAD_FOLDER, filename)
         print(f"Attempting to serve HTML file: {file_path}")
         
@@ -299,6 +300,24 @@ def view_html(filename):
         print("Full traceback:")
         print(traceback.format_exc())
         return f"Error serving HTML file: {str(e)}", 500
+
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    """Serve files from the uploads directory with proper path handling"""
+    try:
+        # The filename will now include the subfolder name
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        if not os.path.exists(file_path):
+            return "File not found", 404
+        return send_file(file_path, as_attachment=True)
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
+        return f"Error downloading file: {str(e)}", 500
+
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    """Serve files from the uploads directory (for images in HTML)"""
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002) 
