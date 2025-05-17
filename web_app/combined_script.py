@@ -2637,8 +2637,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     logo_html = ""
     if logo_exists:
         if is_web_app:
-            # Use a relative URL path that will be handled by Flask
-            logo_html = '<img src="../static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+            # Use an absolute URL path that will work in the iframe
+            logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
         else:
             # Use the file path for direct HTML viewing
             logo_html = f'<img src="{logo_path}" alt="BetterHome Logo" class="logo">'
