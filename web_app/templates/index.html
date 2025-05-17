@@ -744,6 +744,22 @@
             }
         });
 
+        // Enable submit button when any form field changes
+        document.querySelectorAll('input, select, textarea').forEach(field => {
+            field.addEventListener('change', function() {
+                document.getElementById('submitButton').disabled = false;
+                document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
+            });
+        });
+
+        // Also enable on input for text fields
+        document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(field => {
+            field.addEventListener('input', function() {
+                document.getElementById('submitButton').disabled = false;
+                document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
+            });
+        });
+
         document.getElementById('bedrooms').addEventListener('input', function() {
             var bedroom3Section = document.getElementById('bedroom3-section');
             if (this.value == '3') {
@@ -761,6 +777,9 @@
                     field.removeAttribute('required');
                 });
             }
+            // Enable submit button when bedrooms selection changes
+            document.getElementById('submitButton').disabled = false;
+            document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
         });
     </script>
 </body>
