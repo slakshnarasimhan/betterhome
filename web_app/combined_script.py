@@ -158,6 +158,7 @@ def analyze_user_requirements(excel_file: str):
                 'fans': int(df.iloc[0].get('Dining: Fan(s)?', 0)),
                 'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
                 'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
+                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Default to 120 sq ft if not specified
                 'is_for_kids': df.iloc[0].get('Dining: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             }
         }
@@ -2636,8 +2637,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     logo_html = ""
     if logo_exists:
         if is_web_app:
-            # Use an absolute URL path that will work in the iframe
-            logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+            # Use a relative URL path that will be handled by Flask
+            logo_html = '<img src="../static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
         else:
             # Use the file path for direct HTML viewing
             logo_html = f'<img src="{logo_path}" alt="BetterHome Logo" class="logo">'
