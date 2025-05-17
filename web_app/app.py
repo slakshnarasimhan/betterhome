@@ -1,11 +1,13 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory, make_response
+from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory, make_response, jsonify
 from markupsafe import Markup
 import pandas as pd
 import subprocess
 from datetime import datetime
 import shutil
 from werkzeug.utils import secure_filename
+from combined_script import analyze_user_requirements, generate_html_file
+from s3_config import S3Handler
 
 betterhome = Flask(__name__)
 betterhome.config['DEBUG'] = True
@@ -36,6 +38,10 @@ if not os.path.exists(logo_dest_path):
             print(f"Copied logo from {source_path} to {logo_dest_path}")
             break
 
+# S3 Configuration
+S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'betterhome-recommendation')
+s3_handler = S3Handler(S3_BUCKET_NAME)
+
 @betterhome.route('/')
 def index():
     response = make_response(render_template('index.html'))
@@ -47,256 +53,85 @@ def index():
 
 @betterhome.route('/submit', methods=['POST'])
 def submit():
-    print("\n=== Form Submission Started ===")
-    print("Submit route accessed")
-    print("Request method:", request.method)
-    print("Form data received:", request.form)
-    print("Files received:", request.files)
-    
     try:
-        # Get number of bedrooms first
-        num_bedrooms = request.form.get('bedrooms')
-        print(f"Number of bedrooms selected: {num_bedrooms}")
+        # Get form data
+        form_data = request.form.to_dict()
+        print("Form data received:", form_data)
         
-        # Capture the timestamp once for consistent file naming
+        # Get uploaded files
+        files = request.files.getlist('files[]')
+        print(f"Number of files received: {len(files)}")
+        
+        # Create a timestamp for the folder
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        user_folder = os.path.join(UPLOAD_FOLDER, timestamp)
+        os.makedirs(user_folder, exist_ok=True)
         
-        # Create a subfolder for this user's recommendations
-        user_folder = f"uploads/{request.form.get('name').replace(' ', '_')}_{timestamp}"
-        if not os.path.exists(user_folder):
-            os.makedirs(user_folder)
-            print(f"Created user folder: {user_folder}")
-            
-        # Create room_images subfolder
-        room_images_folder = os.path.join(user_folder, 'room_images')
-        if not os.path.exists(room_images_folder):
-            os.makedirs(room_images_folder)
-            print(f"Created room_images folder: {room_images_folder}")
-            
-        # Handle file uploads
-        if 'room_images' in request.files:
-            files = request.files.getlist('room_images')
-            print(f"Number of files received: {len(files)}")
-            
-            for file in files:
-                if file.filename:  # Check if file was selected
-                    print(f"Processing file: {file.filename}")
-                    # Secure the filename
-                    filename = secure_filename(file.filename)
-                    file_path = os.path.join(room_images_folder, filename)
-                    # Save the file
-                    file.save(file_path)
-                    print(f"Saved file: {filename} to {file_path}")
-                else:
-                    print("Empty filename received")
-        else:
-            print("No files received in request")
-
-        # Assuming the form data is collected in a dictionary called form_data
-        form_data = {
-            'Name': request.form.get('name'),
-            'Mobile Number (Preferably on WhatsApp)': request.form.get('mobile'),
-            'E-mail': request.form.get('email'),
-            'Apartment Address': request.form.get('address'),
-            'What is your overall budget for home appliances?': request.form.get('budget'),
-            'Adults (between the age 18 to 50)': request.form.get('adults'),
-            'Elders (above the age 60)': request.form.get('elders'),
-            'Kids (below the age 18)': request.form.get('kids'),
-            'Number of bedrooms': num_bedrooms,
-            'Number of bathrooms': request.form.get('bathrooms'),
-            'Hall: Fan(s)?': request.form.get('hall_fans'),
-            'Hall: Air Conditioner (AC)?': request.form.get('hall_ac'),
-            'Hall: Colour theme?': request.form.get('hall_color'),
-            'Hall: What is the square feet?': request.form.get('hall_square_feet'),
-            'Hall: Any other information?': request.form.get('hall_other_info'),
-            'Kitchen: Chimney width?': request.form.get('kitchen_chimney'),
-            'Kitchen: Gas stove type?': request.form.get('kitchen_stove'),
-            'Kitchen: Number of burners?': request.form.get('kitchen_burners'),
-            'Kitchen: Stove width?': request.form.get('kitchen_stove_width'),
-            'Kitchen: Do you need a small fan?': request.form.get('kitchen_fan'),
-            'Kitchen: Dishwasher capacity?': request.form.get('kitchen_dishwasher_capacity'),
-            'Kitchen: Refrigerator type?': request.form.get('kitchen_refrigerator_type'),
-            'Kitchen: Refrigerator capacity?': request.form.get('kitchen_refrigerator_capacity'),
-            'Kitchen: Do you need any other appliances or do you have any other information?': request.form.get('kitchen_other_info'),
-            'Master: Air Conditioner (AC)?': request.form.get('master_ac'),
-            'Master: How do you bath with the hot & cold water?': request.form.get('master_water'),
-            'Master: Exhaust fan size?': request.form.get('master_exhaust_size'),
-            'Master: What is the colour theme?': request.form.get('master_color'),
-            'Master: What is the area of the bedroom in square feet?': request.form.get('master_area'),
-            'Master: Do you want a Glass Partition in the bathroom?': request.form.get('master_bathroom_for_elders'),
-            'Master: Is the water heater going to be inside the false ceiling in the bathroom?': request.form.get('master_water_heater_ceiling'),
-            'Master: Exhaust fan colour?': request.form.get('master_exhaust_color'),
-            'Master: Would you like to have a LED Mirror?': request.form.get('master_led_mirror'),
-            'Master: Any other information?': request.form.get('master_other_info'),
-            'Bedroom 2: Air Conditioner (AC)?': request.form.get('bedroom2_ac'),
-            'Bedroom 2: How do you bath with the hot & cold water?': request.form.get('bedroom2_water'),
-            'Bedroom 2: Exhaust fan size?': request.form.get('bedroom2_exhaust_size'),
-            'Bedroom 2: What is the colour theme?': request.form.get('bedroom2_color'),
-            'Bedroom 2: What is the area of the bedroom in square feet?': request.form.get('bedroom2_area'),
-            'Bedroom 2: Is this for kids above': request.form.get('bedroom2_for_kids'),
-            'Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?': request.form.get('bedroom2_water_heater_ceiling'),
-            'Bedroom 2: Do you want a Glass Partition in the bathroom?': request.form.get('bedroom2_bathroom_for_elders'),
-            'Bedroom 2: Exhaust fan colour?': request.form.get('bedroom2_exhaust_color'),
-            'Bedroom 2: Would you like to have a LED Mirror?': request.form.get('bedroom2_led_mirror'),
-            'Bedroom 2: Any other information?': request.form.get('bedroom2_other_info'),
-            'Laundry: Washing Machine?': request.form.get('laundry_washing'),
-            'Laundry: Dryer?': request.form.get('laundry_dryer'),
-            'Any other information?': request.form.get('other_info'),
-            'Questions and comments': request.form.get('questions_comments'),
-            'Dining: Fan': request.form.get('dining_fan'),
-            'Dining: Air Conditioner (AC)?': request.form.get('dining_ac'),
-            'Dining: Colour theme?': request.form.get('dining_color'),
-            'Additional Information: Any other information?': request.form.get('other_info'),
-            'Additional Information: Questions and comments': request.form.get('questions_comments')
-        }
+        # Save uploaded files
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(user_folder, filename)
+                file.save(file_path)
+                print(f"Saved file: {file_path}")
         
-        # Only add Bedroom 3 data if 3 bedrooms are selected
-        if num_bedrooms == '3':
-            form_data.update({
-                'Bedroom 3: Air Conditioner (AC)?': request.form.get('bedroom3_ac'),
-                'Bedroom 3: How do you bath with the hot & cold water?': request.form.get('bedroom3_water'),
-                'Bedroom 3: Exhaust fan size?': request.form.get('bedroom3_exhaust_size'),
-                'Bedroom 3: What is the colour theme?': request.form.get('bedroom3_color'),
-                'Bedroom 3: What is the area of the bedroom in square feet?': request.form.get('bedroom3_area'),
-                'Bedroom 3: Is this for kids above': request.form.get('bedroom3_for_kids'),
-                'Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?': request.form.get('bedroom3_water_heater_ceiling'),
-                'Bedroom 3: Do you want a Glass Partition in the bathroom?': request.form.get('bedroom3_bathroom_for_elders'),
-                'Bedroom 3: Exhaust fan colour?': request.form.get('bedroom3_exhaust_color'),
-                'Bedroom 3: Would you like to have a LED Mirror?': request.form.get('bedroom3_led_mirror'),
-                'Bedroom 3: Any other information?': request.form.get('bedroom3_other_info'),
-            })
-        else:
-            # Add empty values for Bedroom 3 to maintain consistent columns
-            form_data.update({
-                'Bedroom 3: Air Conditioner (AC)?': '',
-                'Bedroom 3: How do you bath with the hot & cold water?': '',
-                'Bedroom 3: Exhaust fan size?': '',
-                'Bedroom 3: What is the colour theme?': '',
-                'Bedroom 3: What is the area of the bedroom in square feet?': '',
-                'Bedroom 3: Is this for kids above': '',
-                'Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?': '',
-                'Bedroom 3: Do you want a Glass Partition in the bathroom?': '',
-                'Bedroom 3: Exhaust fan colour?': '',
-                'Bedroom 3: Would you like to have a LED Mirror?': '',
-                'Bedroom 3: Any other information?': '',
-            })
-
-        print("Processed form data:", form_data)
-
-        # Create a DataFrame from the form data
+        # Create Excel file from form data
+        excel_filename = os.path.join(user_folder, 'user_requirements.xlsx')
         df = pd.DataFrame([form_data])
+        df.to_excel(excel_filename, index=False)
+        print(f"Created Excel file: {excel_filename}")
         
-        # Debug: Print DataFrame to verify Bedroom 3 data
-        print("DataFrame:")
-        print(df)
+        # Process the requirements
+        final_list = analyze_user_requirements(excel_filename)
         
-        # Generate a unique filename for the Excel file
-        excel_filename = f"{user_folder}/{form_data['Name'].replace(' ', '_')}_{timestamp}.xlsx"
+        # Generate HTML file
+        html_filename = os.path.join(user_folder, 'recommendations.html')
+        generate_html_file(form_data, final_list, html_filename, is_web_app=True)
+        print(f"Generated HTML file: {html_filename}")
         
-        print(f"Creating Excel file at: {excel_filename}")
+        # Upload the entire folder to S3
+        s3_prefix = f"recommendations/{timestamp}"
+        if s3_handler.upload_folder(user_folder, s3_prefix):
+            print(f"Successfully uploaded to S3: {s3_prefix}")
+            # Get the S3 URL for the folder
+            s3_url = s3_handler.get_folder_url(s3_prefix)
+            print(f"S3 URL: {s3_url}")
+        else:
+            print("Failed to upload to S3")
         
-        # Save the DataFrame to an Excel file
-        with pd.ExcelWriter(excel_filename, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False)
+        # Check if the recommendation files were created
+        html_filename = excel_filename.replace('.xlsx', '.html')
         
-        print(f"Excel file created successfully")
+        print(f"Checking for files:")
+        print(f"HTML file exists: {os.path.exists(html_filename)}")
         
-        # Make sure the logo is in the static folder before running the script
-        source_logo_paths = [
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'better_home_logo.png'),
-            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'better_home_logo.png')
-        ]
-        
-        static_logo_path = os.path.join(STATIC_FOLDER, 'better_home_logo.png')
-        
-        if not os.path.exists(static_logo_path):
-            for source_path in source_logo_paths:
-                if os.path.exists(source_path):
-                    shutil.copy(source_path, static_logo_path)
-                    print(f"Copied logo from {source_path} to {static_logo_path}")
-                    break
-        
-        # Run the combined script with the Excel filename
-        env = os.environ.copy()
-        env['FLASK_APP'] = 'app.py'  # Set Flask environment variable
-        env['BETTERHOME_WEB_APP'] = 'true'  # Custom environment variable to indicate web app mode
-        
-        try:
-            # Get the absolute path to the web_app directory
-            web_app_dir = os.path.dirname(os.path.abspath(__file__))
-            script_path = os.path.join(web_app_dir, 'combined_script.py')
+        if os.path.exists(html_filename):
+            # Get the basename for the files
+            html_basename = os.path.basename(html_filename)
             
-            print(f"Web app directory: {web_app_dir}")
-            print(f"Script path: {script_path}")
-            print(f"Excel filename: {excel_filename}")
+            # Get the relative path from uploads directory
+            html_relative_path = os.path.relpath(html_filename, UPLOAD_FOLDER)
             
-            if not os.path.exists(script_path):
-                print(f"Error: combined_script.py not found at {script_path}")
-                return "Error: Recommendation script not found. Please check the installation."
+            # Create the URL for the HTML file
+            html_url = url_for('view_html', filename=html_relative_path)
             
-            print("Running combined_script.py...")
+            print(f"HTML URL: {html_url}")
             
-            # Run the script with the correct working directory
-            result = subprocess.run(
-                ['python3', script_path, excel_filename],
-                env=env,
-                cwd=web_app_dir,
-                capture_output=True,
-                text=True
-            )
+            # Format the timestamp for display
+            display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
             
-            # Print the full output for debugging
-            print("Script stdout:", result.stdout)
-            print("Script stderr:", result.stderr)
-            print("Script return code:", result.returncode)
-            
-            # Check if the script ran successfully
-            if result.returncode != 0:
-                print(f"Error running combined_script.py: {result.stderr}")
-                return "Error generating recommendations. Please try again."
-                
-            # Check if the recommendation files were created
-            html_filename = excel_filename.replace('.xlsx', '.html')
-            
-            print(f"Checking for files:")
-            print(f"HTML file exists: {os.path.exists(html_filename)}")
-            
-            if os.path.exists(html_filename):
-                # Get the basename for the files
-                html_basename = os.path.basename(html_filename)
-                
-                # Get the relative path from uploads directory
-                html_relative_path = os.path.relpath(html_filename, UPLOAD_FOLDER)
-                
-                # Create the URL for the HTML file
-                html_url = url_for('view_html', filename=html_relative_path)
-                
-                print(f"HTML URL: {html_url}")
-                
-                # Format the timestamp for display
-                display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
-                
-                return render_template('results.html', 
-                                     html_file=html_relative_path,
-                                     user_name=form_data['Name'],
-                                     timestamp=display_timestamp)
-            else:
-                print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
-                return "Error generating recommendations. Please try again."
-                
-        except Exception as e:
-            print(f"Error in recommendation generation: {str(e)}")
-            import traceback
-            print("Full traceback:")
-            print(traceback.format_exc())
+            return render_template('results.html', 
+                                 html_file=html_relative_path,
+                                 user_name=form_data['Name'],
+                                 timestamp=display_timestamp,
+                                 s3_url=s3_url)
+        else:
+            print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
             return "Error generating recommendations. Please try again."
             
     except Exception as e:
-        print(f"Error processing form data: {str(e)}")
-        import traceback
-        print("Full traceback:")
-        print(traceback.format_exc())
-        return "Error processing form data. Please try again."
+        print(f"Error in submit route: {str(e)}")
+        return f"An error occurred: {str(e)}"
 
 @betterhome.route('/view_html/<path:filename>')
 def view_html(filename):
@@ -350,6 +185,9 @@ def download_file(filename):
 def serve_uploads(filename):
     """Serve files from the uploads directory (for images in HTML)"""
     return send_from_directory(UPLOAD_FOLDER, filename)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'xlsx', 'xls'}
 
 if __name__ == '__main__':
     betterhome.run(debug=True, host='0.0.0.0', port=5002) 
