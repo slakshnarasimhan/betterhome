@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory, make_response
 from markupsafe import Markup
 import pandas as pd
 import subprocess
@@ -37,7 +37,7 @@ if not os.path.exists(logo_dest_path):
 
 @betterhome.route('/')
 def index():
-    response = render_template('index.html')
+    response = make_response(render_template('index.html'))
     # Add cache control headers to prevent caching
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
