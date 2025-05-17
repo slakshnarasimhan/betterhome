@@ -124,7 +124,9 @@
                 <div class="mb-3">
                     <label for="room_images" class="form-label">Do you have any drawings of your home interior?</label>
                     <p class="text-muted">Upload up to 5 supported files: PDF, document, drawing, image, presentation, spreadsheet, or video. Max 10 MB per file.</p>
-                    <input type="file" class="form-control" id="room_images" name="room_images" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.bmp,.dwg,.dxf,.mp4,.avi,.mov" onchange="validateFiles(this)">
+                    <input type="file" class="form-control" id="room_images" name="room_images" multiple 
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.bmp,.dwg,.dxf,.mp4,.avi,.mov" 
+                           onchange="validateFiles(this)" required>
                     <div class="invalid-feedback" id="fileError"></div>
                 </div>
             </div>
@@ -712,6 +714,17 @@
                     form.addEventListener('submit', function (event) {
                         console.log('Form submission attempted');
                         
+                        // Log form data including files
+                        const formData = new FormData(this);
+                        console.log('Form data entries:');
+                        for (let pair of formData.entries()) {
+                            if (pair[0] === 'room_images') {
+                                console.log('Files:', pair[1].files);
+                            } else {
+                                console.log(pair[0] + ': ' + pair[1]);
+                            }
+                        }
+                        
                         // Get number of bedrooms
                         const bedrooms = document.getElementById('bedrooms').value;
                         console.log('Number of bedrooms:', bedrooms);
@@ -746,8 +759,13 @@
             console.log('Form submit event triggered');
             // Log all form data
             const formData = new FormData(this);
+            console.log('Form data before submission:');
             for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + pair[1]);
+                if (pair[0] === 'room_images') {
+                    console.log('Files to be uploaded:', pair[1].files);
+                } else {
+                    console.log(pair[0] + ': ' + pair[1]);
+                }
             }
         });
 
