@@ -6,9 +6,9 @@ import subprocess
 from datetime import datetime
 import shutil
 
-app = Flask(__name__)
-app.config['DEBUG'] = True
-app.config['TEMPLATES_AUTO_RELOAD'] = True
+betterhome = Flask(__name__)
+betterhome.config['DEBUG'] = True
+betterhome.config['TEMPLATES_AUTO_RELOAD'] = True
 
 # Ensure uploads directory exists
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -35,11 +35,16 @@ if not os.path.exists(logo_dest_path):
             print(f"Copied logo from {source_path} to {logo_dest_path}")
             break
 
-@app.route('/')
+@betterhome.route('/')
 def index():
-    return render_template('index.html')
+    response = render_template('index.html')
+    # Add cache control headers to prevent caching
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
-@app.route('/submit', methods=['POST'])
+@betterhome.route('/submit', methods=['POST'])
 def submit():
     print("\n=== Form Submission Started ===")
     print("Submit route accessed")
@@ -266,7 +271,7 @@ def submit():
         print(traceback.format_exc())
         return "Error processing form data. Please try again."
 
-@app.route('/view_html/<path:filename>')
+@betterhome.route('/view_html/<path:filename>')
 def view_html(filename):
     """Serve the HTML file with proper content type"""
     try:
@@ -301,7 +306,7 @@ def view_html(filename):
         print(traceback.format_exc())
         return f"Error serving HTML file: {str(e)}", 500
 
-@app.route('/download/<path:filename>')
+@betterhome.route('/download/<path:filename>')
 def download_file(filename):
     """Serve files from the uploads directory with proper path handling"""
     try:
@@ -314,10 +319,10 @@ def download_file(filename):
         print(f"Error downloading file: {str(e)}")
         return f"Error downloading file: {str(e)}", 500
 
-@app.route('/uploads/<path:filename>')
+@betterhome.route('/uploads/<path:filename>')
 def serve_uploads(filename):
     """Serve files from the uploads directory (for images in HTML)"""
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5002) 
+    betterhome.run(debug=True, host='0.0.0.0', port=5002) 
