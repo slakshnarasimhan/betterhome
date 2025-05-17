@@ -273,8 +273,13 @@ def submit():
                 
                 print(f"HTML URL: {html_url}")
                 
+                # Format the timestamp for display
+                display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
+                
                 return render_template('results.html', 
-                                     html_file=html_relative_path)
+                                     html_file=html_relative_path,
+                                     user_name=form_data['Name'],
+                                     timestamp=display_timestamp)
             else:
                 print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
                 return "Error generating recommendations. Please try again."
