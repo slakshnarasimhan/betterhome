@@ -23,6 +23,24 @@
             background-color: #2980b9;
         }
         
+        .back-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: #2ecc71;
+            color: white;
+            padding: 15px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: background-color 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background-color: #27ae60;
+        }
+        
         body {
             margin: 0;
             padding: 0;
@@ -54,6 +72,11 @@
         <!-- Display the HTML file in an iframe -->
         <iframe src="{{ url_for('view_html', filename=html_file) }}" title="BetterHome Recommendations"></iframe>
         
+        <!-- Back button -->
+        <a href="javascript:history.back()" class="back-button">
+            ← Back to Form
+        </a>
+        
         <!-- Download PDF button -->
         {% if pdf_path %}
         <a href="{{ pdf_path }}" class="download-button" target="_blank">
@@ -75,6 +98,13 @@
             console.error("Error loading iframe");
             alert("Error loading recommendations. Please try again.");
         };
+
+        // Handle back button click
+        document.querySelector('.back-button').addEventListener('click', function(e) {
+            e.preventDefault();
+            // Use history.back() to go back to the form
+            window.history.back();
+        });
     </script>
 </body>
 </html> 
