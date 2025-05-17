@@ -5,6 +5,7 @@ import pandas as pd
 import subprocess
 from datetime import datetime
 import shutil
+from werkzeug.utils import secure_filename
 
 betterhome = Flask(__name__)
 betterhome.config['DEBUG'] = True
@@ -56,6 +57,30 @@ def submit():
         num_bedrooms = request.form.get('bedrooms')
         print(f"Number of bedrooms selected: {num_bedrooms}")
         
+        # Capture the timestamp once for consistent file naming
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Create a subfolder for this user's recommendations
+        user_folder = f"uploads/{request.form.get('name').replace(' ', '_')}_{timestamp}"
+        if not os.path.exists(user_folder):
+            os.makedirs(user_folder)
+            
+        # Create room_images subfolder
+        room_images_folder = os.path.join(user_folder, 'room_images')
+        if not os.path.exists(room_images_folder):
+            os.makedirs(room_images_folder)
+            
+        # Handle file uploads
+        if 'room_images' in request.files:
+            files = request.files.getlist('room_images')
+            for file in files:
+                if file.filename:  # Check if file was selected
+                    # Secure the filename
+                    filename = secure_filename(file.filename)
+                    # Save the file
+                    file.save(os.path.join(room_images_folder, filename))
+                    print(f"Saved file: {filename}")
+
         # Assuming the form data is collected in a dictionary called form_data
         form_data = {
             'Name': request.form.get('name'),
@@ -153,14 +178,6 @@ def submit():
         # Debug: Print DataFrame to verify Bedroom 3 data
         print("DataFrame:")
         print(df)
-        
-        # Capture the timestamp once for consistent file naming
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
-        # Create a subfolder for this user's recommendations
-        user_folder = f"uploads/{form_data['Name'].replace(' ', '_')}_{timestamp}"
-        if not os.path.exists(user_folder):
-            os.makedirs(user_folder)
         
         # Generate a unique filename for the Excel file
         excel_filename = f"{user_folder}/{form_data['Name'].replace(' ', '_')}_{timestamp}.xlsx"
