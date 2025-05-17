@@ -256,32 +256,25 @@ def submit():
                 return "Error generating recommendations. Please try again."
                 
             # Check if the recommendation files were created
-            pdf_filename = excel_filename.replace('.xlsx', '.pdf')
             html_filename = excel_filename.replace('.xlsx', '.html')
             
             print(f"Checking for files:")
-            print(f"PDF file exists: {os.path.exists(pdf_filename)}")
             print(f"HTML file exists: {os.path.exists(html_filename)}")
             
-            if os.path.exists(html_filename):  # Only check for HTML file since PDF is optional
+            if os.path.exists(html_filename):
                 # Get the basename for the files
-                pdf_basename = os.path.basename(pdf_filename) if os.path.exists(pdf_filename) else None
                 html_basename = os.path.basename(html_filename)
                 
                 # Get the relative path from uploads directory
                 html_relative_path = os.path.relpath(html_filename, UPLOAD_FOLDER)
-                pdf_relative_path = os.path.relpath(pdf_filename, UPLOAD_FOLDER) if pdf_basename else None
                 
-                # Create the URLs for the files
+                # Create the URL for the HTML file
                 html_url = url_for('view_html', filename=html_relative_path)
-                pdf_url = url_for('download_file', filename=pdf_relative_path) if pdf_relative_path else None
                 
                 print(f"HTML URL: {html_url}")
-                print(f"PDF URL: {pdf_url}")
                 
                 return render_template('results.html', 
-                                     html_file=html_relative_path,
-                                     pdf_path=pdf_url)
+                                     html_file=html_relative_path)
             else:
                 print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
                 return "Error generating recommendations. Please try again."
