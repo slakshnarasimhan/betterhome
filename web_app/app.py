@@ -7,7 +7,6 @@ from datetime import datetime
 import shutil
 from werkzeug.utils import secure_filename
 from combined_script import analyze_user_requirements, generate_html_file
-from s3_config import S3Handler
 
 betterhome = Flask(__name__)
 betterhome.config['DEBUG'] = True
@@ -37,10 +36,6 @@ if not os.path.exists(logo_dest_path):
             shutil.copy(source_path, logo_dest_path)
             print(f"Copied logo from {source_path} to {logo_dest_path}")
             break
-
-# S3 Configuration
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'betterhome-recommendation')
-s3_handler = S3Handler(S3_BUCKET_NAME)
 
 @betterhome.route('/')
 def index():
@@ -89,16 +84,6 @@ def submit():
         generate_html_file(form_data, final_list, html_filename, is_web_app=True)
         print(f"Generated HTML file: {html_filename}")
         
-        # Upload the entire folder to S3
-        s3_prefix = f"recommendations/{timestamp}"
-        if s3_handler.upload_folder(user_folder, s3_prefix):
-            print(f"Successfully uploaded to S3: {s3_prefix}")
-            # Get the S3 URL for the folder
-            s3_url = s3_handler.get_folder_url(s3_prefix)
-            print(f"S3 URL: {s3_url}")
-        else:
-            print("Failed to upload to S3")
-        
         # Check if the recommendation files were created
         html_filename = excel_filename.replace('.xlsx', '.html')
         
@@ -123,8 +108,7 @@ def submit():
             return render_template('results.html', 
                                  html_file=html_relative_path,
                                  user_name=form_data['Name'],
-                                 timestamp=display_timestamp,
-                                 s3_url=s3_url)
+                                 timestamp=display_timestamp)
         else:
             print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
             return "Error generating recommendations. Please try again."
