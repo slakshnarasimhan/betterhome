@@ -70,7 +70,7 @@
         </div>
     </div>
     <div class="container py-4">
-        <form action="/submit" method="POST" class="needs-validation" novalidate>
+        <form action="/submit" method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
             
             <!-- Personal Information -->
             <div class="form-section">
@@ -115,6 +115,17 @@
                         <label for="kids" class="form-label required">Kids (below the age 18)</label>
                         <input type="number" class="form-control" id="kids" name="kids" required>
                     </div>
+                </div>
+            </div>
+
+            <!-- Room Images Upload -->
+            <div class="form-section">
+                <h3>Room Images/Drawings</h3>
+                <div class="mb-3">
+                    <label for="room_images" class="form-label">Do you have any drawings of your home interior?</label>
+                    <p class="text-muted">Upload up to 5 supported files: PDF, document, drawing, image, presentation, spreadsheet, or video. Max 10 MB per file.</p>
+                    <input type="file" class="form-control" id="room_images" name="room_images" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.bmp,.dwg,.dxf,.mp4,.avi,.mov" onchange="validateFiles(this)">
+                    <div class="invalid-feedback" id="fileError"></div>
                 </div>
             </div>
 
@@ -777,6 +788,34 @@
             document.getElementById('submitButton').disabled = false;
             document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
         });
+
+        // File upload validation
+        function validateFiles(input) {
+            const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
+            const maxFiles = 5;
+            const fileError = document.getElementById('fileError');
+            const submitButton = document.getElementById('submitButton');
+            
+            if (input.files.length > maxFiles) {
+                fileError.textContent = `Please select no more than ${maxFiles} files.`;
+                input.value = '';
+                submitButton.disabled = true;
+                return false;
+            }
+            
+            for (let i = 0; i < input.files.length; i++) {
+                if (input.files[i].size > maxFileSize) {
+                    fileError.textContent = `File "${input.files[i].name}" exceeds the 10MB size limit.`;
+                    input.value = '';
+                    submitButton.disabled = true;
+                    return false;
+                }
+            }
+            
+            fileError.textContent = '';
+            submitButton.disabled = false;
+            return true;
+        }
     </script>
 </body>
 </html> 
