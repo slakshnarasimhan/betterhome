@@ -51,6 +51,7 @@ def submit():
     print("Submit route accessed")
     print("Request method:", request.method)
     print("Form data received:", request.form)
+    print("Files received:", request.files)
     
     try:
         # Get number of bedrooms first
@@ -64,22 +65,32 @@ def submit():
         user_folder = f"uploads/{request.form.get('name').replace(' ', '_')}_{timestamp}"
         if not os.path.exists(user_folder):
             os.makedirs(user_folder)
+            print(f"Created user folder: {user_folder}")
             
         # Create room_images subfolder
         room_images_folder = os.path.join(user_folder, 'room_images')
         if not os.path.exists(room_images_folder):
             os.makedirs(room_images_folder)
+            print(f"Created room_images folder: {room_images_folder}")
             
         # Handle file uploads
         if 'room_images' in request.files:
             files = request.files.getlist('room_images')
+            print(f"Number of files received: {len(files)}")
+            
             for file in files:
                 if file.filename:  # Check if file was selected
+                    print(f"Processing file: {file.filename}")
                     # Secure the filename
                     filename = secure_filename(file.filename)
+                    file_path = os.path.join(room_images_folder, filename)
                     # Save the file
-                    file.save(os.path.join(room_images_folder, filename))
-                    print(f"Saved file: {filename}")
+                    file.save(file_path)
+                    print(f"Saved file: {filename} to {file_path}")
+                else:
+                    print("Empty filename received")
+        else:
+            print("No files received in request")
 
         # Assuming the form data is collected in a dictionary called form_data
         form_data = {
