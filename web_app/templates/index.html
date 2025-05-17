@@ -705,13 +705,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Form validation
+        // Form validation and submission
         (function () {
             'use strict'
             var forms = document.querySelectorAll('.needs-validation')
             Array.prototype.slice.call(forms)
                 .forEach(function (form) {
                     form.addEventListener('submit', function (event) {
+                        event.preventDefault(); // Prevent default submission
                         console.log('Form submission attempted');
                         
                         // Log form data including files
@@ -741,33 +742,51 @@
                         
                         if (!form.checkValidity()) {
                             console.log('Form validation failed');
-                            event.preventDefault()
-                            event.stopPropagation()
-                        } else {
-                            console.log('Form validation passed, submitting...');
-                            // Show loading indicator
-                            document.getElementById('submitButton').disabled = true;
-                            document.getElementById('submitButton').innerHTML = 'Generating Recommendations...';
+                            event.stopPropagation();
+                            form.classList.add('was-validated');
+                            return;
                         }
-                        form.classList.add('was-validated')
+                        
+                        console.log('Form validation passed, submitting...');
+                        // Show loading indicator
+                        const submitButton = document.getElementById('submitButton');
+                        submitButton.disabled = true;
+                        submitButton.innerHTML = 'Generating Recommendations...';
+                        
+                        // Submit the form
+                        form.classList.add('was-validated');
+                        form.submit();
                     }, false)
                 })
         })()
 
-        // Add form submission event listener
-        document.querySelector('form').addEventListener('submit', function(event) {
-            console.log('Form submit event triggered');
-            // Log all form data
-            const formData = new FormData(this);
-            console.log('Form data before submission:');
-            for (let pair of formData.entries()) {
-                if (pair[0] === 'room_images') {
-                    console.log('Files to be uploaded:', pair[1].files);
-                } else {
-                    console.log(pair[0] + ': ' + pair[1]);
+        // File upload validation
+        function validateFiles(input) {
+            const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
+            const maxFiles = 5;
+            const fileError = document.getElementById('fileError');
+            const submitButton = document.getElementById('submitButton');
+            
+            if (input.files.length > maxFiles) {
+                fileError.textContent = `Please select no more than ${maxFiles} files.`;
+                input.value = '';
+                submitButton.disabled = true;
+                return false;
+            }
+            
+            for (let i = 0; i < input.files.length; i++) {
+                if (input.files[i].size > maxFileSize) {
+                    fileError.textContent = `File "${input.files[i].name}" exceeds the 10MB size limit.`;
+                    input.value = '';
+                    submitButton.disabled = true;
+                    return false;
                 }
             }
-        });
+            
+            fileError.textContent = '';
+            submitButton.disabled = false;
+            return true;
+        }
 
         // Enable submit button when any form field changes
         document.querySelectorAll('input, select, textarea').forEach(field => {
@@ -806,34 +825,6 @@
             document.getElementById('submitButton').disabled = false;
             document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
         });
-
-        // File upload validation
-        function validateFiles(input) {
-            const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
-            const maxFiles = 5;
-            const fileError = document.getElementById('fileError');
-            const submitButton = document.getElementById('submitButton');
-            
-            if (input.files.length > maxFiles) {
-                fileError.textContent = `Please select no more than ${maxFiles} files.`;
-                input.value = '';
-                submitButton.disabled = true;
-                return false;
-            }
-            
-            for (let i = 0; i < input.files.length; i++) {
-                if (input.files[i].size > maxFileSize) {
-                    fileError.textContent = `File "${input.files[i].name}" exceeds the 10MB size limit.`;
-                    input.value = '';
-                    submitButton.disabled = true;
-                    return false;
-                }
-            }
-            
-            fileError.textContent = '';
-            submitButton.disabled = false;
-            return true;
-        }
     </script>
 </body>
 </html> 
