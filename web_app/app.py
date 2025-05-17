@@ -110,7 +110,8 @@ def submit():
             'Dining: Fan': request.form.get('dining_fan'),
             'Dining: Air Conditioner (AC)?': request.form.get('dining_ac'),
             'Dining: Colour theme?': request.form.get('dining_color'),
-            'Dining: What is the square feet?': request.form.get('dining_square_feet'),
+            'Additional Information: Any other information?': request.form.get('other_info'),
+            'Additional Information: Questions and comments': request.form.get('questions_comments')
         }
         
         # Only add Bedroom 3 data if 3 bedrooms are selected

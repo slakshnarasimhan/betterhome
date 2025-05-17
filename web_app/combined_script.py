@@ -158,7 +158,6 @@ def analyze_user_requirements(excel_file: str):
                 'fans': int(df.iloc[0].get('Dining: Fan(s)?', 0)),
                 'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
                 'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
-                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Default to 120 sq ft if not specified
                 'is_for_kids': df.iloc[0].get('Dining: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             }
         }
