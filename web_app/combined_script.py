@@ -4290,25 +4290,32 @@ def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str
     Returns:
         Dictionary mapping file types to their S3 URLs
     """
-    s3_handler = S3Handler()
-    s3_urls = {}
-    
-    # Create a unique folder for this user's recommendations
-    user_folder = f"recommendations/{user_data.get('name', 'unknown')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    for file_type, file_path in files.items():
-        if os.path.exists(file_path):
-            # Create S3 key with user folder
-            s3_key = f"{user_folder}/{os.path.basename(file_path)}"
-            
-            # Upload file to S3
-            if s3_handler.upload_file(file_path, s3_key):
-                # Get presigned URL
-                url = s3_handler.get_file_url(s3_key)
-                if url:
-                    s3_urls[file_type] = url
-    
-    return s3_urls
+    try:
+        s3_handler = S3Handler()
+        s3_urls = {}
+        
+        # Create a unique folder for this user's recommendations
+        # Use safer attribute access with defaults
+        user_name = user_data.get('name', user_data.get('Name', 'unknown'))
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        user_folder = f"recommendations/{user_name}_{timestamp}"
+        
+        for file_type, file_path in files.items():
+            if os.path.exists(file_path):
+                # Create S3 key with user folder
+                s3_key = f"{user_folder}/{os.path.basename(file_path)}"
+                
+                # Upload file to S3
+                if s3_handler.upload_file(file_path, s3_key):
+                    # Get presigned URL
+                    url = s3_handler.get_file_url(s3_key)
+                    if url:
+                        s3_urls[file_type] = url
+        
+        return s3_urls
+    except Exception as e:
+        print(f"Error in upload_recommendation_files_to_s3: {str(e)}")
+        return {}
 
 # Main function
 if __name__ == "__main__":
