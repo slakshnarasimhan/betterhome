@@ -20,6 +20,36 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 import pprint
 from s3_config import S3Handler
 
+def get_user_data_value(user_data: Dict[str, Any], key: str, default: Any = None) -> Any:
+    """
+    Helper function to safely access user_data with either lowercase or capitalized keys.
+    This helps handle both form_data (direct from web forms) and processed user_data.
+    
+    Args:
+        user_data: Dictionary containing user information
+        key: The key to look for (will try both lowercase and capitalized versions)
+        default: The default value to return if the key is not found
+        
+    Returns:
+        The value from user_data if found, otherwise the default
+    """
+    # Try lowercase first (processed data format)
+    if key in user_data:
+        return user_data[key]
+    
+    # Try capitalized (form data format)
+    capitalized_key = key.capitalize()
+    if capitalized_key in user_data:
+        return user_data[capitalized_key]
+    
+    # Try all uppercase (form data might use all caps for some fields)
+    uppercase_key = key.upper()
+    if uppercase_key in user_data:
+        return user_data[uppercase_key]
+    
+    # Return default if not found in any format
+    return default
+
 # Function to format currency
 def format_currency(amount: float) -> str:
     """Format amount in Indian Rupees"""
@@ -4167,8 +4197,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
                 <footer>
     """
+    user_name = get_user_data_value(user_data, 'name', 'Valued Customer')
     html_content += f"""
-                    <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
+                    <p>This product recommendation brochure was created for {user_name} on {current_date}</p>
                     <p> {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
                 </footer>
             </div>
@@ -4295,8 +4326,8 @@ def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str
         s3_urls = {}
         
         # Create a unique folder for this user's recommendations
-        # Use safer attribute access with defaults
-        user_name = user_data.get('name', user_data.get('Name', 'unknown'))
+        # Use our helper function for consistent access regardless of key format
+        user_name = get_user_data_value(user_data, 'name', 'unknown')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         user_folder = f"recommendations/{user_name}_{timestamp}"
         

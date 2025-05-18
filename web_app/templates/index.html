@@ -126,7 +126,8 @@
                     <p class="text-muted">Upload up to 5 supported files: PDF, document, drawing, image, presentation, spreadsheet, or video. Max 10 MB per file.</p>
                     <input type="file" class="form-control" id="room_images" name="room_images" multiple 
                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.bmp,.dwg,.dxf,.mp4,.avi,.mov" 
-                           onchange="validateFiles(this)" required>
+                           onchange="validateFiles(this)">
+                    <small class="text-muted">Optional: You can skip uploading files if you don't have any drawings.</small>
                     <div class="invalid-feedback" id="fileError"></div>
                 </div>
             </div>
@@ -709,6 +710,54 @@
         (function () {
             'use strict'
             var forms = document.querySelectorAll('.needs-validation')
+            
+            // Function to check if all required fields are filled
+            function checkRequiredFields() {
+                const requiredFields = document.querySelectorAll('[required]');
+                let allFilled = true;
+                
+                requiredFields.forEach(field => {
+                    if (!field.value) {
+                        allFilled = false;
+                    }
+                    
+                    // Special case for radio buttons
+                    if (field.type === 'radio') {
+                        const name = field.getAttribute('name');
+                        const radioGroup = document.querySelectorAll(`input[name="${name}"]:checked`);
+                        if (radioGroup.length === 0) {
+                            allFilled = false;
+                        }
+                    }
+                });
+                
+                return allFilled;
+            }
+            
+            // Function to update submit button state
+            function updateSubmitButtonState() {
+                const submitButton = document.getElementById('submitButton');
+                const allRequiredFilled = checkRequiredFields();
+                
+                if (allRequiredFilled) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<span id="submitText">Generate Recommendations</span>';
+                } else {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span id="submitText">Please Fill All Required Fields</span>';
+                }
+            }
+            
+            // Check form validity on page load
+            document.addEventListener('DOMContentLoaded', updateSubmitButtonState);
+            
+            // Add event listeners to all fields
+            document.querySelectorAll('input, select, textarea').forEach(field => {
+                ['change', 'input', 'keyup'].forEach(eventType => {
+                    field.addEventListener(eventType, updateSubmitButtonState);
+                });
+            });
+            
             Array.prototype.slice.call(forms)
                 .forEach(function (form) {
                     form.addEventListener('submit', function (event) {
@@ -720,7 +769,7 @@
                         console.log('Form data entries:');
                         for (let pair of formData.entries()) {
                             if (pair[0] === 'room_images') {
-                                console.log('Files:', pair[1].files);
+                                console.log('Files:', pair[1].name);
                             } else {
                                 console.log(pair[0] + ': ' + pair[1]);
                             }
@@ -751,7 +800,7 @@
                         // Show loading indicator
                         const submitButton = document.getElementById('submitButton');
                         submitButton.disabled = true;
-                        submitButton.innerHTML = 'Generating Recommendations...';
+                        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating Recommendations...';
                         
                         // Submit the form
                         form.classList.add('was-validated');
@@ -765,12 +814,16 @@
             const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
             const maxFiles = 5;
             const fileError = document.getElementById('fileError');
-            const submitButton = document.getElementById('submitButton');
+            
+            // Skip validation if no files are selected (since it's optional)
+            if (input.files.length === 0) {
+                fileError.textContent = '';
+                return true;
+            }
             
             if (input.files.length > maxFiles) {
                 fileError.textContent = `Please select no more than ${maxFiles} files.`;
                 input.value = '';
-                submitButton.disabled = true;
                 return false;
             }
             
@@ -778,33 +831,16 @@
                 if (input.files[i].size > maxFileSize) {
                     fileError.textContent = `File "${input.files[i].name}" exceeds the 10MB size limit.`;
                     input.value = '';
-                    submitButton.disabled = true;
                     return false;
                 }
             }
             
             fileError.textContent = '';
-            submitButton.disabled = false;
             return true;
         }
 
-        // Enable submit button when any form field changes
-        document.querySelectorAll('input, select, textarea').forEach(field => {
-            field.addEventListener('change', function() {
-                document.getElementById('submitButton').disabled = false;
-                document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
-            });
-        });
-
-        // Also enable on input for text fields
-        document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea').forEach(field => {
-            field.addEventListener('input', function() {
-                document.getElementById('submitButton').disabled = false;
-                document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
-            });
-        });
-
-        document.getElementById('bedrooms').addEventListener('input', function() {
+        // Handle the bedroom count changes
+        document.getElementById('bedrooms').addEventListener('change', function() {
             var bedroom3Section = document.getElementById('bedroom3-section');
             if (this.value == '3') {
                 bedroom3Section.style.display = 'block';
@@ -821,9 +857,6 @@
                     field.removeAttribute('required');
                 });
             }
-            // Enable submit button when bedrooms selection changes
-            document.getElementById('submitButton').disabled = false;
-            document.getElementById('submitButton').innerHTML = 'Generate Recommendations';
         });
     </script>
 </body>
