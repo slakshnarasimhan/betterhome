@@ -3,128 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BetterHome Recommendations</title>
+    <title>Recommendations Generated - BetterHome</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .download-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #3498db;
-            color: white;
-            padding: 15px 25px;
-            text-decoration: none;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
-            transition: background-color 0.3s ease;
-        }
-        
-        .download-button:hover {
-            background-color: #2980b9;
-        }
-        
-        .back-button {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background-color: #2ecc71;
-            color: white;
-            padding: 15px 25px;
-            text-decoration: none;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
-            transition: background-color 0.3s ease;
-        }
-        
-        .back-button:hover {
-            background-color: #27ae60;
-        }
-        
         body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
         }
-        
-        .recommendations-container {
-            position: relative;
-            height: 100vh;
-            width: 100%;
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
-        
-        iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
+        .logo {
+            max-width: 200px;
+            margin-bottom: 30px;
         }
-
-        .recommendation-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            z-index: 2000;
-        }
-
-        .recommendation-header h2 {
-            margin: 0;
-            color: #2c3e50;
+        .success-message {
+            color: #28a745;
             font-size: 1.2em;
+            margin-bottom: 20px;
         }
-
-        .recommendation-header p {
-            margin: 5px 0 0 0;
-            color: #7f8c8d;
+        .timestamp {
+            color: #6c757d;
             font-size: 0.9em;
+            margin-bottom: 30px;
         }
-
-        /* Adjust iframe to account for header */
-        iframe {
-            top: 60px;
-            height: calc(100% - 60px);
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+            padding: 10px 20px;
+            margin: 10px 0;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .download-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-    <div class="recommendations-container">
-        <div class="recommendation-header">
-            <h2>Recommendation for {{ user_name }}</h2>
-            <p>Generated on {{ timestamp }}</p>
+    <div class="container text-center">
+        <img src="{{ url_for('static', filename='better_home_logo.png') }}" alt="BetterHome Logo" class="logo">
+        
+        <div class="success-message">
+            <h2>Recommendations Generated Successfully!</h2>
+            <p>Hello {{ user_name }}, your personalized home recommendations are ready.</p>
         </div>
         
-        <!-- Display the HTML file in an iframe -->
-        <iframe src="{{ url_for('view_html', filename=html_file) }}" title="BetterHome Recommendations"></iframe>
+        <div class="timestamp">
+            Generated on {{ timestamp }}
+        </div>
         
-        <!-- Back button -->
-        <a href="javascript:history.back()" class="back-button">
-            ← Back to Form
-        </a>
+        <div class="download-section">
+            <h4>Download Your Recommendations</h4>
+            <p>You can download your recommendations in the following formats:</p>
+            
+            <div class="d-grid gap-2">
+                <a href="{{ s3_html_url }}" class="btn btn-primary" target="_blank">
+                    View Recommendations Online
+                </a>
+                <a href="{{ s3_excel_url }}" class="btn btn-primary" download>
+                    Download Excel File
+                </a>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                Generate New Recommendations
+            </a>
+        </div>
     </div>
     
-    <script>
-        // Log the iframe source for debugging
-        console.log("Loading iframe with URL: {{ url_for('view_html', filename=html_file) }}");
-        
-        // Handle iframe load errors
-        document.querySelector('iframe').onerror = function() {
-            console.error("Error loading iframe");
-            alert("Error loading recommendations. Please try again.");
-        };
-
-        // Handle back button click
-        document.querySelector('.back-button').addEventListener('click', function(e) {
-            e.preventDefault();
-            // Use history.back() to go back to the form
-            window.history.back();
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 
