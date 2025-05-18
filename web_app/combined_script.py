@@ -18,6 +18,7 @@ from reportlab.platypus.flowables import HRFlowable
 from datetime import datetime
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 import pprint
+from s3_config import S3Handler
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -1759,6 +1760,17 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     
     # Build the PDF
     doc.build(story)
+    
+    # After generating the PDF file, upload it to S3
+    files = {
+        'pdf': filename
+    }
+    s3_urls = upload_recommendation_files_to_s3(user_data, files)
+    
+    # Add S3 URLs to user_data for later use
+    if 's3_urls' not in user_data:
+        user_data['s3_urls'] = {}
+    user_data['s3_urls'].update(s3_urls)
 
 def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], txt_filename: str) -> None:
     """Generate a text file with user information and product recommendations"""
@@ -1983,6 +1995,17 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write("Your selected products fit within your budget!\n")
         else:
             f.write("Note: The total cost exceeds your budget. You may want to consider alternative options.\n")
+    
+    # After generating the text file, upload it to S3
+    files = {
+        'text': txt_filename
+    }
+    s3_urls = upload_recommendation_files_to_s3(user_data, files)
+    
+    # Add S3 URLs to user_data for later use
+    if 's3_urls' not in user_data:
+        user_data['s3_urls'] = {}
+    user_data['s3_urls'].update(s3_urls)
 
 # Function to download an image from a URL
 def download_image(image_url: str, save_dir: str) -> str:
@@ -4168,6 +4191,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             print(html_content[sample_start:sample_end])
     
     print(f"Generated professional HTML brochure: {html_filename}")
+    
+    # After generating the HTML file, upload it to S3
+    files = {
+        'html': html_filename
+    }
+    s3_urls = upload_recommendation_files_to_s3(user_data, files)
+    
+    # Add S3 URLs to user_data for later use
+    if 's3_urls' not in user_data:
+        user_data['s3_urls'] = {}
+    user_data['s3_urls'].update(s3_urls)
 
 # Function to process features and store them in JSON
 def process_features(features_str: str) -> List[str]:
@@ -4244,6 +4278,37 @@ def deduplicate_recommendations(recommendations: List[Dict[str, Any]], max_recom
             deduped.append(p)
             seen.add(key)
     return deduped[:max_recommendations]
+
+def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str, str]) -> Dict[str, str]:
+    """
+    Upload recommendation files to S3 and return their URLs
+    
+    Args:
+        user_data: Dictionary containing user information
+        files: Dictionary mapping file types to their local paths
+        
+    Returns:
+        Dictionary mapping file types to their S3 URLs
+    """
+    s3_handler = S3Handler()
+    s3_urls = {}
+    
+    # Create a unique folder for this user's recommendations
+    user_folder = f"recommendations/{user_data.get('name', 'unknown')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    for file_type, file_path in files.items():
+        if os.path.exists(file_path):
+            # Create S3 key with user folder
+            s3_key = f"{user_folder}/{os.path.basename(file_path)}"
+            
+            # Upload file to S3
+            if s3_handler.upload_file(file_path, s3_key):
+                # Get presigned URL
+                url = s3_handler.get_file_url(s3_key)
+                if url:
+                    s3_urls[file_type] = url
+    
+    return s3_urls
 
 # Main function
 if __name__ == "__main__":

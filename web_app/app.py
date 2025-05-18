@@ -7,10 +7,15 @@ from datetime import datetime
 import shutil
 from werkzeug.utils import secure_filename
 from combined_script import analyze_user_requirements, generate_html_file
+from s3_config import S3Handler
 
 betterhome = Flask(__name__)
 betterhome.config['DEBUG'] = True
 betterhome.config['TEMPLATES_AUTO_RELOAD'] = True
+
+
+# Initialize S3 handler
+s3_handler = S3Handler()
 
 # Ensure uploads directory exists
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -81,37 +86,34 @@ def submit():
         
         # Generate HTML file
         html_filename = os.path.join(user_folder, 'recommendations.html')
-        generate_html_file(form_data, final_list, html_filename, is_web_app=True)
+        generate_html_file(form_data, final_list, html_filename)
         print(f"Generated HTML file: {html_filename}")
         
-        # Check if the recommendation files were created
-        html_filename = excel_filename.replace('.xlsx', '.html')
+        # Upload files to S3
+        s3_excel_key = f"recommendations/{timestamp}/user_requirements.xlsx"
+        s3_html_key = f"recommendations/{timestamp}/recommendations.html"
         
-        print(f"Checking for files:")
-        print(f"HTML file exists: {os.path.exists(html_filename)}")
+        excel_uploaded = s3_handler.upload_file(excel_filename, s3_excel_key)
+        html_uploaded = s3_handler.upload_file(html_filename, s3_html_key)
         
-        if os.path.exists(html_filename):
-            # Get the basename for the files
-            html_basename = os.path.basename(html_filename)
-            
-            # Get the relative path from uploads directory
-            html_relative_path = os.path.relpath(html_filename, UPLOAD_FOLDER)
-            
-            # Create the URL for the HTML file
-            html_url = url_for('view_html', filename=html_relative_path)
-            
-            print(f"HTML URL: {html_url}")
+        if excel_uploaded and html_uploaded:
+            # Get S3 URLs
+            excel_url = s3_handler.get_file_url(s3_excel_key)
+            html_url = s3_handler.get_file_url(s3_html_key)
             
             # Format the timestamp for display
             display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
             
             return render_template('results.html', 
-                                 html_file=html_relative_path,
+                                 html_file=html_filename,
+                                 excel_file=excel_filename,
+                                 s3_html_url=html_url,
+                                 s3_excel_url=excel_url,
                                  user_name=form_data['Name'],
                                  timestamp=display_timestamp)
         else:
-            print(f"Recommendation files not found. HTML: {os.path.exists(html_filename)}")
-            return "Error generating recommendations. Please try again."
+            print("Failed to upload files to S3")
+            return "Error uploading files to S3. Please try again."
             
     except Exception as e:
         print(f"Error in submit route: {str(e)}")
