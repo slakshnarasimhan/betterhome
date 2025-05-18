@@ -58,35 +58,109 @@ def submit():
         form_data = request.form.to_dict()
         print("Form data received:", form_data)
         
-        # Get uploaded files
-        files = request.files.getlist('files[]')
-        print(f"Number of files received: {len(files)}")
-        
         # Create a timestamp for the folder
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         user_folder = os.path.join(UPLOAD_FOLDER, timestamp)
         os.makedirs(user_folder, exist_ok=True)
         
-        # Save uploaded files
-        for file in files:
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                file_path = os.path.join(user_folder, filename)
-                file.save(file_path)
-                print(f"Saved file: {file_path}")
+        # Get uploaded files (if any)
+        files = []
+        if 'room_images' in request.files:
+            files = request.files.getlist('room_images')
+        
+        # Save uploaded files (if any)
+        if files:
+            print(f"Number of files received: {len(files)}")
+            for file in files:
+                if file and file.filename and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    file_path = os.path.join(user_folder, filename)
+                    file.save(file_path)
+                    print(f"Saved file: {file_path}")
+        else:
+            print("No files uploaded (optional)")
         
         # Create Excel file from form data
         excel_filename = os.path.join(user_folder, 'user_requirements.xlsx')
-        df = pd.DataFrame([form_data])
+        
+        # Map form field names to the expected column names in analyze_user_requirements
+        field_mapping = {
+            'name': 'Name',
+            'mobile': 'Mobile Number (Preferably on WhatsApp)',
+            'email': 'E-mail',
+            'address': 'Apartment Address',
+            'budget': 'What is your overall budget for home appliances?',
+            'bedrooms': 'Number of bedrooms',
+            'bathrooms': 'Number of bathrooms',
+            'adults': 'Adults (between the age 18 to 50)',
+            'elders': 'Elders (above the age 60)',
+            'kids': 'Kids (below the age 18)',
+            'hall_fans': 'Hall: Fan(s)?',
+            'hall_ac': 'Hall: Air Conditioner (AC)?',
+            'hall_color': 'Hall: Colour theme?',
+            'hall_square_feet': 'Hall: What is the square feet ?',
+            'kitchen_chimney': 'Kitchen: Chimney width?',
+            'kitchen_stove': 'Kitchen: Gas stove type?',
+            'kitchen_burners': 'Kitchen: Number of burners?',
+            'kitchen_fan': 'Kitchen: Do you need a small fan?',
+            'kitchen_refrigerator_type': 'Kitchen: Refrigerator type?',
+            'kitchen_refrigerator_capacity': 'Kitchen: Refrigerator capacity?',
+            'kitchen_dishwasher_capacity': 'Kitchen: Dishwasher capacity?',
+            'master_ac': 'Master: Air Conditioner (AC)?',
+            'master_water': 'Master: How do you bath with the hot & cold water?',
+            'master_exhaust_size': 'Master: Exhaust fan size?',
+            'master_water_heater_ceiling': 'Master: Is the water heater going to be inside the false ceiling in the bathroom?',
+            'master_led_mirror': 'Master: Would you like to have a LED Mirror?',
+            'master_color': 'Master: What is the colour theme?',
+            'master_area': 'Master: What is the area of the bedroom in square feet?',
+            'bedroom2_ac': 'Bedroom 2: Air Conditioner (AC)?',
+            'bedroom2_water': 'Bedroom 2: How do you bath with the hot & cold water?',
+            'bedroom2_exhaust_size': 'Bedroom 2: Exhaust fan size?',
+            'bedroom2_water_heater_ceiling': 'Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?',
+            'bedroom2_led_mirror': 'Bedroom 2: Would you like to have a LED Mirror?',
+            'bedroom2_color': 'Bedroom 2: What is the colour theme?',
+            'bedroom2_area': 'Bedroom 2: What is the area of the bedroom in square feet?',
+            'bedroom3_ac': 'Bedroom 3: Air Conditioner (AC)?',
+            'bedroom3_water': 'Bedroom 3: How do you bath with the hot & cold water?',
+            'bedroom3_exhaust_size': 'Bedroom 3: Exhaust fan size?',
+            'bedroom3_water_heater_ceiling': 'Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?',
+            'bedroom3_led_mirror': 'Bedroom 3: Would you like to have a LED Mirror?',
+            'bedroom3_color': 'Bedroom 3: What is the colour theme?',
+            'bedroom3_area': 'Bedroom 3: What is the area of the bedroom in square feet?',
+            'laundry_washing': 'Laundry: Washing Machine?',
+            'laundry_dryer': 'Laundry: Dryer?',
+            'dining_fan': 'Dining: Fan(s)?',
+            'dining_ac': 'Dining: Air Conditioner (AC)?',
+            'dining_color': 'Dining: Colour theme?'
+        }
+        
+        # Map form field names to expected column names
+        mapped_data = {}
+        for form_field, excel_field in field_mapping.items():
+            if form_field in form_data:
+                mapped_data[excel_field] = form_data[form_field]
+        
+        # Add any missing fields to prevent errors
+        for excel_field in field_mapping.values():
+            if excel_field not in mapped_data:
+                mapped_data[excel_field] = None
+        
+        # Create DataFrame and save to Excel
+        df = pd.DataFrame([mapped_data])
         df.to_excel(excel_filename, index=False)
         print(f"Created Excel file: {excel_filename}")
         
         # Process the requirements
         final_list = analyze_user_requirements(excel_filename)
         
+        # Check if final_list is None (meaning there was an error in analyze_user_requirements)
+        if final_list is None:
+            print("Error: Failed to analyze user requirements. Check the logs for details.")
+            return "Error: Failed to analyze user requirements. Please check your input data and try again."
+        
         # Generate HTML file
         html_filename = os.path.join(user_folder, 'recommendations.html')
-        generate_html_file(form_data, final_list, html_filename)
+        generate_html_file(final_list, final_list, html_filename)
         print(f"Generated HTML file: {html_filename}")
         
         # Upload files to S3
@@ -173,7 +247,16 @@ def serve_uploads(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'xlsx', 'xls'}
+    # For Excel files (requirements)
+    excel_extensions = {'xlsx', 'xls'}
+    # For room images/drawings
+    image_extensions = {'jpg', 'jpeg', 'png', 'gif', 'bmp'}
+    document_extensions = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'dwg', 'dxf'}
+    video_extensions = {'mp4', 'avi', 'mov'}
+    
+    allowed_extensions = excel_extensions | image_extensions | document_extensions | video_extensions
+    
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 if __name__ == '__main__':
     betterhome.run(debug=True, host='0.0.0.0', port=5002) 
