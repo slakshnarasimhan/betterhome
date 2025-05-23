@@ -2732,17 +2732,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     #import pprint
     #pprint.pprint(final_list)
     # print("[DEBUG HTML] final_list keys:", list(final_list.keys()))
-    """Generate an HTML file with user information and product recommendations."""
     
-    # First check if the script is being run through Flask
-    is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
+    # Get current date for the footer
+    current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
     
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
-        "web_app/better_home_logo.png",  # Relative to script execution directory
-        "./web_app/better_home_logo.png",  # Explicit relative path
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
-        "better_home_logo.png",  # Check in current directory as well
+        os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
+        os.path.join(os.path.dirname(__file__), 'static', 'better_home_logo.png'),
+        'better_home_logo.png'
     ]
     
     logo_path = None
