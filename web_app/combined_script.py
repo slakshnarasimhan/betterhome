@@ -2755,15 +2755,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     if not logo_exists:
         print("Logo not found in any of the expected locations")
     
-    # For web app, use a URL path rather than a file path
+    # Always use a relative URL path that will be handled by Flask
     logo_html = ""
     if logo_exists:
-        if is_web_app:
-            # Use a relative URL path that will be handled by Flask
-            logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
-        else:
-            # Use the file path for direct HTML viewing
-            logo_html = f'<img src="{logo_path}" alt="BetterHome Logo" class="logo">'
+        logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
     
     # Create HTML header (CSS part)
     html_content = """
