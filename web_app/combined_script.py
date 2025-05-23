@@ -4118,9 +4118,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 document.getElementById('total-cost').textContent = `₹${{totalCost.toLocaleString('en-IN')}}`;
                 document.getElementById('total-savings').textContent = `₹${{totalSavings.toLocaleString('en-IN')}}`;
                 document.getElementById('budget-utilization').textContent = 
-                    totalCost > {user_data['budget']} ? 
-                    `Budget exceeded by ₹${{(totalCost - {user_data['budget']}).toLocaleString('en-IN')}}` :
-                    `Budget utilized: ₹${{totalCost.toLocaleString('en-IN')}} of ₹{user_data['budget']:,.2f}`;
+                    totalCost > {user_data['total_budget']} ? 
+                    `Budget exceeded by ₹${{(totalCost - {user_data['total_budget']}).toLocaleString('en-IN')}}` :
+                    `Budget utilized: ₹${{totalCost.toLocaleString('en-IN')}} of ₹{user_data['total_budget']:,.2f}`;
 
                 // Show final recommendation page
                 document.getElementById('product-selection-page').style.display = 'none';
