@@ -2758,7 +2758,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Always use a relative URL path that will be handled by Flask
     logo_html = ""
     if logo_exists:
-        logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+        logo_html = '<img src="better_home_logo.png" alt="BetterHome Logo" class="logo" onerror="this.onerror=null; this.src=\'static/better_home_logo.png\'; this.onerror=null; this.src=\'web_app/better_home_logo.png\'; this.onerror=null; this.parentElement.innerHTML=\'<h1 class=\\\'logo-text\\\'>BetterHome</h1>\';">'
     
     # Create HTML header (CSS part)
     html_content = """
