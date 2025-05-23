@@ -83,27 +83,90 @@ def load_config() -> Dict[str, Any]:
 def analyze_user_requirements(excel_file: str):
     try:
         # Read the Excel file
+        print(f"Reading Excel file: {excel_file}")
         df = pd.read_excel(excel_file)
+        
+        print(f"Excel file loaded, columns: {df.columns.tolist()}")
         
         # Clean up column names by removing newlines and extra spaces
         df.columns = [col.split('\n')[0].strip() for col in df.columns]
-        row = df.iloc[0]
         
-        # Convert DataFrame to dictionary
-        user_data = {
-            'name': df.iloc[0]['Name'],
-            'mobile': df.iloc[0]['Mobile Number (Preferably on WhatsApp)'],
-            'email': df.iloc[0]['E-mail'],
-            'address': df.iloc[0]['Apartment Address'].replace('\n', ' '),
-            'total_budget': float(df.iloc[0]['What is your overall budget for home appliances?']),
-            'num_bedrooms': int(df.iloc[0]['Number of bedrooms']),
-            'num_bathrooms': int(df.iloc[0]['Number of bathrooms']),
-            'demographics': {
-                'adults': int(df.iloc[0]['Adults (between the age 18 to 50)']),
-                'elders': int(df.iloc[0]['Elders (above the age 60)']),
-                'kids': int(df.iloc[0]['Kids (below the age 18)'])
+        print(f"Cleaned column names: {df.columns.tolist()}")
+        
+        if df.empty:
+            print("ERROR: Excel file has no data rows")
+            return None
+            
+        # Check for required columns
+        required_columns = [
+            'Name', 
+            'Mobile Number (Preferably on WhatsApp)', 
+            'E-mail', 
+            'Apartment Address',
+            'What is your overall budget for home appliances?',
+            'Number of bedrooms',
+            'Number of bathrooms',
+            'Adults (between the age 18 to 50)',
+            'Elders (above the age 60)',
+            'Kids (below the age 18)'
+        ]
+        
+        # Check which required columns are missing
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            print(f"ERROR: Missing required columns: {missing_columns}")
+            return None
+        
+        row = df.iloc[0]
+        print(f"First row: {row.head()}")
+        
+        # Use safer data access with error handling
+        try:
+            # Handle potentially empty or non-numeric fields
+            def safe_int(val):
+                try:
+                    if pd.isna(val):
+                        return 0
+                    return int(val)
+                except (ValueError, TypeError):
+                    print(f"Warning: Could not convert {val} to int, using 0")
+                    return 0
+                    
+            def safe_float(val):
+                try:
+                    if pd.isna(val):
+                        return 0.0
+                    return float(val)
+                except (ValueError, TypeError):
+                    print(f"Warning: Could not convert {val} to float, using 0.0")
+                    return 0.0
+                    
+            def safe_str(val):
+                if pd.isna(val):
+                    return ""
+                return str(val).replace('\n', ' ')
+            
+            # Convert DataFrame to dictionary with safer access
+            user_data = {
+                'name': safe_str(df.iloc[0]['Name']),
+                'mobile': safe_str(df.iloc[0]['Mobile Number (Preferably on WhatsApp)']),
+                'email': safe_str(df.iloc[0]['E-mail']),
+                'address': safe_str(df.iloc[0]['Apartment Address']),
+                'total_budget': safe_float(df.iloc[0]['What is your overall budget for home appliances?']),
+                'num_bedrooms': safe_int(df.iloc[0]['Number of bedrooms']),
+                'num_bathrooms': safe_int(df.iloc[0]['Number of bathrooms']),
+                'demographics': {
+                    'adults': safe_int(df.iloc[0]['Adults (between the age 18 to 50)']),
+                    'elders': safe_int(df.iloc[0]['Elders (above the age 60)']),
+                    'kids': safe_int(df.iloc[0]['Kids (below the age 18)'])
+                }
             }
-        }
+        
+        except Exception as e:
+            print(f"Error reading user information: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None
         
         # Clean up NaN values
         def clean_dict(d):
@@ -186,16 +249,26 @@ def analyze_user_requirements(excel_file: str):
             },
             'dining': {
                 'fan_size': df.iloc[0].get('Dining: Fan', None),
-                'fans': int(df.iloc[0].get('Dining: Fan(s)?', 0)),
+                'fans': safe_int(df.iloc[0].get('Dining: Fan(s)?', 1)),  # Use safe_int to handle non-numeric values
                 'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
                 'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
-                'size_sqft': float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Default to 120 sq ft if not specified
+                'size_sqft': safe_float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Use safe_float
                 'is_for_kids': df.iloc[0].get('Dining: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             }
         }
         
         # Merge requirements into user_data
         user_data.update(requirements)
+        
+        # Debug: Log the first few rows of the DataFrame
+        print("First few rows of the DataFrame:")
+        print(df.head())
+
+        # Debug: Log the extracted user data
+        print("Extracted user data:", user_data)
+
+        # Debug: Log the extracted requirements
+        print("Extracted requirements:", requirements)
         
         return user_data
     except Exception as e:
@@ -3948,7 +4021,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
                 <p>Please select one product from each category above that best suits your needs.</p>
-                <button id="generate-final" class="generate-button" onclick="try { generateFinalRecommendation() } catch(e) { console.error(e) }">Generate Final Recommendation</button>
+                <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
             </div>
     """
     
@@ -3961,75 +4034,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             </footer>
         </div>
         
-        <!-- Immediately executed inline script for accordion functionality -->
-        <script>
-    """
-
-    # Direct script to set up accordion functionality
-    html_content += """
-            (function() {
-                
-                const accordionButtons = document.querySelectorAll('.accordion');
-                console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
-                
-                for (let i = 0; i < accordionButtons.length; i++) {
-                    const btn = accordionButtons[i];
-                    
-                    // Set active class on first button
-                    if (i === 0) {
-                        btn.classList.add('active');
-                    }
-                    
-                    // Direct event binding
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('DIRECT: Accordion button clicked:', this.textContent);
-                        
-                        const panel = this.nextElementSibling;
-                        console.log('DIRECT: Panel element:', panel);
-                        const isOpen = window.getComputedStyle(panel).display !== 'none';
-                        console.log('DIRECT: Is panel open?', isOpen);
-                        
-                        // Close all panels and remove active class
-                        const allPanels = document.querySelectorAll('.panel');
-                        for (let j = 0; j < allPanels.length; j++) {
-                            allPanels[j].style.display = 'none';
-                        }
-                        
-                        const allButtons = document.querySelectorAll('.accordion');
-                        for (let j = 0; j < allButtons.length; j++) {
-                            allButtons[j].classList.remove('active');
-                        }
-                        
-                        // If it wasn't open before, open it now
-                        if (!isOpen) {
-                            panel.style.display = 'block';
-                            this.classList.add('active');
-                            console.log('DIRECT: Panel opened');
-                        }
-                        
-                        return false;
-                    });
-                    console.log('DIRECT: Setup click handler for:', btn.textContent);
-                }
-                
-                console.log('DIRECT: Setting up accordion - complete');
-            })();
-        </script>
-        
         <!-- Create the final recommendation page -->
         <div id="final-recommendation-page" style="display: none;">
             <div class="container">
                 <header>
-    """
-    html_content += f"""
                     {logo_html}
                     <h1>Your Final Product Selections</h1>
                     <p>Specially curated for {user_data['name']}</p>
                 </header>
-    """
-    html_content += f"""
+
                 <div class="client-info">
                     <div class="client-info-item">
                         <div class="client-info-label">Name</div>
@@ -4053,7 +4066,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     
                     <div class="client-info-item">
                         <div class="client-info-label">Total Budget</div>
-                        <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
+                        <div class="budget-item-value">₹{user_data['total_budget']:,.2f}</div>
                     </div>
                 </div>
                 
@@ -4083,127 +4096,173 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         ✓ Your selected products fit comfortably within your budget!
                     </div>
                 </div>
-        """
-    html_content += """
+        
                 <div class="generate-container">
                     <button id="back-to-selection" class="generate-button" onclick="backToSelection()">Back to Product Selection</button>
-                    <button id="print-final" class="generate-button" onclick="try { window.print(); } catch(e) { console.error(e); }">Print</button>
+                    <button id="print-final" class="generate-button" onclick="try {{ window.print(); }} catch(e) {{ console.error(e); }}">Print</button>
                 </div>
-                
-                <script>
-        """
-    html_content += """
-                    function backToSelection() {
-                        document.getElementById('final-recommendation-page').style.display = 'none';
-                        document.querySelector('.container').style.display = 'block';
-                    }
-
-                // Direct function access for button clicks
-                function generateFinalRecommendation() {
-                    const selectedProducts = [];
-                    // Track seen categories to prevent duplicates (especially for glass partitions)
-                    const seenCategories = new Set();
-                    
-                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
-                        const room = checkbox.getAttribute('data-room');
-                        const category = checkbox.getAttribute('data-category');
-                        const uniqueKey = `${room}-${category}`;
-                        
-                        // Skip if we've already seen this room-category combination
-                        if (seenCategories.has(uniqueKey)) {
-                            return;
-                        }
-                        
-                        seenCategories.add(uniqueKey);
-                        
-                        selectedProducts.push({
-                            id: checkbox.getAttribute('data-product-id'),
-                            room: room,
-                            category: category,
-                            brand: checkbox.getAttribute('data-brand'),
-                            model: checkbox.getAttribute('data-model'),
-                            price: checkbox.getAttribute('data-price'),
-                            image: checkbox.getAttribute('data-image')
-                        });
-                    });
-                    if (selectedProducts.length === 0) {
-                        alert('Please select at least one product first');
-                        return;
-                    }
-                    document.querySelector('.container').style.display = 'none';
-                    document.getElementById('final-recommendation-page').style.display = 'block';
-                    const container = document.getElementById('selected-products-container');
-                    container.innerHTML = '';
-                    const roomMap = {};
-                    selectedProducts.forEach(product => {
-                        if (!roomMap[product.room]) {
-                            roomMap[product.room] = [];
-                        }
-                        roomMap[product.room].push(product);
-                    });
-                    for (const [room, products] of Object.entries(roomMap)) {
-                        const section = document.createElement('div');
-                        section.className = 'room-section';
-                        section.innerHTML = `<h2>${room.replace('_', ' ').toUpperCase()}</h2>`;
-                        const grid = document.createElement('div');
-                        grid.className = 'products-grid';
-                        products.forEach(product => {
-                            const price = parseFloat(product.price).toLocaleString('en-IN', {
-                                style: 'currency',
-                                currency: 'INR'
-                            });
-                            grid.innerHTML += `
-                                <div class="product-card">
-                                    <div class="product-image-container">
-                                        <img class="product-image" src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.brand} ${product.model}">
-                                    </div>
-                                    <div class="product-details">
-                                        <span class="product-type">${product.category.replace('_', ' ').toUpperCase()}</span>
-                                        <h3 class="product-title">${product.brand} ${product.model}</h3>
-                                        <div class="price-container">
-                                            <span class="current-price">${price}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        section.appendChild(grid);
-                        container.appendChild(section);
-                    }
-                    // Calculate the accurate total price of selected products
-                    // 1. Only count unique room-category combinations
-                    // 2. Use better_home_price values (what customers actually pay)
-                    // 3. Only count products the customer selects
-                    
-                    // We already have the deduplicated selectedProducts array
-                    const totalSelectedPrice = selectedProducts.reduce((sum, p) => sum + parseFloat(p.price), 0);
-                    
-                    document.getElementById('final-total-cost').textContent = totalSelectedPrice.toLocaleString('en-IN', {
-                        style: 'currency',
-                        currency: 'INR'
-                    });
-                    
-                    const budget = parseFloat(document.querySelector('.budget-item:nth-child(2) .budget-item-value').textContent.replace(/[^0-9.]/g, ''));
-                    const utilization = (totalSelectedPrice / budget) * 100;
-                    document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
-                    const budgetStatus = document.getElementById('final-budget-status');
-                    if (utilization > 100) {
-                        budgetStatus.className = 'budget-status warning';
-                        budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
-                    }
-                }
-            
-                </script>
-                
-                <footer>
-    """
-    user_name = get_user_data_value(user_data, 'name', 'Valued Customer')
-    html_content += f"""
-                    <p>This product recommendation brochure was created for {user_name} on {current_date}</p>
-                    <p> {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
-                </footer>
             </div>
         </div>
+        
+        <!-- Immediately executed inline script for accordion functionality -->
+        <script>
+            // Function to handle final recommendation generation
+            function generateFinalRecommendation() {{
+                const selectedProducts = [];
+                // Track seen categories to prevent duplicates (especially for glass partitions)
+                const seenCategories = new Set();
+                
+                document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {{
+                    const room = checkbox.getAttribute('data-room');
+                    const category = checkbox.getAttribute('data-category');
+                    const uniqueKey = `${{room}}-${{category}}`;
+                    
+                    // Skip if we've already seen this room-category combination
+                    if (seenCategories.has(uniqueKey)) {{
+                        return;
+                    }}
+                    
+                    seenCategories.add(uniqueKey);
+                    
+                    selectedProducts.push({{
+                        id: checkbox.getAttribute('data-product-id'),
+                        room: room,
+                        category: category,
+                        brand: checkbox.getAttribute('data-brand'),
+                        model: checkbox.getAttribute('data-model'),
+                        price: checkbox.getAttribute('data-price'),
+                        image: checkbox.getAttribute('data-image')
+                    }});
+                }});
+
+                if (selectedProducts.length === 0) {{
+                    alert('Please select at least one product first');
+                    return;
+                }}
+
+                document.querySelector('.container').style.display = 'none';
+                document.getElementById('final-recommendation-page').style.display = 'block';
+                const container = document.getElementById('selected-products-container');
+                container.innerHTML = '';
+                const roomMap = {{}};
+
+                selectedProducts.forEach(product => {{
+                    if (!roomMap[product.room]) {{
+                        roomMap[product.room] = [];
+                    }}
+                    roomMap[product.room].push(product);
+                }});
+
+                for (const [room, products] of Object.entries(roomMap)) {{
+                    const section = document.createElement('div');
+                    section.className = 'room-section';
+                    section.innerHTML = `<h2>${{room.replace('_', ' ').toUpperCase()}}</h2>`;
+                    const grid = document.createElement('div');
+                    grid.className = 'products-grid';
+                    
+                    products.forEach(product => {{
+                        const price = parseFloat(product.price).toLocaleString('en-IN', {{
+                            style: 'currency',
+                            currency: 'INR'
+                        }});
+                        
+                        grid.innerHTML += `
+                            <div class="product-card">
+                                <div class="product-image-container">
+                                    <img class="product-image" src="${{product.image || 'https://via.placeholder.com/300'}}" alt="${{product.brand}} ${{product.model}}">
+                                </div>
+                                <div class="product-details">
+                                    <span class="product-type">${{product.category.replace('_', ' ').toUpperCase()}}</span>
+                                    <h3 class="product-title">${{product.brand}} ${{product.model}}</h3>
+                                    <div class="price-container">
+                                        <span class="current-price">${{price}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }});
+                    
+                    section.appendChild(grid);
+                    container.appendChild(section);
+                }}
+
+                // Update budget information
+                const totalCost = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
+                const budget = parseFloat(document.querySelector('.budget-item-value').textContent.replace(/[^0-9.-]+/g, ''));
+                const utilization = (totalCost / budget) * 100;
+
+                document.getElementById('final-total-cost').textContent = totalCost.toLocaleString('en-IN', {{
+                    style: 'currency',
+                    currency: 'INR'
+                }});
+                document.getElementById('final-budget-utilization').textContent = `${{utilization.toFixed(1)}}%`;
+
+                const budgetStatus = document.getElementById('final-budget-status');
+                if (utilization > 100) {{
+                    budgetStatus.className = 'budget-status warning';
+                    budgetStatus.textContent = '⚠ The total cost exceeds your budget. Please review your selections.';
+                }} else {{
+                    budgetStatus.className = 'budget-status good';
+                    budgetStatus.textContent = '✓ Your selected products fit comfortably within your budget!';
+                }}
+            }}
+
+            // Function to handle back button
+            function backToSelection() {{
+                document.getElementById('final-recommendation-page').style.display = 'none';
+                document.querySelector('.container').style.display = 'block';
+            }}
+
+            // Set up accordion functionality
+            (function() {{
+                const accordionButtons = document.querySelectorAll('.accordion');
+                console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
+                
+                for (let i = 0; i < accordionButtons.length; i++) {{
+                    const btn = accordionButtons[i];
+                    
+                    // Set active class on first button
+                    if (i === 0) {{
+                        btn.classList.add('active');
+                    }}
+                    
+                    // Direct event binding
+                    btn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('DIRECT: Accordion button clicked:', this.textContent);
+                        
+                        const panel = this.nextElementSibling;
+                        console.log('DIRECT: Panel element:', panel);
+                        const isOpen = window.getComputedStyle(panel).display !== 'none';
+                        console.log('DIRECT: Is panel open?', isOpen);
+                        
+                        // Close all panels and remove active class
+                        const allPanels = document.querySelectorAll('.panel');
+                        for (let j = 0; j < allPanels.length; j++) {{
+                            allPanels[j].style.display = 'none';
+                        }}
+                        
+                        const allButtons = document.querySelectorAll('.accordion');
+                        for (let j = 0; j < allButtons.length; j++) {{
+                            allButtons[j].classList.remove('active');
+                        }}
+                        
+                        // If it wasn't open before, open it now
+                        if (!isOpen) {{
+                            panel.style.display = 'block';
+                            this.classList.add('active');
+                            console.log('DIRECT: Panel opened');
+                        }}
+                        
+                        return false;
+                    }});
+                    console.log('DIRECT: Setup click handler for:', btn.textContent);
+                }}
+                
+                console.log('DIRECT: Setting up accordion - complete');
+            }})();
+        </script>
     </body>
     </html>
     """
