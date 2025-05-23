@@ -1568,22 +1568,20 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
-        "web_app/better_home_logo.png",  # Relative to script execution directory
-        "./web_app/better_home_logo.png",  # Explicit relative path
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "better_home_logo.png"),  # Same directory as script
-        "better_home_logo.png",  # Check in current directory as well
+        os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
+        os.path.join(os.path.dirname(__file__), 'static', 'better_home_logo.png'),
+        'better_home_logo.png'
     ]
     
     logo_path = None
-    logo_exists = False
     for path in possible_logo_paths:
         if os.path.exists(path):
             logo_path = path
-            logo_exists = True
-            print(f"Found logo at: {path}")
             break
     
-    if not logo_exists:
+    logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+    
+    if not logo_path:
         print("Logo not found in any of the expected locations")
     
     # Try to register DejaVuSans font if available, otherwise use default fonts
@@ -1688,7 +1686,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     story = []
 
     # Add logo if it exists
-    if logo_exists:
+    if logo_path:
         logo = Image(logo_path, width=200, height=60)  # Adjust size as needed
         logo.hAlign = 'CENTER'
         story.append(logo)
@@ -4107,127 +4105,108 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <!-- Immediately executed inline script for accordion functionality -->
         <script>
             // Function to handle final recommendation generation
-            function generateFinalRecommendation() {{
+            function generateFinalRecommendation() {
                 const selectedProducts = [];
-                // Track seen categories to prevent duplicates (especially for glass partitions)
-                const seenCategories = new Set();
-                
-                document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {{
-                    const room = checkbox.getAttribute('data-room');
-                    const category = checkbox.getAttribute('data-category');
-                    const uniqueKey = `${{room}}-${{category}}`;
-                    
-                    // Skip if we've already seen this room-category combination
-                    if (seenCategories.has(uniqueKey)) {{
+                const selectedRoomCategories = new Set();
+                let totalCost = 0;
+                let totalRetailCost = 0;
+                let totalSavings = 0;
+
+                // Get all selected products
+                document.querySelectorAll('.product-card.selected').forEach(card => {
+                    const room = card.getAttribute('data-room');
+                    const category = card.getAttribute('data-category');
+                    const roomCategory = `${room}-${category}`;
+
+                    // Check if we already have a product for this room-category combination
+                    if (selectedRoomCategories.has(roomCategory)) {
                         return;
-                    }}
-                    
-                    seenCategories.add(uniqueKey);
-                    
-                    selectedProducts.push({{
-                        id: checkbox.getAttribute('data-product-id'),
+                    }
+
+                    selectedRoomCategories.add(roomCategory);
+                    const product = {
                         room: room,
                         category: category,
-                        brand: checkbox.getAttribute('data-brand'),
-                        model: checkbox.getAttribute('data-model'),
-                        price: checkbox.getAttribute('data-price'),
-                        image: checkbox.getAttribute('data-image')
-                    }});
-                }});
+                        name: card.querySelector('.product-title').textContent,
+                        price: parseFloat(card.querySelector('.current-price').textContent.replace('₹', '').replace(/,/g, '')),
+                        retailPrice: parseFloat(card.querySelector('.retail-price').textContent.replace('₹', '').replace(/,/g, '')),
+                        savings: parseFloat(card.querySelector('.savings').textContent.replace('Save ₹', '').replace(/,/g, '')),
+                        image: card.querySelector('.product-image').src,
+                        warranty: card.querySelector('.product-info-item:nth-child(4)').textContent.replace('Warranty:', '').trim(),
+                        delivery: card.querySelector('.product-info-item:nth-child(5)').textContent.replace('Delivery:', '').trim(),
+                        reason: card.querySelector('.reasons-list li').textContent,
+                        purchaseUrl: card.querySelector('.buy-button').href
+                    };
+                    selectedProducts.push(product);
+                    totalCost += product.price;
+                    totalRetailCost += product.retailPrice;
+                    totalSavings += product.savings;
+                });
 
-                if (selectedProducts.length === 0) {{
-                    alert('Please select at least one product first');
+                if (selectedProducts.length === 0) {
+                    alert('Please select at least one product before generating final recommendations.');
                     return;
-                }}
+                }
 
-                document.querySelector('.container').style.display = 'none';
-                document.getElementById('final-recommendation-page').style.display = 'block';
-                const container = document.getElementById('selected-products-container');
-                container.innerHTML = '';
-                const roomMap = {{}};
-
-                selectedProducts.forEach(product => {{
-                    if (!roomMap[product.room]) {{
-                        roomMap[product.room] = [];
-                    }}
-                    roomMap[product.room].push(product);
-                }});
-
-                for (const [room, products] of Object.entries(roomMap)) {{
-                    const section = document.createElement('div');
-                    section.className = 'room-section';
-                    section.innerHTML = `<h2>${{room.replace('_', ' ').toUpperCase()}}</h2>`;
-                    const grid = document.createElement('div');
-                    grid.className = 'products-grid';
-                    
-                    products.forEach(product => {{
-                        const price = parseFloat(product.price).toLocaleString('en-IN', {{
-                            style: 'currency',
-                            currency: 'INR'
-                        }});
-                        
-                        grid.innerHTML += `
-                            <div class="product-card">
-                                <div class="product-image-container">
-                                    <img class="product-image" src="${{product.image || 'https://via.placeholder.com/300'}}" alt="${{product.brand}} ${{product.model}}">
-                                </div>
-                                <div class="product-details">
-                                    <span class="product-type">${{product.category.replace('_', ' ').toUpperCase()}}</span>
-                                    <h3 class="product-title">${{product.brand}} ${{product.model}}</h3>
-                                    <div class="price-container">
-                                        <span class="current-price">${{price}}</span>
-                                    </div>
-                                </div>
+                // Generate HTML for selected products
+                let finalHtml = '';
+                selectedProducts.forEach(product => {
+                    finalHtml += `
+                        <div class="final-product-card">
+                            <div class="final-product-image">
+                                <img src="${product.image}" alt="${product.name}">
                             </div>
-                        `;
-                    }});
-                    
-                    section.appendChild(grid);
-                    container.appendChild(section);
-                }}
+                            <div class="final-product-details">
+                                <h3>${product.name}</h3>
+                                <div class="final-product-info">
+                                    <p><strong>Room:</strong> ${product.room}</p>
+                                    <p><strong>Category:</strong> ${product.category}</p>
+                                    <p><strong>Price:</strong> ₹${product.price.toLocaleString('en-IN')}</p>
+                                    <p><strong>Warranty:</strong> ${product.warranty}</p>
+                                    <p><strong>Delivery:</strong> ${product.delivery}</p>
+                                    <p><strong>Why this product:</strong> ${product.reason}</p>
+                                </div>
+                                <a href="${product.purchaseUrl}" class="buy-button" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    `;
+                });
 
-                // Update budget information
-                const totalCost = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
-                const budget = parseFloat(document.querySelector('.budget-item-value').textContent.replace(/[^0-9.-]+/g, ''));
-                const utilization = (totalCost / budget) * 100;
+                // Update the final recommendation page
+                document.getElementById('final-products').innerHTML = finalHtml;
+                document.getElementById('total-cost').textContent = `₹${totalCost.toLocaleString('en-IN')}`;
+                document.getElementById('total-savings').textContent = `₹${totalSavings.toLocaleString('en-IN')}`;
+                document.getElementById('budget-utilization').textContent = 
+                    totalCost > {user_data['budget']} ? 
+                    `Budget exceeded by ₹${(totalCost - {user_data['budget']}).toLocaleString('en-IN')}` :
+                    `Budget utilized: ₹${totalCost.toLocaleString('en-IN')} of ₹{user_data['budget']:,.2f}`;
 
-                document.getElementById('final-total-cost').textContent = totalCost.toLocaleString('en-IN', {{
-                    style: 'currency',
-                    currency: 'INR'
-                }});
-                document.getElementById('final-budget-utilization').textContent = `${{utilization.toFixed(1)}}%`;
-
-                const budgetStatus = document.getElementById('final-budget-status');
-                if (utilization > 100) {{
-                    budgetStatus.className = 'budget-status warning';
-                    budgetStatus.textContent = '⚠ The total cost exceeds your budget. Please review your selections.';
-                }} else {{
-                    budgetStatus.className = 'budget-status good';
-                    budgetStatus.textContent = '✓ Your selected products fit comfortably within your budget!';
-                }}
-            }}
+                // Show final recommendation page
+                document.getElementById('product-selection-page').style.display = 'none';
+                document.getElementById('final-recommendation-page').style.display = 'block';
+            }
 
             // Function to handle back button
-            function backToSelection() {{
+            function backToSelection() {
                 document.getElementById('final-recommendation-page').style.display = 'none';
-                document.querySelector('.container').style.display = 'block';
-            }}
+                document.getElementById('product-selection-page').style.display = 'block';
+            }
 
             // Set up accordion functionality
-            (function() {{
+            (function() {
                 const accordionButtons = document.querySelectorAll('.accordion');
                 console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
                 
-                for (let i = 0; i < accordionButtons.length; i++) {{
+                for (let i = 0; i < accordionButtons.length; i++) {
                     const btn = accordionButtons[i];
                     
                     // Set active class on first button
-                    if (i === 0) {{
+                    if (i === 0) {
                         btn.classList.add('active');
-                    }}
+                    }
                     
                     // Direct event binding
-                    btn.addEventListener('click', function(e) {{
+                    btn.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         console.log('DIRECT: Accordion button clicked:', this.textContent);
@@ -4239,26 +4218,26 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         
                         // Close all panels and remove active class
                         const allPanels = document.querySelectorAll('.panel');
-                        for (let j = 0; j < allPanels.length; j++) {{
+                        for (let j = 0; j < allPanels.length; j++) {
                             allPanels[j].style.display = 'none';
-                        }}
+                        }
                         
                         const allButtons = document.querySelectorAll('.accordion');
-                        for (let j = 0; j < allButtons.length; j++) {{
+                        for (let j = 0; j < allButtons.length; j++) {
                             allButtons[j].classList.remove('active');
-                        }}
+                        }
                         
                         // If it wasn't open before, open it now
-                        if (!isOpen) {{
+                        if (!isOpen) {
                             panel.style.display = 'block';
                             this.classList.add('active');
                             console.log('DIRECT: Panel opened');
-                        }}
+                        }
                         
                         return false;
-                    }});
+                    });
                     console.log('DIRECT: Setup click handler for:', btn.textContent);
-                }}
+                }
                 
                 console.log('DIRECT: Setting up accordion - complete');
             }})();
