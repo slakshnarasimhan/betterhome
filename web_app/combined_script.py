@@ -4014,8 +4014,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         html_content += '</div></div>'
         room_idx += 1
 
-    # Add the generate final recommendation button
-    html_content += """
+    # Add the generate final recommendation button and JavaScript
+    html_content += f"""
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
                 <p>Please select one product from each category above that best suits your needs.</p>
