@@ -4042,8 +4042,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         
         <script>
             function backToSelection() {{
-                document.getElementById('final-recommendation-page').style.display = 'none';
-                document.getElementById('product-selection-page').style.display = 'block';
+                const finalPage = document.getElementById('final-recommendation-page');
+                const selectionPage = document.getElementById('product-selection-page');
+                if (finalPage && selectionPage) {{
+                    finalPage.style.display = 'none';
+                    selectionPage.style.display = 'block';
+                }}
             }}
 
             function generateFinalRecommendation() {{
@@ -4114,17 +4118,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 }});
 
                 // Update the final recommendation page
-                document.getElementById('final-products').innerHTML = finalHtml;
-                document.getElementById('total-cost').textContent = `₹${{totalCost.toLocaleString('en-IN')}}`;
-                document.getElementById('total-savings').textContent = `₹${{totalSavings.toLocaleString('en-IN')}}`;
-                document.getElementById('budget-utilization').textContent = 
-                    totalCost > {user_data['total_budget']} ? 
-                    `Budget exceeded by ₹${{(totalCost - {user_data['total_budget']}).toLocaleString('en-IN')}}` :
-                    `Budget utilized: ₹${{totalCost.toLocaleString('en-IN')}} of ₹{user_data['total_budget']:,.2f}`;
+                const finalProducts = document.getElementById('final-products');
+                const totalCostElement = document.getElementById('total-cost');
+                const totalSavingsElement = document.getElementById('total-savings');
+                const budgetUtilizationElement = document.getElementById('budget-utilization');
+                const selectionPage = document.getElementById('product-selection-page');
+                const finalPage = document.getElementById('final-recommendation-page');
+
+                if (finalProducts) finalProducts.innerHTML = finalHtml;
+                if (totalCostElement) totalCostElement.textContent = `₹${{totalCost.toLocaleString('en-IN')}}`;
+                if (totalSavingsElement) totalSavingsElement.textContent = `₹${{totalSavings.toLocaleString('en-IN')}}`;
+                if (budgetUtilizationElement) {{
+                    budgetUtilizationElement.textContent = 
+                        totalCost > {user_data['total_budget']} ? 
+                        `Budget exceeded by ₹${{(totalCost - {user_data['total_budget']}).toLocaleString('en-IN')}}` :
+                        `Budget utilized: ₹${{totalCost.toLocaleString('en-IN')}} of ₹{user_data['total_budget']:,.2f}`;
+                }}
 
                 // Show final recommendation page
-                document.getElementById('product-selection-page').style.display = 'none';
-                document.getElementById('final-recommendation-page').style.display = 'block';
+                if (selectionPage && finalPage) {{
+                    selectionPage.style.display = 'none';
+                    finalPage.style.display = 'block';
+                }}
             }}
 
             // Set up accordion functionality
