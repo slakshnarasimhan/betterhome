@@ -4021,11 +4021,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <p>Please select one product from each category above that best suits your needs.</p>
                 <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
             </div>
-    """
-    
-    # Add footer
-    current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
-    html_content += f"""
+            
             <footer>
                 <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
                 <p> © {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
@@ -4040,72 +4036,24 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <h1>Your Final Product Selections</h1>
                     <p>Specially curated for {user_data['name']}</p>
                 </header>
-
-                <div class="client-info">
-                    <div class="client-info-item">
-                        <div class="client-info-label">Name</div>
-                        <div class="client-info-value">{user_data['name']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Mobile</div>
-                        <div class="client-info-value">{user_data['mobile']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Email</div>
-                        <div class="client-info-value">{user_data['email']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Address</div>
-                        <div class="client-info-value">{user_data['address']}</div>
-                    </div>
-                    
-                    <div class="client-info-item">
-                        <div class="client-info-label">Total Budget</div>
-                        <div class="budget-item-value">₹{user_data['total_budget']:,.2f}</div>
-                    </div>
-                </div>
-                
-                <div id="selected-products-container">
-                    <!-- This will be populated by JavaScript -->
-                </div>
-                
+                <div id="final-products"></div>
                 <div class="budget-summary">
-                    <h2>Budget Analysis</h2>
-                    <div class="budget-info">
-                        <div class="budget-item">
-                            <div class="budget-item-label">Total Selected Products</div>
-                            <div id="final-total-cost" class="budget-item-value">₹0.00</div>
-                        </div>
-                        
-                        <div class="budget-item">
-                            <div class="budget-item-label">Your Budget</div>
-                            <div class="budget-item-value">₹{user_data['total_budget']:,.2f}</div>
-                        </div>
-                        
-                        <div class="budget-item">
-                            <div class="budget-item-label">Budget Utilization</div>
-                            <div id="final-budget-utilization" class="budget-item-value">0%</div>
-                        </div>
-                    </div>
-                    <div id="final-budget-status" class="budget-status good">
-                        ✓ Your selected products fit comfortably within your budget!
-                    </div>
+                    <h2>Budget Summary</h2>
+                    <p>Total Cost: <span id="total-cost">₹0</span></p>
+                    <p>Total Savings: <span id="total-savings">₹0</span></p>
+                    <p id="budget-utilization"></p>
                 </div>
-        
-                <div class="generate-container">
-                    <button id="back-to-selection" class="generate-button" onclick="backToSelection()">Back to Product Selection</button>
-                    <button id="print-final" class="generate-button" onclick="try {{ window.print(); }} catch(e) {{ console.error(e); }}">Print</button>
-                </div>
+                <button onclick="backToSelection()" class="back-button">Back to Selection</button>
             </div>
         </div>
         
-        <!-- Immediately executed inline script for accordion functionality -->
         <script>
-            // Function to handle final recommendation generation
-            function generateFinalRecommendation() {
+            function backToSelection() {{
+                document.getElementById('final-recommendation-page').style.display = 'none';
+                document.getElementById('product-selection-page').style.display = 'block';
+            }}
+
+            function generateFinalRecommendation() {{
                 const selectedProducts = [];
                 const selectedRoomCategories = new Set();
                 let totalCost = 0;
@@ -4113,18 +4061,18 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 let totalSavings = 0;
 
                 // Get all selected products
-                document.querySelectorAll('.product-card.selected').forEach(card => {
+                document.querySelectorAll('.product-card.selected').forEach(card => {{
                     const room = card.getAttribute('data-room');
                     const category = card.getAttribute('data-category');
-                    const roomCategory = `${room}-${category}`;
+                    const roomCategory = `${{room}}-${{category}}`;
 
                     // Check if we already have a product for this room-category combination
-                    if (selectedRoomCategories.has(roomCategory)) {
+                    if (selectedRoomCategories.has(roomCategory)) {{
                         return;
-                    }
+                    }}
 
                     selectedRoomCategories.add(roomCategory);
-                    const product = {
+                    const product = {{
                         room: room,
                         category: category,
                         name: card.querySelector('.product-title').textContent,
@@ -4136,108 +4084,99 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         delivery: card.querySelector('.product-info-item:nth-child(5)').textContent.replace('Delivery:', '').trim(),
                         reason: card.querySelector('.reasons-list li').textContent,
                         purchaseUrl: card.querySelector('.buy-button').href
-                    };
+                    }};
                     selectedProducts.push(product);
                     totalCost += product.price;
                     totalRetailCost += product.retailPrice;
                     totalSavings += product.savings;
-                });
+                }});
 
-                if (selectedProducts.length === 0) {
+                if (selectedProducts.length === 0) {{
                     alert('Please select at least one product before generating final recommendations.');
                     return;
-                }
+                }}
 
                 // Generate HTML for selected products
                 let finalHtml = '';
-                selectedProducts.forEach(product => {
+                selectedProducts.forEach(product => {{
                     finalHtml += `
                         <div class="final-product-card">
                             <div class="final-product-image">
-                                <img src="${product.image}" alt="${product.name}">
+                                <img src="${{product.image}}" alt="${{product.name}}">
                             </div>
                             <div class="final-product-details">
-                                <h3>${product.name}</h3>
+                                <h3>${{product.name}}</h3>
                                 <div class="final-product-info">
-                                    <p><strong>Room:</strong> ${product.room}</p>
-                                    <p><strong>Category:</strong> ${product.category}</p>
-                                    <p><strong>Price:</strong> ₹${product.price.toLocaleString('en-IN')}</p>
-                                    <p><strong>Warranty:</strong> ${product.warranty}</p>
-                                    <p><strong>Delivery:</strong> ${product.delivery}</p>
-                                    <p><strong>Why this product:</strong> ${product.reason}</p>
+                                    <p><strong>Room:</strong> ${{product.room}}</p>
+                                    <p><strong>Category:</strong> ${{product.category}}</p>
+                                    <p><strong>Price:</strong> ₹${{product.price.toLocaleString('en-IN')}}</p>
+                                    <p><strong>Warranty:</strong> ${{product.warranty}}</p>
+                                    <p><strong>Delivery:</strong> ${{product.delivery}}</p>
+                                    <p><strong>Why this product:</strong> ${{product.reason}}</p>
                                 </div>
-                                <a href="${product.purchaseUrl}" class="buy-button" target="_blank">Buy Now</a>
+                                <a href="${{product.purchaseUrl}}" class="buy-button" target="_blank">Buy Now</a>
                             </div>
                         </div>
                     `;
-                });
+                }});
 
                 // Update the final recommendation page
                 document.getElementById('final-products').innerHTML = finalHtml;
-                document.getElementById('total-cost').textContent = `₹${totalCost.toLocaleString('en-IN')}`;
-                document.getElementById('total-savings').textContent = `₹${totalSavings.toLocaleString('en-IN')}`;
+                document.getElementById('total-cost').textContent = `₹${{totalCost.toLocaleString('en-IN')}}`;
+                document.getElementById('total-savings').textContent = `₹${{totalSavings.toLocaleString('en-IN')}}`;
                 document.getElementById('budget-utilization').textContent = 
                     totalCost > {user_data['budget']} ? 
-                    `Budget exceeded by ₹${(totalCost - {user_data['budget']}).toLocaleString('en-IN')}` :
-                    `Budget utilized: ₹${totalCost.toLocaleString('en-IN')} of ₹{user_data['budget']:,.2f}`;
+                    `Budget exceeded by ₹${{(totalCost - {user_data['budget']}).toLocaleString('en-IN')}}` :
+                    `Budget utilized: ₹${{totalCost.toLocaleString('en-IN')}} of ₹{user_data['budget']:,.2f}`;
 
                 // Show final recommendation page
                 document.getElementById('product-selection-page').style.display = 'none';
                 document.getElementById('final-recommendation-page').style.display = 'block';
-            }
-
-            // Function to handle back button
-            function backToSelection() {
-                document.getElementById('final-recommendation-page').style.display = 'none';
-                document.getElementById('product-selection-page').style.display = 'block';
-            }
+            }}
 
             // Set up accordion functionality
-            (function() {
+            (function() {{
                 const accordionButtons = document.querySelectorAll('.accordion');
                 console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
                 
-                for (let i = 0; i < accordionButtons.length; i++) {
+                for (let i = 0; i < accordionButtons.length; i++) {{
                     const btn = accordionButtons[i];
                     
                     // Set active class on first button
-                    if (i === 0) {
+                    if (i === 0) {{
                         btn.classList.add('active');
-                    }
+                    }}
                     
                     // Direct event binding
-                    btn.addEventListener('click', function(e) {
+                    btn.addEventListener('click', function(e) {{
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('DIRECT: Accordion button clicked:', this.textContent);
                         
                         const panel = this.nextElementSibling;
-                        console.log('DIRECT: Panel element:', panel);
-                        const isOpen = window.getComputedStyle(panel).display !== 'none';
-                        console.log('DIRECT: Is panel open?', isOpen);
+                        const isOpen = panel.style.display === 'block';
                         
                         // Close all panels and remove active class
                         const allPanels = document.querySelectorAll('.panel');
-                        for (let j = 0; j < allPanels.length; j++) {
+                        for (let j = 0; j < allPanels.length; j++) {{
                             allPanels[j].style.display = 'none';
-                        }
+                        }}
                         
                         const allButtons = document.querySelectorAll('.accordion');
-                        for (let j = 0; j < allButtons.length; j++) {
+                        for (let j = 0; j < allButtons.length; j++) {{
                             allButtons[j].classList.remove('active');
-                        }
+                        }}
                         
                         // If it wasn't open before, open it now
-                        if (!isOpen) {
+                        if (!isOpen) {{
                             panel.style.display = 'block';
                             this.classList.add('active');
                             console.log('DIRECT: Panel opened');
-                        }
+                        }}
                         
                         return false;
-                    });
+                    }});
                     console.log('DIRECT: Setup click handler for:', btn.textContent);
-                }
+                }}
                 
                 console.log('DIRECT: Setting up accordion - complete');
             }})();
