@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 class S3Handler:
     def __init__(self):
         self.s3_client = boto3.client('s3')
-        self.bucket_name = 'betterhome-recommendation'
+        self.bucket_name = 'betterhome-recommendations'
         
     def upload_file(self, file_path, s3_key):
         """Upload a file to S3 bucket"""

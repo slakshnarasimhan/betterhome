@@ -260,7 +260,7 @@ def format_blog_response(blog_results, query=None):
             topic_header = f" About {' '.join(topic_words[:3]).title()}"
     
     # Concise header
-    response = f"### 📚 Articles{topic_header}\n\n"
+    response = f"### ðŸ“š Articles{topic_header}\n\n"
     
     # Limit to 2 blog articles maximum for brevity
     blog_count = 0
@@ -319,7 +319,7 @@ def format_blog_response(blog_results, query=None):
             response += f"{excerpt}\n"
         
         # Add a more prominent link
-        response += f"📖 [Read Article]({url})\n\n"
+        response += f"ðŸ“– [Read Article]({url})\n\n"
         
         blog_count += 1
     

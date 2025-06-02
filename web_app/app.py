@@ -182,6 +182,7 @@ def submit():
         for form_field, excel_field in field_mapping.items():
             if form_field in form_data:
                 mapped_data[excel_field] = form_data[form_field]
+                print(f"Mapped {form_field} to {excel_field}: {form_data[form_field]}")  # Debug log
         
         # Debug mapping issues
         print("Mapped fields before defaults:", list(mapped_data.keys()))
@@ -217,56 +218,64 @@ def submit():
         df = pd.DataFrame([mapped_data])
         df.to_excel(excel_filename, index=False)
         print(f"Created Excel file: {excel_filename}")
+        print("Excel file contents:", df.to_dict('records'))  # Debug log
         
+        # Generate HTML filename based on Excel filename
+        html_filename = os.path.splitext(excel_filename)[0] + '.html'
+        print(f"Expected HTML filename: {html_filename}")
+
         # Execute combined_script.py as a command
         try:
-            result = subprocess.run(['python', 'combined_script.py', excel_filename], capture_output=True, text=True)
+            print(f"Executing combined_script.py with file: {excel_filename}")
+            result = subprocess.run(['python', 'combined_script.py', excel_filename], 
+                                 capture_output=True, 
+                                 text=True,
+                                 cwd=os.path.dirname(os.path.abspath(__file__)))
             if result.returncode == 0:
                 print("Combined script executed successfully:", result.stdout)
+                # Check if HTML file was created
+                if os.path.exists(html_filename):
+                    print(f"HTML file created successfully at: {html_filename}")
+                    # Read the generated HTML file content
+                    with open(html_filename, 'r', encoding='utf-8') as f:
+                        recommendation_html = f.read()
+                    print("HTML content read successfully")
+                else:
+                    print(f"Warning: HTML file not found at {html_filename}")
+                    recommendation_html = "Error: Recommendations could not be generated."
             else:
                 print("Error executing combined script:", result.stderr)
+                recommendation_html = f"Error executing combined script: {result.stderr}"
         except Exception as e:
             print(f"Error executing combined script: {str(e)}")
-            return f"Error executing combined script: {str(e)}"
-        
-        # Generate HTML file
-        #html_filename = os.path.join(user_folder, 'recommendations.html')
-        html_filename = excel_filename.replace('.xlsx', '.html')
-        #generate_html_file(final_list, final_list, html_filename)
-        print(f"Generated HTML file: {html_filename}")
-        
-        # Read the generated HTML file content
-        with open(html_filename, 'r', encoding='utf-8') as f:
-            recommendation_html = f.read()
-        
+            recommendation_html = f"Error executing combined script: {str(e)}"
+
         # Upload files to S3
         s3_excel_key = f"{folder_name}.xlsx"
         s3_html_key = f"{folder_name}.html"
-        
+
         excel_uploaded = s3_handler.upload_file(excel_filename, s3_excel_key)
         html_uploaded = s3_handler.upload_file(html_filename, s3_html_key)
-        
+
         if excel_uploaded and html_uploaded:
             # Get S3 URLs
             excel_url = s3_handler.get_file_url(s3_excel_key)
             html_url = s3_handler.get_file_url(s3_html_key)
-            
+
             # Format the timestamp for display
             display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
-            
+
             # Safely access the 'Name' field with a default value
             user_name = form_data.get('Name', 'Customer')
 
-            return render_template(
-                'results.html',
-                html_file=html_filename,
-                excel_file=excel_filename,
-                s3_html_url=html_url,
-                s3_excel_url=excel_url,
-                user_name=user_name,
-                timestamp=display_timestamp,
-                recommendation_html=recommendation_html  # Pass the HTML content
-            )
+            return render_template('results.html', 
+                                 html_file=html_filename,
+                                 excel_file=excel_filename,
+                                 s3_html_url=html_url,
+                                 s3_excel_url=excel_url,
+                                 user_name=user_name,
+                                 timestamp=display_timestamp,
+                                 recommendation_html=recommendation_html)
         else:
             print("Failed to upload files to S3")
             return "Error uploading files to S3. Please try again."

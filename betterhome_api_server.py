@@ -302,21 +302,21 @@ def format_brand_response(products_df, product_type, is_warranty_query=False):
             warranty_match = re.search(r'with\s+(\d+)\s+years?\s+warranty', title, re.IGNORECASE)
             if warranty_match:
                 warranty_years = warranty_match.group(1)
-                warranty_text = f"⭐ {warranty_years} Year Warranty\n"
+                warranty_text = f"â­� {warranty_years} Year Warranty\n"
             elif 'warranty' in title.lower():
-                warranty_text = "⭐ Includes Warranty\n"
+                warranty_text = "â­� Includes Warranty\n"
             elif 'year' in title.lower() and re.search(r'(\d+)\s+years?', title, re.IGNORECASE):
                 warranty_years = re.search(r'(\d+)\s+years?', title, re.IGNORECASE).group(1)
-                warranty_text = f"⭐ {warranty_years} Year Guarantee\n"
+                warranty_text = f"â­� {warranty_years} Year Guarantee\n"
         
         # More concise brand listing
         response += f"**{brand}** {discount_text}\n"
         if price is not None:
-            response += f"₹{price:,.2f}\n"
+            response += f"â‚¹{price:,.2f}\n"
         if warranty_text:
             response += warranty_text
         # Make the buy link more prominent
-        response += f"🛒 [Buy Now]({url})\n\n"
+        response += f"ğŸ›’ [Buy Now]({url})\n\n"
     
     # Add a note about clicking the links
     response += "*Click on 'Buy Now' to purchase the product.*\n"
@@ -333,7 +333,7 @@ def format_product_response(products_df):
     # Add a special message for BLDC fans if they're in the results
     has_bldc = any(products_df['title'].str.contains('BLDC|Brushless', case=False, na=False))
     if has_bldc:
-        response += "💚 **BLDC Fans** - 70% less electricity!\n\n"
+        response += "ğŸ’š **BLDC Fans** - 70% less electricity!\n\n"
     
     for _, product in products_df.iterrows():
         title = product['title']
@@ -350,19 +350,19 @@ def format_product_response(products_df):
         
         # Add a special highlight for BLDC fans
         is_bldc = 'BLDC' in title or 'Brushless' in title
-        energy_label = "💚 " if is_bldc else ""
+        energy_label = "ğŸ’š " if is_bldc else ""
         
         # More concise product listing
         response += f"**{energy_label}{title}**\n"
         if price is not None:
-            response += f"₹{price:,.2f} {discount_text}\n"
+            response += f"â‚¹{price:,.2f} {discount_text}\n"
         
         # Add energy saving information for BLDC fans
         if is_bldc:
             response += f"70% energy savings\n"
         
         # Make the buy link more prominent
-        response += f"🛒 [Buy Now]({url})\n\n"
+        response += f"ğŸ›’ [Buy Now]({url})\n\n"
     
     # Add a note about clicking the links
     response += "*Click on 'Buy Now' to purchase the product.*\n"
@@ -507,9 +507,9 @@ def format_answer(products, query):
                 response += f"- Product Type: {product_type}\n"
                 response += f"- Category: {category}\n"
                 if price is not None:
-                    response += f"- Better Home Price: ₹{price}\n"
+                    response += f"- Better Home Price: â‚¹{price}\n"
                 if retail is not None:
-                    response += f"- Retail Price: ₹{retail}\n"
+                    response += f"- Retail Price: â‚¹{retail}\n"
                 response += f"- Description: {description}\n"
                 response += f"[Click here to buy]({url})\n\n"
             except Exception as e:

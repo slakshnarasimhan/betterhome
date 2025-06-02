@@ -643,7 +643,7 @@ def format_product_response_conversational(products_df):
     # Add a special message for BLDC fans if they're in the results
     has_bldc = any(products_df['title'].str.contains('BLDC|Brushless', case=False, na=False))
     if has_bldc:
-        response += "💚 **BLDC Fans** - 70% less electricity! These energy-efficient options will help reduce your power bills.\n\n"
+        response += "ğŸ’š **BLDC Fans** - 70% less electricity! These energy-efficient options will help reduce your power bills.\n\n"
     
     for _, product in products_df.iterrows():
         title = product['title']
@@ -660,18 +660,18 @@ def format_product_response_conversational(products_df):
         
         # Add a special highlight for BLDC fans
         is_bldc = 'BLDC' in title or 'Brushless' in title
-        energy_label = "💚 " if is_bldc else ""
+        energy_label = "ğŸ’š " if is_bldc else ""
         
         # More concise product listing
         response += f"**{energy_label}{title}**\n"
-        response += f"₹{price:,.2f} {discount_text}\n"
+        response += f"â‚¹{price:,.2f} {discount_text}\n"
         
         # Add energy saving information for BLDC fans
         if is_bldc:
             response += f"70% energy savings\n"
         
         # Make the buy link more prominent
-        response += f"🛒 [Buy Now]({url})\n\n"
+        response += f"ğŸ›’ [Buy Now]({url})\n\n"
     
     # Add a note about clicking the links
     response += "*Click on 'Buy Now' to purchase the product.*\n\n"
@@ -714,9 +714,9 @@ def format_brand_response_conversational(products_df, product_type, is_warranty_
         max_price = group['Better Home Price'].max()
         
         if min_price == max_price:
-            response += f"- Price: ₹{min_price:,.2f}\n"
+            response += f"- Price: â‚¹{min_price:,.2f}\n"
         else:
-            response += f"- Price Range: ₹{min_price:,.2f} - ₹{max_price:,.2f}\n"
+            response += f"- Price Range: â‚¹{min_price:,.2f} - â‚¹{max_price:,.2f}\n"
         
         # Key features or benefits (if available)
         features = []
@@ -791,9 +791,9 @@ def main():
     # Test Ollama availability
     try:
         client.list()
-        st.sidebar.success("✅ Ollama connection successful")
+        st.sidebar.success("âœ… Ollama connection successful")
     except Exception as e:
-        st.sidebar.error(f"❌ Ollama connection failed: {str(e)}")
+        st.sidebar.error(f"â�Œ Ollama connection failed: {str(e)}")
         st.error("Could not connect to Ollama. Please make sure Ollama is running.")
         return
     
@@ -809,15 +809,15 @@ def main():
         completion_model_found = any(model.startswith(completion_model_name) for model in available_models)
         
         if not embedding_model_found:
-            st.sidebar.warning(f"⚠️ Embedding model {embedding_model_name} not found. Run: ollama pull {embedding_model_name}")
+            st.sidebar.warning(f"âš ï¸� Embedding model {embedding_model_name} not found. Run: ollama pull {embedding_model_name}")
             
         if not completion_model_found:
-            st.sidebar.warning(f"⚠️ Completion model {completion_model_name} not found. Run: ollama pull {completion_model_name}")
+            st.sidebar.warning(f"âš ï¸� Completion model {completion_model_name} not found. Run: ollama pull {completion_model_name}")
             
         if embedding_model_found and completion_model_found:
-            st.sidebar.success("✅ All required models are available")
+            st.sidebar.success("âœ… All required models are available")
     except Exception as e:
-        st.sidebar.warning(f"⚠️ Could not check available models: {str(e)}")
+        st.sidebar.warning(f"âš ï¸� Could not check available models: {str(e)}")
     
     # Build or load FAISS index for product search
     try:
@@ -1230,7 +1230,7 @@ def handle_follow_up(state):
             title = product['title']
             price = product['Better Home Price']
             url = product.get('url', '#')
-            response += f"• **{title}** - ₹{price:,.2f} - [🛒 Buy Now]({url})\n"
+            response += f"â€¢ **{title}** - â‚¹{price:,.2f} - [ğŸ›’ Buy Now]({url})\n"
         
         return response
     
@@ -1259,7 +1259,7 @@ def handle_follow_up(state):
             mid_index = len(sorted_products) // 2
             recommended = sorted_products.iloc[mid_index]
             
-            response += f"\n\n### Recommended: {recommended['title']}\n**Price**: ₹{recommended['Better Home Price']:,.2f}\n\n"
+            response += f"\n\n### Recommended: {recommended['title']}\n**Price**: â‚¹{recommended['Better Home Price']:,.2f}\n\n"
             
             # Explain why this is recommended
             response += "**Why I recommend this:**\n"
@@ -1269,7 +1269,7 @@ def handle_follow_up(state):
             
             # Add buy link for recommended product
             url = recommended.get('url', '#')
-            response += f"**[🛒 Buy This {product_type} Now]({url})**\n\n"
+            response += f"**[ğŸ›’ Buy This {product_type} Now]({url})**\n\n"
             
             # Provide alternative options
             response += "### Other Options:\n"
@@ -1277,13 +1277,13 @@ def handle_follow_up(state):
             if len(sorted_products) > 0:
                 budget_option = sorted_products.iloc[0]
                 budget_url = budget_option.get('url', '#')
-                response += f"• {budget_option['title']} (₹{budget_option['Better Home Price']:,.2f}) - [Buy Now]({budget_url})\n\n"
+                response += f"â€¢ {budget_option['title']} (â‚¹{budget_option['Better Home Price']:,.2f}) - [Buy Now]({budget_url})\n\n"
             
             response += "**If you want premium features:**\n"
             if len(sorted_products) > 2:
                 premium_option = sorted_products.iloc[-1]
                 premium_url = premium_option.get('url', '#')
-                response += f"• {premium_option['title']} (₹{premium_option['Better Home Price']:,.2f}) - [Buy Now]({premium_url})"
+                response += f"â€¢ {premium_option['title']} (â‚¹{premium_option['Better Home Price']:,.2f}) - [Buy Now]({premium_url})"
         except Exception as e:
             response += "\n\nI couldn't generate a specific recommendation based on the products, but here's some general advice:\n"
             response += "- Choose a product with a good warranty (2+ years)\n"
@@ -1318,9 +1318,9 @@ def handle_follow_up(state):
         with col2:
             if st.button("See payment options"):
                 payment_response = "### Payment & Delivery Options\n\n"
-                payment_response += "- **Cash on Delivery**: Available for orders under ₹10,000\n"
+                payment_response += "- **Cash on Delivery**: Available for orders under â‚¹10,000\n"
                 payment_response += "- **Credit/Debit Card**: All major cards accepted\n"
-                payment_response += "- **EMI Options**: Available for purchases above ₹5,000\n"
+                payment_response += "- **EMI Options**: Available for purchases above â‚¹5,000\n"
                 payment_response += "- **Bank Transfer**: Get 2% discount on direct transfers\n\n"
                 payment_response += "**Delivery**: 2-5 business days for most locations"
                 
@@ -1373,7 +1373,7 @@ def handle_follow_up(state):
             comparison_data.append({
                 'Brand': product['Brand'],
                 'Product': title,
-                'Price': f"₹{product['Better Home Price']:,.2f}",
+                'Price': f"â‚¹{product['Better Home Price']:,.2f}",
                 'Features': ", ".join(features)
             })
         
@@ -1449,7 +1449,7 @@ def handle_follow_up(state):
             entry = {
                 'Brand': product['Brand'],
                 'Product': product['title'][:50] + ('...' if len(product['title']) > 50 else ''),
-                'Price': f"₹{product['Better Home Price']:,.2f}"
+                'Price': f"â‚¹{product['Better Home Price']:,.2f}"
             }
             
             # Extract other details if available
@@ -1492,7 +1492,7 @@ def handle_follow_up(state):
         # Add decisive call to action if we've had a few exchanges
         if should_encourage_purchase:
             response += "\n\n### Limited Time Offer!\n\n"
-            response += "Make your purchase today and receive complimentary installation worth ₹1,500!"
+            response += "Make your purchase today and receive complimentary installation worth â‚¹1,500!"
             
         # Add response to conversation history
         st.session_state['conversation_history'].append(("assistant", response))
@@ -1559,14 +1559,14 @@ def handle_follow_up(state):
                         
                         response += f"**{title}**\n"
                         response += f"- Brand: {brand}\n"
-                        response += f"- Price: ₹{price:,.2f}\n"
+                        response += f"- Price: â‚¹{price:,.2f}\n"
                         
                         # Add special notes for certain product types
                         if product_type == 'Ceiling Fan' and ('BLDC' in title or 'Brushless' in title):
                             response += "- Energy-efficient BLDC motor (saves up to 70% electricity)\n"
                         
                         # Add buy link
-                        response += f"- [🛒 Buy Now]({url})\n\n"
+                        response += f"- [ğŸ›’ Buy Now]({url})\n\n"
                     
                     # Update the last products to these alternatives
                     st.session_state['last_products'] = alternatives
@@ -1593,11 +1593,11 @@ def handle_follow_up(state):
                         
                         response += f"**{product['title']}**\n"
                         response += f"- Brand: {brand}\n"
-                        response += f"- Price: ₹{product['Better Home Price']:,.2f}\n"
+                        response += f"- Price: â‚¹{product['Better Home Price']:,.2f}\n"
                         
                         # Add buy link
                         url = product.get('url', '#')
-                        response += f"- [🛒 Buy Now]({url})\n\n"
+                        response += f"- [ğŸ›’ Buy Now]({url})\n\n"
                         
                         found_products.append(product)
                         brands_shown += 1
@@ -1612,9 +1612,9 @@ def handle_follow_up(state):
         # Add purchase encouragement based on conversation length
         conversation_turns = len([msg for msg in st.session_state['conversation_history'] if msg[0] == "assistant"])
         if conversation_turns >= 2:
-            response += "## 🌟 Special Offer 🌟\n\n"
+            response += "## ğŸŒŸ Special Offer ğŸŒŸ\n\n"
             response += "Purchase any of these products today and receive:\n"
-            response += "- **Free express shipping** (save ₹500)\n"
+            response += "- **Free express shipping** (save â‚¹500)\n"
             response += "- **10% off** your next purchase\n"
             response += "- **Priority customer support**\n\n"
             response += "These offers are valid for a limited time only. Click any Buy Now link above to take advantage of this special pricing!\n\n"
@@ -1713,7 +1713,7 @@ def handle_follow_up(state):
             response += "### Water Heater Maintenance:\n"
             response += "1. **Descaling**: Clean the heating element every 6 months in hard water areas\n"
             response += "2. **Anode Rod**: Check the anode rod annually and replace if needed\n"
-            response += "3. **Temperature Setting**: Keep at 50-55°C to prevent scaling\n"
+            response += "3. **Temperature Setting**: Keep at 50-55Â°C to prevent scaling\n"
             response += "4. **Pressure Relief**: Test the pressure relief valve every 6 months\n"
             response += "5. **Draining**: Drain the tank every 6 months to remove sediment"
         
@@ -1754,11 +1754,11 @@ def handle_follow_up(state):
             response += "2. **Optimal Speed**: Use lower speeds when possible\n"
             response += "3. **Turn Off When Not in Room**: Fans cool people, not rooms\n"
             response += "4. **Regular Maintenance**: Clean dust regularly for optimal performance\n"
-            response += "5. **Pair with AC**: Raise AC temperature by 3-4°C and use fan to feel cooler"
+            response += "5. **Pair with AC**: Raise AC temperature by 3-4Â°C and use fan to feel cooler"
         
         elif 'Water Heater' in product_type:
             response += "### How to Save Energy with Water Heaters:\n"
-            response += "1. **Optimal Temperature**: Set to 50-55°C instead of maximum\n"
+            response += "1. **Optimal Temperature**: Set to 50-55Â°C instead of maximum\n"
             response += "2. **Timer Usage**: Use built-in timers to heat water only when needed\n"
             response += "3. **Insulate Pipes**: Prevent heat loss through pipes\n"
             response += "4. **Remove Sediment**: Regularly clean to maintain efficiency\n"
@@ -1766,7 +1766,7 @@ def handle_follow_up(state):
         
         elif 'Air Conditioner' in product_type:
             response += "### How to Save Energy with Air Conditioners:\n"
-            response += "1. **Optimal Temperature**: Set to 24-26°C for balance of comfort and efficiency\n"
+            response += "1. **Optimal Temperature**: Set to 24-26Â°C for balance of comfort and efficiency\n"
             response += "2. **Regular Cleaning**: Clean filters monthly for optimal performance\n"
             response += "3. **Fan Mode**: Use fan mode when full cooling isn't necessary\n"
             response += "4. **Seal Leaks**: Ensure no cool air escapes through windows or doors\n"
@@ -1819,7 +1819,7 @@ def handle_follow_up(state):
             
             response += f"### {title}\n\n"
             response += f"**Brand**: {brand}\n"
-            response += f"**Price**: ₹{price:,.2f}\n"
+            response += f"**Price**: â‚¹{price:,.2f}\n"
             
             # Add any additional information available
             for field in ['power', 'energy_rating', 'capacity', 'weight', 'color', 'warranty']:
@@ -1838,7 +1838,7 @@ def handle_follow_up(state):
                 response += "**Energy Savings**: Variable speed compressor adjusts to cooling needs\n"
             
             # Add buy link
-            response += f"**[🛒 Buy Now]({url})**\n\n"
+            response += f"**[ğŸ›’ Buy Now]({url})**\n\n"
         
         # Add recommendation based on price
         response += "## Recommendation Based on Price\n\n"
@@ -1853,13 +1853,13 @@ def handle_follow_up(state):
             mid_url = mid.get('url', '#') 
             premium_url = premium.get('url', '#')
             
-            response += f"**Most Economical**: {budget['title']} at ₹{budget['Better Home Price']:,.2f} - [Buy Now]({budget_url})\n"
-            response += f"**Best Value**: {mid['title']} at ₹{mid['Better Home Price']:,.2f} - [Buy Now]({mid_url})\n" 
-            response += f"**Premium Option**: {premium['title']} at ₹{premium['Better Home Price']:,.2f} - [Buy Now]({premium_url})\n\n"
+            response += f"**Most Economical**: {budget['title']} at â‚¹{budget['Better Home Price']:,.2f} - [Buy Now]({budget_url})\n"
+            response += f"**Best Value**: {mid['title']} at â‚¹{mid['Better Home Price']:,.2f} - [Buy Now]({mid_url})\n" 
+            response += f"**Premium Option**: {premium['title']} at â‚¹{premium['Better Home Price']:,.2f} - [Buy Now]({premium_url})\n\n"
         elif len(sorted_by_price) > 0:
             product = sorted_by_price.iloc[0]
             url = product.get('url', '#')
-            response += f"**Recommended Option**: {product['title']} at ₹{product['Better Home Price']:,.2f} - [Buy Now]({url})\n\n"
+            response += f"**Recommended Option**: {product['title']} at â‚¹{product['Better Home Price']:,.2f} - [Buy Now]({url})\n\n"
         
         # Add general advice based on product type
         if product_type == 'Ceiling Fan':
@@ -1934,7 +1934,7 @@ def handle_follow_up(state):
         
         for _, product in products.iterrows():
             title = product['title'][:50] + ('...' if len(product['title']) > 50 else '')
-            price = f"₹{product['Better Home Price']:,.2f}"
+            price = f"â‚¹{product['Better Home Price']:,.2f}"
             brand = product['Brand']
             url = product.get('url', '#')
             
@@ -1968,17 +1968,17 @@ def handle_follow_up(state):
         lowest_price = sorted_by_price.iloc[0]
         lowest_url = lowest_price.get('url', '#')
         
-        response += f"**Best Budget Option**: {lowest_price['title']} at ₹{lowest_price['Better Home Price']:,.2f} - [🛒 Buy Now]({lowest_url})\n\n"
+        response += f"**Best Budget Option**: {lowest_price['title']} at â‚¹{lowest_price['Better Home Price']:,.2f} - [ğŸ›’ Buy Now]({lowest_url})\n\n"
         
         if len(sorted_by_price) > 1:
             highest_price = sorted_by_price.iloc[-1]
             highest_url = highest_price.get('url', '#')
-            response += f"**Premium Option**: {highest_price['title']} at ₹{highest_price['Better Home Price']:,.2f} - [🛒 Buy Now]({highest_url})\n\n"
+            response += f"**Premium Option**: {highest_price['title']} at â‚¹{highest_price['Better Home Price']:,.2f} - [ğŸ›’ Buy Now]({highest_url})\n\n"
         
         # If we've had several exchanges, add a strong purchase call-to-action
         conversation_turns = len([msg for msg in st.session_state['conversation_history'] if msg[0] == "assistant"])
         if conversation_turns >= 2:
-            response += "### 🔥 Limited Time Offer! 🔥\n\n"
+            response += "### ğŸ”¥ Limited Time Offer! ğŸ”¥\n\n"
             if product_type == 'Ceiling Fan':
                 response += "- **FREE installation** with any ceiling fan purchase today\n"
                 response += "- **Extended warranty** when you register within 7 days\n"
@@ -1988,7 +1988,7 @@ def handle_follow_up(state):
                 response += "- **Additional 1-year warranty** on compressor\n"
                 response += "- **No-cost EMI** available on select cards\n\n"
             else:
-                response += "- **FREE delivery** on orders above ₹1,000\n"
+                response += "- **FREE delivery** on orders above â‚¹1,000\n"
                 response += "- **Easy returns** within 7 days\n"
                 response += "- **Installation assistance** available\n\n"
             
@@ -2110,7 +2110,7 @@ def show_thinking_animation(container, duration=0.5):
         container: The Streamlit container to update
         duration: Time between animation frames in seconds
     """
-    thinking_dots = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    thinking_dots = ["â ‹", "â ™", "â ¹", "â ¸", "â ¼", "â ´", "â ¦", "â §", "â ‡", "â �"]
     thinking_messages = [
         "Searching for relevant products",
         "Analyzing your question",

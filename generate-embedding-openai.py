@@ -270,7 +270,7 @@ def parse_features(features_str: str) -> Dict[str, Any]:
             # Try to convert to number
             try:
                 # Extract numeric value and unit if present
-                numeric_match = re.match(r'([\d.]+)\s*([a-zA-Z°%"]+)?', value)
+                numeric_match = re.match(r'([\d.]+)\s*([a-zA-ZÂ°%"]+)?', value)
                 if numeric_match:
                     numeric_value = float(numeric_match.group(1))
                     unit = numeric_match.group(2) if numeric_match.group(2) else None

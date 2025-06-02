@@ -19,7 +19,7 @@ def get_product_details(url):
         title = title.text.strip() if title else ''
         
         price = soup.select_one('span.price')
-        price = price.text.strip().replace('₹', '').replace(',', '') if price else '0'
+        price = price.text.strip().replace('â‚¹', '').replace(',', '') if price else '0'
         
         brand = soup.select_one('span.brand-name')
         brand = brand.text.strip() if brand else ''

@@ -128,4 +128,4 @@ html = html.replace("<body>", "<body>\n" + filter_script)
 with open(html_path, "w") as f:
     f.write(html)
 
-print("✅ Interactive filtered graph saved to:", html_path)
+print("âœ… Interactive filtered graph saved to:", html_path)
