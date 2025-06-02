@@ -32,7 +32,7 @@ if st.button("Reset Conversation History"):
     if 'thinking_container' in st.session_state:
         st.session_state.thinking_container.empty()
     
-    st.success("✅ History has been cleared successfully! You can now return to the main app.")
+    st.success("âœ… History has been cleared successfully! You can now return to the main app.")
     st.info("To return to the main app, close this tab and reopen the main application.")
 
 st.markdown("---")

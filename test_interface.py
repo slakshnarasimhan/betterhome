@@ -8,7 +8,7 @@ import os
 # Set page config
 st.set_page_config(
     page_title="WhatsApp Bot Test Interface",
-    page_icon="📱",
+    page_icon="ğŸ“±",
     layout="wide"
 )
 
@@ -34,7 +34,7 @@ with open('blog_embeddings.json', 'r') as f:
 index = faiss.read_index('blog_faiss_index.index')
 
 # Header
-st.title("📱 WhatsApp Bot Test Interface")
+st.title("ğŸ“± WhatsApp Bot Test Interface")
 st.markdown("---")
 
 # Display chat history
@@ -83,10 +83,10 @@ with st.sidebar:
     
     # Check if required files exist
     if os.path.exists('blog_embeddings.json') and os.path.exists('blog_faiss_index.index'):
-        st.success("✅ Blog data loaded successfully")
-        st.info(f"📚 {len(blog_metadata)} articles available")
+        st.success("âœ… Blog data loaded successfully")
+        st.info(f"ğŸ“š {len(blog_metadata)} articles available")
     else:
-        st.error("❌ Error loading blog data")
+        st.error("â�Œ Error loading blog data")
     
     # Clear chat button
     if st.button("Clear Chat"):

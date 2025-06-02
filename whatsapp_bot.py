@@ -64,19 +64,19 @@ def format_product_response(products, is_single_result=False):
     
     if is_single_result:
         product = products[0]
-        response = f"🏷️ {product['title']}\n"
-        response += f"💰 Price: ₹{product['price']:,.2f}\n"
+        response = f"ğŸ�·ï¸� {product['title']}\n"
+        response += f"ğŸ’° Price: â‚¹{product['price']:,.2f}\n"
         if product.get('savings'):
-            response += f"💵 Potential Savings: ₹{product['savings']:,.2f}\n"
-        response += f"🔗 Buy Now: {product['url']}"
+            response += f"ğŸ’µ Potential Savings: â‚¹{product['savings']:,.2f}\n"
+        response += f"ğŸ”— Buy Now: {product['url']}"
         return response
     
     response = "Here are the products I found:\n\n"
     for i, product in enumerate(products, 1):
         response += f"{i}. {product['title']}\n"
-        response += f"   Price: ₹{product['price']:,.2f}\n"
+        response += f"   Price: â‚¹{product['price']:,.2f}\n"
         if product.get('savings'):
-            response += f"   Potential Savings: ₹{product['savings']:,.2f}\n"
+            response += f"   Potential Savings: â‚¹{product['savings']:,.2f}\n"
         response += f"   Buy Now: {product['url']}\n\n"
     return response
 

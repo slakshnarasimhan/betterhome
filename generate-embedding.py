@@ -40,7 +40,7 @@ def load_product_catalog(file_path):
     """Load and preprocess the product catalog."""
     try:
         # Read the CSV file
-    df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path)
         
         # Convert text columns to string type
         text_columns = ['title', 'Product Type', 'Category', 'tags', 'SKU', 'Description', 
@@ -56,8 +56,8 @@ def load_product_catalog(file_path):
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         
-    print(f"Successfully loaded product catalog with {len(df)} entries.")
-    return df
+        print(f"Successfully loaded product catalog with {len(df)} entries.")
+        return df
     except Exception as e:
         print(f"Error loading product catalog: {str(e)}")
         return None
@@ -192,7 +192,7 @@ def generate_embeddings(entries, batch_size=10, max_retries=3):
                     embeddings.extend(batch_embeddings)
                     
                     return batch_embeddings
-            else:
+                else:
                     raise Exception("No embeddings returned from API")
                 
             except Exception as e:
@@ -202,8 +202,8 @@ def generate_embeddings(entries, batch_size=10, max_retries=3):
                     time.sleep(2)
                     continue
                 return []
-
-            return []
+        
+        return []
     
     # Process in batches with progress bar
     total_entries = len(entries)
@@ -220,7 +220,7 @@ def generate_embeddings(entries, batch_size=10, max_retries=3):
         # Add successful embeddings to the result
         for batch_embeddings in results:
             if batch_embeddings:
-            embeddings.extend(batch_embeddings)
+                embeddings.extend(batch_embeddings)
 
     if not embeddings:
         print("Error: No embeddings were generated.")
@@ -390,7 +390,7 @@ def main():
         
         # Generate product embeddings
         embeddings = generate_embeddings(entries)
-    if not embeddings:
+        if not embeddings:
             print(f"Failed to generate product embeddings on attempt {attempt+1}")
             if attempt < max_attempts - 1:
                 print("Waiting 10 seconds before retrying...")
@@ -398,10 +398,10 @@ def main():
                 continue
             else:
                 print("All attempts to generate product embeddings failed. Exiting.")
-        return
+                return
 
         # Generate product type embeddings
-    product_type_entries = [f"Product Type: {row.get('Product Type', 'Not Available')}" for _, row in df.iterrows()]
+        product_type_entries = [f"Product Type: {row.get('Product Type', 'Not Available')}" for _, row in df.iterrows()]
         product_type_embeddings = generate_embeddings(product_type_entries)
         if not product_type_embeddings:
             print(f"Failed to generate product type embeddings on attempt {attempt+1}")
@@ -414,7 +414,7 @@ def main():
                 return
         
         # Generate brand embeddings
-    brand_entries = [f"Brand: {row.get('Brand', 'Not Available')}" for _, row in df.iterrows()]
+        brand_entries = [f"Brand: {row.get('Brand', 'Not Available')}" for _, row in df.iterrows()]
         brand_embeddings = generate_embeddings(brand_entries)
         if not brand_embeddings:
             print(f"Failed to generate brand embeddings on attempt {attempt+1}")
@@ -427,29 +427,29 @@ def main():
                 return
         
         # Generate sample user profiles
-    sample_user_profiles = [
-        {
-            'age_group': 'elderly',
-            'room_type': 'bedroom',
-            'preferences': ['quiet operation', 'remote control', 'energy efficient'],
-            'budget': '₹5000-₹10000'
-        },
-        {
-            'age_group': 'children',
-            'room_type': 'bedroom',
-            'preferences': ['child-safe', 'quiet operation'],
-            'budget': '₹3000-₹8000'
-        },
-        {
-            'age_group': 'adult',
-            'room_type': 'living room',
-            'preferences': ['energy efficient', 'stylish design'],
-            'budget': '₹8000-₹15000'
-        }
-    ]
-    
+        sample_user_profiles = [
+            {
+                'age_group': 'elderly',
+                'room_type': 'bedroom',
+                'preferences': ['quiet operation', 'remote control', 'energy efficient'],
+                'budget': '₹5000-₹10000'
+            },
+            {
+                'age_group': 'children',
+                'room_type': 'bedroom',
+                'preferences': ['child-safe', 'quiet operation'],
+                'budget': '₹3000-₹8000'
+            },
+            {
+                'age_group': 'adult',
+                'room_type': 'living room',
+                'preferences': ['energy efficient', 'stylish design'],
+                'budget': '₹8000-₹15000'
+            }
+        ]
+        
         # Generate user profile embeddings
-    user_profile_embeddings = generate_user_profile_embeddings(sample_user_profiles)
+        user_profile_embeddings = generate_user_profile_embeddings(sample_user_profiles)
         if not user_profile_embeddings:
             print(f"Failed to generate user profile embeddings on attempt {attempt+1}")
             if attempt < max_attempts - 1:
@@ -463,30 +463,30 @@ def main():
         # If we get here, all embeddings were generated successfully
         print("\nAll embeddings generated successfully!")
 
-    # Save embeddings
-    embeddings_dict = {
-        'product_embeddings': embeddings,
-        'product_type_embeddings': product_type_embeddings,
-        'brand_embeddings': brand_embeddings,
-        'user_profile_embeddings': user_profile_embeddings,
-        'metadata': {
-            'total_products': len(df),
-            'unique_product_types': df['Product Type'].nunique(),
-            'unique_brands': df['Brand'].nunique(),
+        # Save embeddings
+        embeddings_dict = {
+            'product_embeddings': embeddings,
+            'product_type_embeddings': product_type_embeddings,
+            'brand_embeddings': brand_embeddings,
+            'user_profile_embeddings': user_profile_embeddings,
+            'metadata': {
+                'total_products': len(df),
+                'unique_product_types': df['Product Type'].nunique(),
+                'unique_brands': df['Brand'].nunique(),
                 'user_profiles': sample_user_profiles,
                 'embedding_provider': 'OpenAI' if USE_OPENAI else 'Ollama'
             }
         }
         
         try:
-    save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
+            save_embeddings(embeddings_dict, EMBEDDINGS_FILE_PATH)
             print(f"Embeddings saved to {EMBEDDINGS_FILE_PATH}")
 
             # Build and save separate FAISS indexes
-    build_faiss_index(embeddings, 'faiss_index.index_product')
-    build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
-    build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
-    build_faiss_index(user_profile_embeddings, 'faiss_index.index_user_profile')
+            build_faiss_index(embeddings, 'faiss_index.index_product')
+            build_faiss_index(product_type_embeddings, 'faiss_index.index_type')
+            build_faiss_index(brand_embeddings, 'faiss_index.index_brand')
+            build_faiss_index(user_profile_embeddings, 'faiss_index.index_user_profile')
             print("FAISS indexes built and saved successfully")
             
             # If we get here, everything was successful

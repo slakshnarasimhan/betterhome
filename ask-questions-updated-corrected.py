@@ -176,7 +176,7 @@ def show_thinking_animation(container, duration=0.5):
         container: The Streamlit container to update
         duration: Time between animation frames in seconds
     """
-    thinking_dots = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    thinking_dots = ["â ‹", "â ™", "â ¹", "â ¸", "â ¼", "â ´", "â ¦", "â §", "â ‡", "â �"]
     thinking_messages = [
         "Searching for relevant products",
         "Analyzing your question",
@@ -500,9 +500,9 @@ def format_brand_response(products_df, product_type, is_warranty_query=False):
         max_price = group['Better Home Price'].max()
         
         if min_price == max_price:
-            response += f"- Price: ₹{min_price:,.2f}\n"
+            response += f"- Price: â‚¹{min_price:,.2f}\n"
         else:
-            response += f"- Price Range: ₹{min_price:,.2f} - ₹{max_price:,.2f}\n"
+            response += f"- Price Range: â‚¹{min_price:,.2f} - â‚¹{max_price:,.2f}\n"
         
         # Key features or benefits (if available)
         features = group.iloc[0].get('Key Features', '').split(', ')
@@ -662,7 +662,7 @@ def format_product_response(products_df):
     # Add a special message for BLDC fans if they're in the results
     has_bldc = any(products_df['title'].str.contains('BLDC|Brushless', case=False, na=False))
     if has_bldc:
-        response += "💚 **BLDC Fans** - 70% less electricity!\n\n"
+        response += "ğŸ’š **BLDC Fans** - 70% less electricity!\n\n"
     
     for _, product in products_df.iterrows():
         title = product['title']
@@ -679,18 +679,18 @@ def format_product_response(products_df):
         
         # Add a special highlight for BLDC fans
         is_bldc = 'BLDC' in title or 'Brushless' in title
-        energy_label = "💚 " if is_bldc else ""
+        energy_label = "ğŸ’š " if is_bldc else ""
         
         # More concise product listing
         response += f"**{energy_label}{title}**\n"
-        response += f"₹{price:,.2f} {discount_text}\n"
+        response += f"â‚¹{price:,.2f} {discount_text}\n"
         
         # Add energy saving information for BLDC fans
         if is_bldc:
             response += f"70% energy savings\n"
         
         # Make the buy link more prominent
-        response += f"🛒 [Buy Now]({url})\n\n"
+        response += f"ğŸ›’ [Buy Now]({url})\n\n"
     
     # Add a note about clicking the links
     response += "*Click on 'Buy Now' to purchase the product.*\n"
@@ -931,7 +931,7 @@ def extract_key_points(content, query):
         if factor_sections:
             for section in factor_sections:
                 # Extract bullet points or numbered lists
-                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                points = re.findall(r'(?:â€¢|\d+\.)\s*(.*?)(?=\n|$)', section)
                 if points:
                     key_points.extend(points)
             else:
@@ -946,7 +946,7 @@ def extract_key_points(content, query):
             if comparison_sections:
                 for section in comparison_sections:
                     # Extract comparison points
-                    points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                    points = re.findall(r'(?:â€¢|\d+\.)\s*(.*?)(?=\n|$)', section)
                     if points:
                         key_points.extend(points)
                     else:
@@ -963,7 +963,7 @@ def extract_key_points(content, query):
         if type_sections:
             for section in type_sections:
                 # Extract bullet points or numbered lists
-                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                points = re.findall(r'(?:â€¢|\d+\.)\s*(.*?)(?=\n|$)', section)
                 if points:
                     key_points.extend(points)
                 else:
@@ -979,7 +979,7 @@ def extract_key_points(content, query):
         if recommendation_sections:
             for section in recommendation_sections:
                 # Extract bullet points or numbered lists
-                points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                points = re.findall(r'(?:â€¢|\d+\.)\s*(.*?)(?=\n|$)', section)
                 if points:
                     key_points.extend(points)
                 else:
@@ -994,7 +994,7 @@ def extract_key_points(content, query):
             if pros_cons_sections:
                 for section in pros_cons_sections:
                     # Extract pros and cons points
-                    points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', section)
+                    points = re.findall(r'(?:â€¢|\d+\.)\s*(.*?)(?=\n|$)', section)
                     if points:
                         key_points.extend(points)
     
@@ -1017,7 +1017,7 @@ def extract_key_points(content, query):
     # If we still don't have enough key points, extract general information
     if len(key_points) < 3:
         # Look for bullet points or numbered lists throughout the content
-        points = re.findall(r'(?:•|\d+\.)\s*(.*?)(?=\n|$)', content)
+        points = re.findall(r'(?:â€¢|\d+\.)\s*(.*?)(?=\n|$)', content)
         if points:
             key_points.extend(points)
         
@@ -1675,7 +1675,7 @@ def process_follow_up(follow_up_query, df, index, follow_up_type):
             comparison_table += "| --- | " + " | ".join(["---" for _ in range(len(last_products))]) + " |\n"
             
             # Compare key features
-            comparison_table += "| Price | " + " | ".join([f"₹{p['Better Home Price']:,.2f}" for _, p in last_products.iterrows()]) + " |\n"
+            comparison_table += "| Price | " + " | ".join([f"â‚¹{p['Better Home Price']:,.2f}" for _, p in last_products.iterrows()]) + " |\n"
             
             # Add other common features if available
             for feature in ['Energy Rating', 'Warranty', 'Brand']:
@@ -2136,14 +2136,14 @@ def generate_product_comparison(product_a, product_b):
     # Compare prices
     price_a = product_a.get('Better Home Price', 0)
     price_b = product_b.get('Better Home Price', 0)
-    price_winner = "🏆 " + title_a if price_a < price_b else "🏆 " + title_b if price_b < price_a else "Tie"
-    comparison += f"| Price | ₹{price_a:,.2f} | ₹{price_b:,.2f} | {price_winner} |\n"
+    price_winner = "ğŸ�† " + title_a if price_a < price_b else "ğŸ�† " + title_b if price_b < price_a else "Tie"
+    comparison += f"| Price | â‚¹{price_a:,.2f} | â‚¹{price_b:,.2f} | {price_winner} |\n"
     
     # Compare ratings if available
     if 'rating' in product_a and 'rating' in product_b:
         rating_a = product_a.get('rating', 0)
         rating_b = product_b.get('rating', 0)
-        rating_winner = "🏆 " + title_a if rating_a > rating_b else "🏆 " + title_b if rating_b > rating_a else "Tie"
+        rating_winner = "ğŸ�† " + title_a if rating_a > rating_b else "ğŸ�† " + title_b if rating_b > rating_a else "Tie"
         comparison += f"| Rating | {rating_a} | {rating_b} | {rating_winner} |\n"
     
     # Compare energy ratings if available
@@ -2159,10 +2159,10 @@ def generate_product_comparison(product_a, product_b):
             try:
                 stars_a = int(energy_a.split()[0])
                 stars_b = int(energy_b.split()[0])
-                energy_winner = "🏆 " + title_a if stars_a > stars_b else "🏆 " + title_b if stars_b > stars_a else "Tie"
+                energy_winner = "ğŸ�† " + title_a if stars_a > stars_b else "ğŸ�† " + title_b if stars_b > stars_a else "Tie"
             except:
                 # If we can't parse the stars, just use string comparison
-                energy_winner = "🏆 " + title_a if energy_a > energy_b else "🏆 " + title_b if energy_b > energy_a else "Tie"
+                energy_winner = "ğŸ�† " + title_a if energy_a > energy_b else "ğŸ�† " + title_b if energy_b > energy_a else "Tie"
         
         comparison += f"| Energy Efficiency | {energy_a} | {energy_b} | {energy_winner} |\n"
     
@@ -2177,7 +2177,7 @@ def generate_product_comparison(product_a, product_b):
         try:
             years_a = int(re.search(r'(\d+)', warranty_a).group(1))
             years_b = int(re.search(r'(\d+)', warranty_b).group(1))
-            warranty_winner = "🏆 " + title_a if years_a > years_b else "🏆 " + title_b if years_b > years_a else "Tie"
+            warranty_winner = "ğŸ�† " + title_a if years_a > years_b else "ğŸ�† " + title_b if years_b > years_a else "Tie"
         except:
             # If we can't extract years, just compare strings
             warranty_winner = "Tie"
@@ -2194,7 +2194,7 @@ def generate_product_comparison(product_a, product_b):
     features_b = extract_features_from_title(title_b)
     
     # Add a detailed feature analysis section
-    comparison += "\n### 🔍 Key Features Analysis\n\n"
+    comparison += "\n### ğŸ”� Key Features Analysis\n\n"
     
     # Product A features
     comparison += f"**{title_a} highlights:**\n"
@@ -2207,11 +2207,11 @@ def generate_product_comparison(product_a, product_b):
         comparison += f"- {feature}\n"
     
     # Add recommendation section
-    comparison += "\n### 💡 Recommendation\n\n"
+    comparison += "\n### ğŸ’¡ Recommendation\n\n"
     
     # Count the winners
-    a_wins = comparison.count("🏆 " + title_a)
-    b_wins = comparison.count("🏆 " + title_b)
+    a_wins = comparison.count("ğŸ�† " + title_a)
+    b_wins = comparison.count("ğŸ�† " + title_b)
     
     if a_wins > b_wins:
         comparison += f"**{title_a}** appears to be the better choice overall. "
@@ -2232,10 +2232,10 @@ def generate_product_comparison(product_a, product_b):
         comparison += f"If you're looking for premium features, **{title_b}** might be worth the extra investment."
     
     # Add call to action
-    comparison += "\n\n### 🔥 Limited Time Offers\n\n"
+    comparison += "\n\n### ğŸ”¥ Limited Time Offers\n\n"
     comparison += f"**Buy {title_a}:** [View Deal](https://betterhome.co.in/product/{product_a.get('id', '')})\n\n"
     comparison += f"**Buy {title_b}:** [View Deal](https://betterhome.co.in/product/{product_b.get('id', '')})\n\n"
-    comparison += "🎁 Use code **COMPARE10** for an extra 10% off your purchase!"
+    comparison += "ğŸ�� Use code **COMPARE10** for an extra 10% off your purchase!"
     
     return comparison
 

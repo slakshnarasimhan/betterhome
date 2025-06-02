@@ -59,7 +59,7 @@ def test_ac_recommendations():
             for ac in final_list[room]['ac']:
                 print(f"- Brand: {ac['brand']}")
                 print(f"  Model: {ac['model']}")
-                print(f"  Price: ₹{ac['price']:,.2f}")
+                print(f"  Price: â‚¹{ac['price']:,.2f}")
                 print(f"  Features: {', '.join(ac['features'])}")
                 print(f"  Color Options: {', '.join(ac['color_options'])}")
                 print(f"  Color Match: {ac['color_match']}")
