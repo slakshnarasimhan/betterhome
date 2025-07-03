@@ -2773,8 +2773,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <!-- Excel libraries with integrity checks and error handling -->
-            <script src="../static/xlsx.full.min.js"></script>
-            <script src="../static/FileSaver.min.js"></script>
+            <script src="static/xlsx.full.min.js"></script>
+            <script src="static/FileSaver.min.js"></script>
         <style>
             /* Modern typography and base styles */
             body {
@@ -3470,7 +3470,6 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         }
                     }
                 };
-                };
                 
                 // Function to export to Excel
                 const setupExportButton = () => {
@@ -4023,13 +4022,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         
         <!-- Create the final recommendation page -->
         <div id="final-recommendation-page" style="display: none;">
+         <div id="final-recommendation-content"></div>
             <div class="container">
                 <header>
                     {logo_html}
                     <h1>Your Final Product Selections</h1>
                     <p>Specially curated for {user_data['name']}</p>
                 </header>
-                <div id="final-products"></div>
+                <div id="selected-products-container"></div>
                 <div class="budget-summary">
                     <h2>Budget Summary</h2>
                     <p>Total Cost: <span id="total-cost">₹0</span></p>
@@ -4118,21 +4118,25 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 }});
 
                 // Update the final recommendation page
-                const finalProducts = document.getElementById('final-products');
+                const selectedProductsContainer = document.getElementById('selected-products-container');
                 const totalCostElement = document.getElementById('total-cost');
                 const totalSavingsElement = document.getElementById('total-savings');
                 const budgetUtilizationElement = document.getElementById('budget-utilization');
                 const selectionPage = document.getElementById('product-selection-page');
                 const finalPage = document.getElementById('final-recommendation-page');
 
-                if (finalProducts) finalProducts.innerHTML = finalHtml;
+                if (selectedProductsContainer) selectedProductsContainer.innerHTML = finalHtml;
                 if (totalCostElement) totalCostElement.textContent = `₹${{totalCost.toLocaleString('en-IN')}}`;
                 if (totalSavingsElement) totalSavingsElement.textContent = `₹${{totalSavings.toLocaleString('en-IN')}}`;
                 if (budgetUtilizationElement) {{
-                    budgetUtilizationElement.textContent = 
-                        totalCost > {user_data['total_budget']} ? 
-                        `Budget exceeded by ₹${{(totalCost - {user_data['total_budget']}).toLocaleString('en-IN')}}` :
-                        `Budget utilized: ₹${{totalCost.toLocaleString('en-IN')}} of ₹{user_data['total_budget']:,.2f}`;
+                    let budgetText = '';
+                    const userBudget = {user_data['total_budget']};
+                    if (totalCost > userBudget) {{
+                        budgetText = `Budget exceeded by ₹${{(totalCost - userBudget).toLocaleString('en-IN')}}`;
+                    }} else {{
+                        budgetText = `Budget utilized: ₹${{totalCost.toLocaleString('en-IN')}} of ₹{user_data['total_budget']:,.2f}`;
+                    }}
+                    budgetUtilizationElement.textContent = budgetText;
                 }}
 
                 // Show final recommendation page
