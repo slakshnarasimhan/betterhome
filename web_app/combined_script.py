@@ -4310,6 +4310,12 @@ def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str
     Returns:
         Dictionary mapping file types to their S3 URLs
     """
+    #temp implementation to return a dummy s3 url
+    s3_urls = {}
+    for file_type, file_path in files.items():
+        s3_urls[file_type] = f"https://dummy-s3-url.com/{file_type}/{os.path.basename(file_path)}"
+    return s3_urls
+    #dummy implementation ends
     try:
         s3_handler = S3Handler()
         s3_urls = {}

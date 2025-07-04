@@ -251,34 +251,41 @@ def submit():
             recommendation_html = f"Error executing combined script: {str(e)}"
 
         # Upload files to S3
-        s3_excel_key = f"{folder_name}.xlsx"
-        s3_html_key = f"{folder_name}.html"
+        # s3_excel_key = f"{folder_name}.xlsx"
+        # s3_html_key = f"{folder_name}.html"
+        # excel_uploaded = s3_handler.upload_file(excel_filename, s3_excel_key)
+        # html_uploaded = s3_handler.upload_file(html_filename, s3_html_key)
+        # if excel_uploaded and html_uploaded:
+        #     # Get S3 URLs
+        #     excel_url = s3_handler.get_file_url(s3_excel_key)
+        #     html_url = s3_handler.get_file_url(s3_html_key)
+        #     # Format the timestamp for display
+        #     display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
+        #     # Safely access the 'Name' field with a default value
+        #     user_name = form_data.get('Name', 'Customer')
+        #     return render_template('results.html', 
+        #                          html_file=html_filename,
+        #                          excel_file=excel_filename,
+        #                          s3_html_url=html_url,
+        #                          s3_excel_url=excel_url,
+        #                          user_name=user_name,
+        #                          timestamp=display_timestamp,
+        #                          recommendation_html=recommendation_html)
+        # else:
+        #     print("Failed to upload files to S3")
+        #     return "Error uploading files to S3. Please try again."
 
-        excel_uploaded = s3_handler.upload_file(excel_filename, s3_excel_key)
-        html_uploaded = s3_handler.upload_file(html_filename, s3_html_key)
-
-        if excel_uploaded and html_uploaded:
-            # Get S3 URLs
-            excel_url = s3_handler.get_file_url(s3_excel_key)
-            html_url = s3_handler.get_file_url(s3_html_key)
-
-            # Format the timestamp for display
-            display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
-
-            # Safely access the 'Name' field with a default value
-            user_name = form_data.get('Name', 'Customer')
-
-            return render_template('results.html', 
-                                 html_file=html_filename,
-                                 excel_file=excel_filename,
-                                 s3_html_url=html_url,
-                                 s3_excel_url=excel_url,
-                                 user_name=user_name,
-                                 timestamp=display_timestamp,
-                                 recommendation_html=recommendation_html)
-        else:
-            print("Failed to upload files to S3")
-            return "Error uploading files to S3. Please try again."
+        # Instead, just render the results page using local files
+        display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
+        user_name = form_data.get('Name', 'Customer')
+        return render_template('results.html',
+                              html_file=html_filename,
+                              excel_file=excel_filename,
+                              s3_html_url=None,
+                              s3_excel_url=None,
+                              user_name=user_name,
+                              timestamp=display_timestamp,
+                              recommendation_html=recommendation_html)
             
     except Exception as e:
         print(f"Error in submit route: {str(e)}")
