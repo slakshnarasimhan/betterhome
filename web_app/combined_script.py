@@ -2758,7 +2758,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Always use a relative URL path that will be handled by Flask
     logo_html = ""
     if logo_exists:
-        logo_html = '<img src="better_home_logo.png" alt="BetterHome Logo" class="logo" onerror="this.onerror=null; this.src=\'static/better_home_logo.png\'; this.onerror=null; this.src=\'web_app/better_home_logo.png\'; this.onerror=null; this.parentElement.innerHTML=\'<h1 class=\\\'logo-text\\\'>BetterHome</h1>\';">'
+        logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo" onerror="this.onerror=null; this.src=\'/static/better_home_logo.png\'; this.onerror=null; this.src=\'web_app/better_home_logo.png\'; this.onerror=null; this.parentElement.innerHTML=\'<h1 class=\\\'logo-text\\\'>BetterHome</h1>\';">'
     
     # Create HTML header (CSS part)
     html_content = """
@@ -2773,8 +2773,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <!-- Excel libraries with integrity checks and error handling -->
-            <script src="static/xlsx.full.min.js"></script>
-            <script src="static/FileSaver.min.js"></script>
+        <script src="/static/xlsx.full.min.js"></script>
+        <script src="/static/FileSaver.min.js"></script>
         <style>
             /* Modern typography and base styles */
             body {
