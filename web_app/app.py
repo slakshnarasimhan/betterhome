@@ -249,7 +249,7 @@ def submit():
         except Exception as e:
             print(f"Error executing combined script: {str(e)}")
             recommendation_html = f"Error executing combined script: {str(e)}"
-
+        
         # Upload files to S3
         # s3_excel_key = f"{folder_name}.xlsx"
         # s3_html_key = f"{folder_name}.html"
@@ -278,14 +278,9 @@ def submit():
         # Instead, just render the results page using local files
         display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
         user_name = form_data.get('Name', 'Customer')
-        return render_template('results.html',
-                              html_file=html_filename,
-                              excel_file=excel_filename,
-                              s3_html_url=None,
-                              s3_excel_url=None,
-                              user_name=user_name,
-                              timestamp=display_timestamp,
-                              recommendation_html=recommendation_html)
+        # After generating html_filename
+        relative_html_path = html_filename.replace('web_app/', '')  # adjust as needed
+        return redirect(url_for('view_html', filename=relative_html_path))
             
     except Exception as e:
         print(f"Error in submit route: {str(e)}")
@@ -295,6 +290,9 @@ def submit():
 def view_html(filename):
     """Serve the HTML file with proper content type"""
     try:
+        # Remove 'uploads/' prefix if present
+        if filename.startswith('uploads/'):
+            filename = filename[len('uploads/'):]
         # Get the full path to the HTML file
         # The filename will now include the subfolder name
         file_path = os.path.join(UPLOAD_FOLDER, filename)
