@@ -1569,7 +1569,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
         os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
-        os.path.join(os.path.dirname(__file__), 'static', 'better_home_logo.png'),
+        os.path.join(os.path.dirname(__file__), '/static', 'better_home_logo.png'),
         'better_home_logo.png'
     ]
     
@@ -2758,7 +2758,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Always use a relative URL path that will be handled by Flask
     logo_html = ""
     if logo_exists:
-        logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo" onerror="this.onerror=null; this.src=\'/static/better_home_logo.png\'; this.onerror=null; this.src=\'web_app/better_home_logo.png\'; this.onerror=null; this.parentElement.innerHTML=\'<h1 class=\\\'logo-text\\\'>BetterHome</h1>\';">'
+        logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
     
     # Create HTML header (CSS part)
     html_content = """
@@ -4036,39 +4036,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <p>Total Savings: <span id="total-savings">₹0</span></p>
                     <p id="budget-utilization"></p>
                 </div>
-                <button onclick="backToSelection()" class="back-button">Back to Selection</button>
+                <div style="display: flex; justify-content: center; margin-top: 24px;">
+                    <button onclick="backToSelection()" class="generate-button">Back to Selection</button>
+                </div>
             </div>
         </div>
         
         <script>
             function backToSelection() {{
-                const finalPage = document.getElementById('final-recommendation-page');
-                const selectionPage = document.getElementById('product-selection-page');
-                if (finalPage && selectionPage) {{
-                    finalPage.style.display = 'none';
-                    selectionPage.style.display = 'block';
-                }}
+                window.location.reload();
+
             }}
 
             function generateFinalRecommendation() {{
                 const selectedProducts = [];
-                const selectedRoomCategories = new Set();
                 let totalCost = 0;
                 let totalRetailCost = 0;
                 let totalSavings = 0;
 
-                // Get all selected products
+                // Get all selected products (no room-category deduplication)
                 document.querySelectorAll('.product-card.selected').forEach(card => {{
                     const room = card.getAttribute('data-room');
                     const category = card.getAttribute('data-category');
-                    const roomCategory = `${{room}}-${{category}}`;
-
-                    // Check if we already have a product for this room-category combination
-                    if (selectedRoomCategories.has(roomCategory)) {{
-                        return;
-                    }}
-
-                    selectedRoomCategories.add(roomCategory);
                     const product = {{
                         room: room,
                         category: category,
