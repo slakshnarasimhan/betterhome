@@ -3851,6 +3851,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     html_content += '<div class="products-grid">'
                     # Identify the best product (highest feature_match_score)
                     best_product = grouped_products[0] if grouped_products else None
+                    # Track which product keys have been checked for this room-category
+                    checked_product_keys = set()
                     for idx, product in enumerate(grouped_products):
                         brand = product.get('brand', 'Unknown Brand')
                         model = product.get('model', product.get('title', 'Unknown Model'))
@@ -3886,8 +3888,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
                         # Checkbox and selection
                         product_id = f"{room}-{sub_appliance_type}-{idx}"
-                        checked = 'checked' if product == best_product else ''
-                        selected_class = ' selected' if product == best_product else ''
+                        # Use a unique key for the product (brand+model)
+                        product_key = f"{brand}::{model}"
+                        # Only check the first occurrence of a product
+                        if product_key not in checked_product_keys and product == best_product:
+                            checked = 'checked'
+                            checked_product_keys.add(product_key)
+                        else:
+                            checked = ''
+                        selected_class = ' selected' if checked else ''
                         html_content += f'''<div class="product-card{selected_class}">
                             <div class="product-selection">
                                 <input type="checkbox"
@@ -3906,7 +3915,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="selection-label">Selected</span>
                             </div>
                             <div class="product-image-container">
-                                <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                                <a href="{purchase_url}" target="_blank" rel="noopener noreferrer">
+                                    <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                                </a>
                                 {badges}
                             </div>
                             <div class="product-details">
@@ -3932,6 +3943,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 html_content += f'<h4 style="margin-top:20px;">{type_title}</h4>'
                 html_content += '<div class="products-grid">'
                 best_product = grouped_products[0] if grouped_products else None
+                checked_product_keys = set()
                 for idx, product in enumerate(grouped_products):
                     brand = product.get('brand', 'Unknown Brand')
                     model = product.get('model', product.get('title', 'Unknown Model'))
@@ -3959,14 +3971,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         {},
                         user_data
                     )
+                    concise_description = product.get('concise_description') or product.get('description', 'No description available')
                     badges = ""
                     if product.get('is_bestseller', False):
                         badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
                     if product == best_product:
                         badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
                     product_id = f"{room}-{appliance_type}-{idx}"
-                    checked = 'checked' if product == best_product else ''
-                    selected_class = ' selected' if product == best_product else ''
+                    product_key = f"{brand}::{model}"
+                    if product_key not in checked_product_keys and product == best_product:
+                        checked = 'checked'
+                        checked_product_keys.add(product_key)
+                    else:
+                        checked = ''
+                    selected_class = ' selected' if checked else ''
                     html_content += f'''<div class="product-card{selected_class}">
                         <div class="product-selection">
                             <input type="checkbox"
@@ -3985,7 +4003,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             <span class="selection-label">Selected</span>
                         </div>
                         <div class="product-image-container">
-                            <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                            <a href="{purchase_url}" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                            </a>
                             {badges}
                         </div>
                         <div class="product-details">
@@ -3996,8 +4016,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="retail-price">₹{retail_price:,.2f}</span>
                                 <span class="savings">Save ₹{savings:,.2f}</span>
                             </div>
-                            <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
-                            <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
+                            <div class="product-info-item">{concise_description}</div>
                             <ul class="reasons-list"><li>{reason_text}</li></ul>
                             <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
                         </div>
