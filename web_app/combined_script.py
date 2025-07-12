@@ -3915,7 +3915,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="selection-label">Selected</span>
                             </div>
                             <div class="product-image-container">
-                                <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                                <a href="{purchase_url}" target="_blank" rel="noopener noreferrer">
+                                    <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                                </a>
                                 {badges}
                             </div>
                             <div class="product-details">
@@ -3969,6 +3971,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         {},
                         user_data
                     )
+                    concise_description = product.get('concise_description') or product.get('description', 'No description available')
                     badges = ""
                     if product.get('is_bestseller', False):
                         badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
@@ -4000,7 +4003,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             <span class="selection-label">Selected</span>
                         </div>
                         <div class="product-image-container">
-                            <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                            <a href="{purchase_url}" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="{image_src}" alt="{brand} {model}">
+                            </a>
                             {badges}
                         </div>
                         <div class="product-details">
@@ -4011,8 +4016,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="retail-price">₹{retail_price:,.2f}</span>
                                 <span class="savings">Save ₹{savings:,.2f}</span>
                             </div>
-                            <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
-                            <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
+                            <div class="product-info-item">{concise_description}</div>
                             <ul class="reasons-list"><li>{reason_text}</li></ul>
                             <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
                         </div>
