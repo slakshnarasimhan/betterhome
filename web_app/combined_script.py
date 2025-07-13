@@ -53,7 +53,7 @@ def get_user_data_value(user_data: Dict[str, Any], key: str, default: Any = None
 # Function to format currency
 def format_currency(amount: float) -> str:
     """Format amount in Indian Rupees"""
-    return f"₹{amount:,.2f}"
+    return f"₹{amount:}"
 
 # Function to load product catalog
 def load_product_catalog() -> Dict[str, Any]:
@@ -3269,6 +3269,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .panel[style*='display: block'] {
                 display: block;
             }
+
+            .features-toggle.open .arrow {
+                transform: rotate(90deg);
+            }
         </style>
         <script>
             // Wait for the document to be fully loaded
@@ -3924,9 +3928,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="product-type">{product_type_title}</span>
                                 <h3 class="product-title">{brand} {model}</h3>
                                 <div class="price-container">
-                                    <span class="current-price">₹{better_home_price:,.2f}</span>
-                                    <span class="retail-price">₹{retail_price:,.2f}</span>
-                                    <span class="savings">Save ₹{savings:,.2f}</span>
+                                    <span class="current-price">₹{int(better_home_price):,}</span>
+                                    <span class="retail-price">₹{int(retail_price):,}</span>
+                                    <span class="savings">Save ₹{int(savings):,}</span>
                                 </div>
                                 <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
@@ -3972,6 +3976,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         user_data
                     )
                     concise_description = product.get('concise_description') or product.get('description', 'No description available')
+                    description_html = f'<div class="product-info-item">{concise_description}</div>'
                     badges = ""
                     if product.get('is_bestseller', False):
                         badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
@@ -3985,6 +3990,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     else:
                         checked = ''
                     selected_class = ' selected' if checked else ''
+                    features = product.get('features', [])
+                    parsed_features_html = ''
+                    if isinstance(features, dict) and 'parsed_features' in features and isinstance(features['parsed_features'], dict) and features['parsed_features']:
+                        parsed_features_html = '<div class="product-info-item"><strong>Product Features:</strong><ul>'
+                        for k, v in features['parsed_features'].items():
+                            parsed_features_html += f'<li><span class="product-info-label">{k}:</span> {v}</li>'
+                        parsed_features_html += '</ul></div>'
                     html_content += f'''<div class="product-card{selected_class}">
                         <div class="product-selection">
                             <input type="checkbox"
@@ -4012,12 +4024,19 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             <span class="product-type">{product_type_title}</span>
                             <h3 class="product-title">{brand} {model}</h3>
                             <div class="price-container">
-                                <span class="current-price">₹{better_home_price:,.2f}</span>
-                                <span class="retail-price">₹{retail_price:,.2f}</span>
-                                <span class="savings">Save ₹{savings:,.2f}</span>
+                                <span class="current-price">₹{int(better_home_price):,}</span>
+                                <span class="retail-price">₹{int(retail_price):,}</span>
+                                <span class="savings">Save ₹{int(savings):,}</span>
                             </div>
-                            <div class="product-info-item">{concise_description}</div>
-                            <ul class="reasons-list"><li>{reason_text}</li></ul>
+                            {description_html}
+                            <div class="product-info-item">
+                                <button class="features-toggle" onclick="toggleFeatures(this)">Product Features <span class="arrow">&#9654;</span></button>
+                                <div class="features-content" style="display:none;">
+                                    <ul>
+                                        {''.join([f'<li><span class="product-info-label">{k}:</span> {v}</li>' for k, v in features['parsed_features'].items()])}
+                                    </ul>
+                                </div>
+                            </div>
                             <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
                         </div>
                     </div>'''
@@ -4201,6 +4220,23 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 console.log('DIRECT: Setting up accordion - complete');
             }})();
         </script>
+        """
+    html_content += """
+        <script>
+        function toggleFeatures(btn) {{
+            var content = btn.nextElementSibling;
+            if (content.style.display === "none" || content.style.display === "") {{
+                content.style.display = "block";
+                btn.querySelector('.arrow').innerHTML = "&#9660;"; // Down arrow
+                btn.classList.add('open');
+            }} else {{
+                content.style.display = "none";
+                btn.querySelector('.arrow').innerHTML = "&#9654;"; // Right arrow
+                btn.classList.remove('open');
+            }}
+        }}
+        </script>
+      
     </body>
     </html>
     """
