@@ -931,6 +931,9 @@ def get_specific_product_recommendations(
             product_data['price'] = price # Store the calculated price used for budget check
             product_data['retail_price'] = float(product.get('retail_price', price * 1.2)) # Estimate retail if missing
             product_data['better_home_price'] = float(product.get('better_home_price', price / 1.2 if price > 0 else 0)) # Estimate BH if missing
+            # Store per-product savings
+            savings = float(product_data['retail_price']) - float(product_data['better_home_price'])
+            product_data['savings'] = max(0, savings)
             
             # Normalize best seller field
             product_data['is_bestseller'] = str(product.get('best_seller', '')).strip().lower() == 'yes'
@@ -3743,7 +3746,25 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Add budget summary
     total_cost = calculate_total_cost(final_list)
     budget_utilization = (total_cost / user_data['total_budget']) * 100
-    
+    # Calculate total_savings for the default recommended set
+    total_savings = 0
+    for room, products in final_list.items():
+        if not isinstance(products, dict):
+            continue
+        for product_type, options in products.items():
+            if isinstance(options, dict):
+                for nested_type, nested_options in options.items():
+                    if not nested_options or not isinstance(nested_options, list):
+                        continue
+                    best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0), default=None)
+                    if best_product:
+                        print(f"[DEBUG] Room: {room}, Type: {product_type}, Subtype: {nested_type}, Title: {best_product.get('title')}, Savings: {best_product.get('savings', 0)}, Retail: {best_product.get('retail_price')}, BH: {best_product.get('better_home_price')}")
+                        total_savings += best_product.get('savings', 0)
+            elif isinstance(options, list) and options:
+                best_product = max(options, key=lambda x: x.get('feature_match_score', 0), default=None)
+                if best_product:
+                    print(f"[DEBUG] Room: {room}, Type: {product_type}, Title: {best_product.get('title')}, Savings: {best_product.get('savings', 0)}, Retail: {best_product.get('retail_price')}, BH: {best_product.get('better_home_price')}")
+                    total_savings += best_product.get('savings', 0)
     budget_summary_section = f"""
             <div class="budget-summary">
                 <h2>Budget Analysis</h2>
@@ -3752,16 +3773,18 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         <div class="budget-item-label">Total Recommended Products</div>
                         <div class="budget-item-value">₹{total_cost:,.2f}</div>
                     </div>
-                    
                     <div class="budget-item">
                         <div class="budget-item-label">Your Budget</div>
                         <div class="budget-item-value">₹{user_data['total_budget']:,.2f}</div>
                     </div>
-                    
                     <div class="budget-item">
                         <div class="budget-item-label">Budget Utilization</div>
                         <div class="budget-item-value">{budget_utilization:.1f}%</div>
                     </div>
+                </div>
+                <div class="budget-item">
+                    <div class="budget-item-label">Total Savings</div>
+                    <div class="budget-item-value">₹{int(total_savings):,}</div>
                 </div>
     """
     html_content += budget_summary_section
@@ -4070,8 +4093,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <div id="selected-products-container"></div>
                 <div class="budget-summary">
                     <h2>Budget Summary</h2>
-                    <p>Total Cost: <span id="total-cost">₹0</span></p>
-                    <p>Total Savings: <span id="total-savings">₹0</span></p>
+                    <p>Total Cost: <span id="total-cost">{total_cost}</span></p>
+                    <p>Total Savings: <span id="total-savings">{total_savings}</span></p>
                     <p id="budget-utilization"></p>
                 </div>
                 <div style="display: flex; justify-content: center; margin-top: 24px;">
