@@ -28,12 +28,18 @@ def query_vector_db(user_query, top_k=5):
 
 def build_prompt(similar_cases, user_input):
     cases_str = "\n---\n".join(
-        f"Complaint: {case['COMPLAINT_NARRATIVE']}\nTags: {case['COMPLAINT_CASE_CATEGORY_DRIVER']}\nResolution (if known): Unknown"
+        f"Complaint: {case['COMPLAINT_NARRATIVE']}\nTags: {case['COMPLAINT_CASE_CATEGORY_DRIVER']}\nAgent Notes: {case.get('ACTIVITY_NOTE', '')}\nActivity Details: {case.get('ACTIVITY_DETAILS', '')}\nResolution (if known): Unknown"
         for case in similar_cases
     )
     return f"""
-You are a banking complaint resolution assistant.
-Given the following similar past complaints:
+You are a customer complaint resolution expert specializing in credit card disputes. You are well-versed in:
+- The Credit Card Accountability Responsibility and Disclosure (CARD) Act of 2009
+- The Truth in Lending Act (TILA)
+- Federal regulations enforced by the Consumer Financial Protection Bureau (CFPB)
+
+Using the following real-world complaint cases, determine the most appropriate resolution for the user complaint provided at the end.
+Do not hallucinate or invent any facts. Use only what is present in the historical cases.
+
 {cases_str}
 
 Now answer this:
@@ -47,13 +53,14 @@ def build_tool_team_extraction_prompt(similar_cases):
         f"""
 Complaint Narrative: {case['COMPLAINT_NARRATIVE']}
 Case Tags: {case['COMPLAINT_CASE_CATEGORY_DRIVER']}
-Agent Notes: {case.get('COMPLAINT_COMMENT', '')}
-Resolution: {case.get('COMPLAINT_RESOLUTION_COMMENT', '')}"""
+Agent Notes: {case.get('ACTIVITY_NOTE', '')}
+Activity Details: {case.get('ACTIVITY_DETAILS', '')}"""
         for case in similar_cases
     )
 
     return f"""
-You are an expert analyst reviewing customer complaint cases in the banking industry.
+You are an expert analyst reviewing credit card complaint cases governed by federal laws such as the CARD Act of 2009 and the Truth in Lending Act (TILA). These cases are regulated by the Consumer Financial Protection Bureau (CFPB).
+
 Based strictly on the following past complaints, generate a comprehensive list of:
 1. Tools or platforms mentioned (e.g., document scanner, TSYS)
 2. Teams involved in resolution (e.g., CAO, Customer Service)
@@ -86,7 +93,7 @@ def answer_query(user_input):
     if user_input.strip().isdigit():
         for item in metadata:
             if item["COMPLAINT_CASE_ID"] == user_input.strip():
-                return f"Case ID: {item['COMPLAINT_CASE_ID']}\nNarrative: {item['COMPLAINT_NARRATIVE']}\nTags: {item['COMPLAINT_CASE_CATEGORY_DRIVER']}"
+                return f"Case ID: {item['COMPLAINT_CASE_ID']}\nNarrative: {item['COMPLAINT_NARRATIVE']}\nTags: {item['COMPLAINT_CASE_CATEGORY_DRIVER']}\nAgent Notes: {item.get('ACTIVITY_NOTE', '')}\nActivity Details: {item.get('ACTIVITY_DETAILS', '')}"
         return "Case ID not found."
     elif "tools" in user_input.lower() or "teams" in user_input.lower():
         similar = query_vector_db("tool and team references in complaint cases")
