@@ -2,13 +2,15 @@ import os
 import pandas as pd
 import json
 import glob
+import requests
 from tqdm import tqdm
+from bs4 import BeautifulSoup
 import faiss
 import numpy as np
-import requests
 
 VECTOR_DB_PATH = "./vector_store/faiss_index"
 CASE_DIR = "./case-summary/"
+PROCESS_KB_CSV = "./knowledge_base/process_articles.csv"
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
 
 # Step 1: Load and merge CSVs
@@ -17,7 +19,6 @@ def load_and_dedupe_cases():
     df_list = [pd.read_csv(f, dtype=str, keep_default_na=False) for f in all_files]
     full_df = pd.concat(df_list, ignore_index=True)
 
-    # Group by Complaint ID and select the most informative (longest field values)
     def merge_rows(group):
         merged = {}
         for col in group.columns:
@@ -60,7 +61,24 @@ def build_embedding_text(row):
     ]
     return "\n".join(fields)
 
-# Step 3: Use Ollama to generate embeddings
+# Step 3: Download and extract knowledge base articles
+def load_knowledge_base():
+    if not os.path.exists(PROCESS_KB_CSV):
+        return []
+    kb_df = pd.read_csv(PROCESS_KB_CSV)
+    kb_texts = []
+    for _, row in kb_df.iterrows():
+        description, url = row.get("Process Description", ""), row.get("link", "")
+        try:
+            response = requests.get(url, timeout=10)
+            soup = BeautifulSoup(response.text, "html.parser")
+            content = soup.get_text(separator=" ", strip=True)
+            kb_texts.append((f"Process: {description}\nContent: {content[:2000]}", url))
+        except Exception as e:
+            print(f"Failed to fetch {url}: {e}")
+    return kb_texts
+
+# Step 4: Use Ollama to generate embeddings
 def get_ollama_embedding(text):
     response = requests.post(
         OLLAMA_EMBED_URL,
@@ -69,8 +87,8 @@ def get_ollama_embedding(text):
     result = response.json()
     return np.array(result["embedding"], dtype=np.float32)
 
-# Step 4: Build vector store
-def build_vector_db(df):
+# Step 5: Build vector store
+def build_vector_db(df, kb_data):
     embeddings = []
     metadata = []
 
@@ -79,12 +97,20 @@ def build_vector_db(df):
         emb = get_ollama_embedding(text)
         embeddings.append(emb)
         metadata.append({
+            "type": "complaint",
             "COMPLAINT_CASE_ID": row.get("COMPLAINT_CASE_ID"),
             "PRODUCT_FAMILY_NAME": row.get("PRODUCT_FAMILY_NAME"),
             "COMPLAINT_CASE_CATEGORY_DRIVER": row.get("COMPLAINT_CASE_CATEGORY_DRIVER"),
-            "COMPLAINT_NARRATIVE": row.get("COMPLAINT_NARRATIVE"),
-            "ACTIVITY_NOTE": row.get("ACTIVITY_NOTE"),
-            "ACTIVITY_DETAILS": row.get("ACTIVITY_DETAILS")
+            "COMPLAINT_NARRATIVE": row.get("COMPLAINT_NARRATIVE")
+        })
+
+    for kb_text, url in kb_data:
+        emb = get_ollama_embedding(kb_text)
+        embeddings.append(emb)
+        metadata.append({
+            "type": "knowledge_base",
+            "source_url": url,
+            "description": kb_text[:100] + "..."
         })
 
     embeddings_np = np.vstack(embeddings).astype('float32')
@@ -99,7 +125,10 @@ if __name__ == "__main__":
     print("Loading and deduplicating complaints...")
     df = load_and_dedupe_cases()
     print(f"{len(df)} unique complaints loaded.")
+    print("Loading external knowledge base articles...")
+    kb_data = load_knowledge_base()
+    print(f"{len(kb_data)} articles loaded.")
     print("Generating embeddings via Ollama and saving to vector DB...")
-    build_vector_db(df)
+    build_vector_db(df, kb_data)
     print("Done.")
 
