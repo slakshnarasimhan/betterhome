@@ -42,6 +42,39 @@ Customer said: "{user_input}"
 What is the most likely resolution we should offer?
 """
 
+def build_tool_team_extraction_prompt(similar_cases):
+    cases_str = "\n---\n".join(
+        f"""
+Complaint Narrative: {case['COMPLAINT_NARRATIVE']}
+Case Tags: {case['COMPLAINT_CASE_CATEGORY_DRIVER']}
+Agent Notes: {case.get('COMPLAINT_COMMENT', '')}
+Resolution: {case.get('COMPLAINT_RESOLUTION_COMMENT', '')}"""
+        for case in similar_cases
+    )
+
+    return f"""
+You are an expert analyst reviewing customer complaint cases in the banking industry.
+Based strictly on the following past complaints, generate a comprehensive list of:
+1. Tools or platforms mentioned (e.g., document scanner, TSYS)
+2. Teams involved in resolution (e.g., CAO, Customer Service)
+
+Do not assume or add any tools/teams not found in the provided cases.
+Group the tools and teams in separate bullet-point lists. If none are found, say so.
+
+Here are the cases:
+{cases_str}
+
+Your output should look like:
+
+**Tools Used:**
+- Tool A
+- Tool B
+
+**Teams Involved:**
+- Team X
+- Team Y
+"""
+
 def query_llama(prompt):
     response = requests.post(
         OLLAMA_GEN_URL,
@@ -55,6 +88,10 @@ def answer_query(user_input):
             if item["COMPLAINT_CASE_ID"] == user_input.strip():
                 return f"Case ID: {item['COMPLAINT_CASE_ID']}\nNarrative: {item['COMPLAINT_NARRATIVE']}\nTags: {item['COMPLAINT_CASE_CATEGORY_DRIVER']}"
         return "Case ID not found."
+    elif "tools" in user_input.lower() or "teams" in user_input.lower():
+        similar = query_vector_db("tool and team references in complaint cases")
+        prompt = build_tool_team_extraction_prompt(similar)
+        return query_llama(prompt)
     else:
         similar = query_vector_db(user_input)
         prompt = build_prompt(similar, user_input)
@@ -62,7 +99,7 @@ def answer_query(user_input):
 
 if __name__ == "__main__":
     while True:
-        user_input = input("Enter case ID or hypothetical complaint (q to quit): ")
+        user_input = input("Enter case ID, hypothetical complaint, or ask about tools/teams (q to quit): ")
         if user_input.lower() == 'q':
             break
         print("\n--- RESPONSE ---")
