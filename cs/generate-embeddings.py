@@ -2,11 +2,10 @@ import os
 import pandas as pd
 import json
 import glob
-import requests
 from tqdm import tqdm
-from bs4 import BeautifulSoup
 import faiss
 import numpy as np
+from playwright.sync_api import sync_playwright
 
 COMPLAINT_INDEX_PATH = "./vector_store/complaints_index"
 KB_INDEX_PATH = "./vector_store/kb_index"
@@ -61,6 +60,21 @@ def build_complaint_text(row):
         f"Activity Details: {activity_details}"
     ])
 
+# Fetch rendered text with Playwright
+def fetch_rendered_text_with_playwright(url):
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(url, timeout=20000)
+            page.wait_for_load_state("networkidle")
+            text = page.inner_text("body")
+            browser.close()
+            return text.strip()
+    except Exception as e:
+        print(f"Failed to render {url}: {e}")
+        return ""
+
 # Load knowledge base articles
 def load_knowledge_base():
     if not os.path.exists(PROCESS_KB_CSV):
@@ -69,17 +83,14 @@ def load_knowledge_base():
     kb_texts = []
     for _, row in kb_df.iterrows():
         description, url = row.get("Process Description", ""), row.get("link", "")
-        try:
-            response = requests.get(url, timeout=10)
-            soup = BeautifulSoup(response.text, "html.parser")
-            content = soup.get_text(separator=" ", strip=True)
+        content = fetch_rendered_text_with_playwright(url)
+        if content:
             kb_texts.append((f"Process: {description}\nContent: {content[:2000]}", description, url))
-        except Exception as e:
-            print(f"Failed to fetch {url}: {e}")
     return kb_texts
 
 # Generate embeddings via Ollama
 def get_ollama_embedding(text):
+    import requests
     response = requests.post(
         OLLAMA_EMBED_URL,
         json={"model": "nomic-embed-text", "prompt": text}
