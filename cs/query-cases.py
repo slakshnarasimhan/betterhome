@@ -2,22 +2,28 @@ import faiss
 import json
 import numpy as np
 import requests
-from sentence_transformers import SentenceTransformer
 
 VECTOR_DB_PATH = "./vector_store/faiss_index"
-MODEL_NAME = "all-MiniLM-L6-v2"
-OLLAMA_URL = "http://localhost:11434/api/generate"
-
-model = SentenceTransformer(MODEL_NAME)
+OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
+OLLAMA_GEN_URL = "http://localhost:11434/api/generate"
 
 # Load vector index and metadata
 index = faiss.read_index(VECTOR_DB_PATH)
 with open(VECTOR_DB_PATH + ".meta.json", "r") as f:
     metadata = json.load(f)
 
+# Use Ollama to embed user query
+def get_ollama_embedding(text):
+    response = requests.post(
+        OLLAMA_EMBED_URL,
+        json={"model": "nomic-embed-text", "prompt": text}
+    )
+    result = response.json()
+    return np.array(result["embedding"], dtype=np.float32)
+
 def query_vector_db(user_query, top_k=5):
-    query_emb = model.encode(user_query, normalize_embeddings=True).astype('float32')
-    D, I = index.search(np.array([query_emb]), top_k)
+    query_emb = get_ollama_embedding(user_query).reshape(1, -1)
+    D, I = index.search(query_emb.astype('float32'), top_k)
     return [metadata[i] for i in I[0]]
 
 def build_prompt(similar_cases, user_input):
@@ -38,7 +44,7 @@ What is the most likely resolution we should offer?
 
 def query_llama(prompt):
     response = requests.post(
-        OLLAMA_URL,
+        OLLAMA_GEN_URL,
         json={"model": "llama3.2", "prompt": prompt, "stream": False}
     )
     return response.json().get("response", "No response from model.")
