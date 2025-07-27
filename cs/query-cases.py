@@ -1,3 +1,4 @@
+import streamlit as st
 import faiss
 import json
 import numpy as np
@@ -8,9 +9,12 @@ OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
 OLLAMA_GEN_URL = "http://localhost:11434/api/generate"
 
 # Load vector index and metadata
-index = faiss.read_index(VECTOR_DB_PATH)
-with open(VECTOR_DB_PATH + ".meta.json", "r") as f:
-    metadata = json.load(f)
+@st.cache_resource
+def load_index_and_metadata():
+    index = faiss.read_index(VECTOR_DB_PATH)
+    with open(VECTOR_DB_PATH + ".meta.json", "r") as f:
+        metadata = json.load(f)
+    return index, metadata
 
 # Use Ollama to embed user query
 def get_ollama_embedding(text):
@@ -21,7 +25,7 @@ def get_ollama_embedding(text):
     result = response.json()
     return np.array(result["embedding"], dtype=np.float32)
 
-def query_vector_db(user_query, top_k=5):
+def query_vector_db(index, metadata, user_query, top_k=5):
     query_emb = get_ollama_embedding(user_query).reshape(1, -1)
     D, I = index.search(query_emb.astype('float32'), top_k)
     return [metadata[i] for i in I[0]]
@@ -48,40 +52,6 @@ Customer said: "{user_input}"
 What is the most likely resolution we should offer?
 """
 
-def build_tool_team_extraction_prompt(similar_cases):
-    cases_str = "\n---\n".join(
-        f"""
-Complaint Narrative: {case['COMPLAINT_NARRATIVE']}
-Case Tags: {case['COMPLAINT_CASE_CATEGORY_DRIVER']}
-Agent Notes: {case.get('ACTIVITY_NOTE', '')}
-Activity Details: {case.get('ACTIVITY_DETAILS', '')}"""
-        for case in similar_cases
-    )
-
-    return f"""
-You are an expert analyst reviewing credit card complaint cases governed by federal laws such as the CARD Act of 2009 and the Truth in Lending Act (TILA). These cases are regulated by the Consumer Financial Protection Bureau (CFPB).
-
-Based strictly on the following past complaints, generate a comprehensive list of:
-1. Tools or platforms mentioned (e.g., document scanner, TSYS)
-2. Teams involved in resolution (e.g., CAO, Customer Service)
-
-Do not assume or add any tools/teams not found in the provided cases.
-Group the tools and teams in separate bullet-point lists. If none are found, say so.
-
-Here are the cases:
-{cases_str}
-
-Your output should look like:
-
-**Tools Used:**
-- Tool A
-- Tool B
-
-**Teams Involved:**
-- Team X
-- Team Y
-"""
-
 def query_llama(prompt):
     response = requests.post(
         OLLAMA_GEN_URL,
@@ -89,27 +59,38 @@ def query_llama(prompt):
     )
     return response.json().get("response", "No response from model.")
 
-def answer_query(user_input):
-    if user_input.strip().isdigit():
-        for item in metadata:
-            if item["COMPLAINT_CASE_ID"] == user_input.strip():
-                return f"Case ID: {item['COMPLAINT_CASE_ID']}\nNarrative: {item['COMPLAINT_NARRATIVE']}\nTags: {item['COMPLAINT_CASE_CATEGORY_DRIVER']}\nAgent Notes: {item.get('ACTIVITY_NOTE', '')}\nActivity Details: {item.get('ACTIVITY_DETAILS', '')}"
-        return "Case ID not found."
-    elif "tools" in user_input.lower() or "teams" in user_input.lower():
-        similar = query_vector_db("tool and team references in complaint cases")
-        prompt = build_tool_team_extraction_prompt(similar)
-        return query_llama(prompt)
-    else:
-        similar = query_vector_db(user_input)
-        prompt = build_prompt(similar, user_input)
-        return query_llama(prompt)
+# Streamlit App
+st.set_page_config(page_title="Credit Card Complaint Resolution Assistant")
+st.title("🔍 Credit Card Complaint Resolution Assistant")
 
-if __name__ == "__main__":
-    while True:
-        user_input = input("Enter case ID, hypothetical complaint, or ask about tools/teams (q to quit): ")
-        if user_input.lower() == 'q':
-            break
-        print("\n--- RESPONSE ---")
-        print(answer_query(user_input))
-        print("\n----------------\n")
+user_input = st.text_area("Enter a case ID or a hypothetical complaint:", height=150)
+
+if st.button("Analyze Complaint"):
+    if not user_input.strip():
+        st.warning("Please enter a valid input.")
+    else:
+        index, metadata = load_index_and_metadata()
+
+        if user_input.strip().isdigit():
+            found = False
+            for item in metadata:
+                if item["COMPLAINT_CASE_ID"] == user_input.strip():
+                    st.subheader("Case Summary")
+                    st.write(f"**Case ID:** {item['COMPLAINT_CASE_ID']}")
+                    st.write(f"**Narrative:** {item['COMPLAINT_NARRATIVE']}")
+                    st.write(f"**Tags:** {item['COMPLAINT_CASE_CATEGORY_DRIVER']}")
+                    st.write(f"**Agent Notes:** {item.get('ACTIVITY_NOTE', '')}")
+                    st.write(f"**Activity Details:** {item.get('ACTIVITY_DETAILS', '')}")
+                    found = True
+                    break
+            if not found:
+                st.error("Case ID not found.")
+        else:
+            similar = query_vector_db(index, metadata, user_input)
+            prompt = build_prompt(similar, user_input)
+            st.subheader("Resolution Recommendation")
+            with st.spinner("Consulting LLaMA 3.2..."):
+                result = query_llama(prompt)
+            st.success("Resolution Generated")
+            st.markdown(result)
 
