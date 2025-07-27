@@ -1,136 +1,135 @@
-import os
-import pandas as pd
-import json
-import glob
-from tqdm import tqdm
 import faiss
+import json
 import numpy as np
-from playwright.sync_api import sync_playwright
+import pandas as pd
+import os
+import requests
+from tqdm import tqdm
+from collections import defaultdict
+import re
 
-COMPLAINT_INDEX_PATH = "./vector_store/complaints_index"
-KB_INDEX_PATH = "./vector_store/kb_index"
-CASE_DIR = "./case-summary/"
-PROCESS_KB_CSV = "./knowledge_base/process_articles.csv"
-OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
+VECTOR_DB_PATH = "./vector_store/faiss_index"
+META_PATH = VECTOR_DB_PATH + ".meta.json"
+CSV_DIR = "./case-summary"
 
-# Load and deduplicate complaints
-def load_and_dedupe_cases():
-    all_files = glob.glob(os.path.join(CASE_DIR, "*.csv"))
-    df_list = [pd.read_csv(f, dtype=str, keep_default_na=False) for f in all_files]
-    full_df = pd.concat(df_list, ignore_index=True)
+EMBED_URL = "http://localhost:11434/api/embeddings"
 
-    def merge_rows(group):
-        merged = {}
-        for col in group.columns:
-            non_nulls = group[col].dropna().astype(str)
-            merged[col] = non_nulls.iloc[non_nulls.str.len().argmax()] if not non_nulls.empty else None
-        return pd.Series(merged)
+ESCALATION_KEYWORDS = [
+    "fraud", "fraud team", "referred", "escalated", "escalation",
+    "investigation", "compliance", "security", "risk", "alert", "dispute"
+]
 
-    deduped = full_df.groupby("COMPLAINT_CASE_ID", as_index=False).apply(merge_rows).reset_index(drop=True)
-    return deduped
+TOOL_KEYWORDS = [
+    "TSYS", "OMEGA", "EPM", "CTL", "CTI", "CTR",
+    "Document Scanner", "Case Management Software"
+]
 
-# Build complaint text block
-def build_complaint_text(row):
-    def parse_json_field(field):
-        try:
-            parsed = json.loads(field)
-            if isinstance(parsed, dict):
-                return "; ".join(f"{k}: {v}" for k, v in parsed.items())
-            elif isinstance(parsed, list):
-                return ", ".join(map(str, parsed))
-            else:
-                return str(parsed)
-        except:
-            return field
+TEAM_KEYWORDS = [
+    "CAO", "Customer Service", "Operations", "CTI", "CTR", "Research Team"
+]
 
-    agent_note = parse_json_field(row.get('ACTIVITY_NOTE', ''))
-    activity_details = parse_json_field(row.get('ACTIVITY_DETAILS', ''))
-
-    return "\n".join([
-        f"Complaint ID: {row.get('COMPLAINT_CASE_ID', '')}",
-        f"Product: {row.get('PRODUCT_FAMILY_NAME', '')}",
-        f"Main Issue: {row.get('COMPLAINT_CASE_CATEGORY_DRIVER', '')}",
-        f"Sub Issue: {row.get('COMPLAINT_CASE_CATEGORY_SUBDRIVER', '')}",
-        f"Customer Narrative: {row.get('COMPLAINT_NARRATIVE', '')}",
-        f"Agent Summary: {row.get('COMPLAINT_COMMENT', '')}",
-        f"Agent Resolution: {row.get('COMPLAINT_RESOLUTION_COMMENT', '')}",
-        f"Resolution Type: {row.get('RESOLUTION_TYPE', '')}",
-        f"Complaint Tags: {row.get('COMPLAINT_TAG_SUMMARY', '')}",
-        f"Agent Notes: {agent_note}",
-        f"Activity Details: {activity_details}"
-    ])
-
-# Fetch rendered text with Playwright
-def fetch_rendered_text_with_playwright(url):
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            page.goto(url, timeout=20000)
-            page.wait_for_load_state("networkidle")
-            text = page.inner_text("body")
-            browser.close()
-            return text.strip()
-    except Exception as e:
-        print(f"Failed to render {url}: {e}")
-        return ""
-
-# Load knowledge base articles
-def load_knowledge_base():
-    if not os.path.exists(PROCESS_KB_CSV):
-        return []
-    kb_df = pd.read_csv(PROCESS_KB_CSV)
-    kb_texts = []
-    for _, row in kb_df.iterrows():
-        description, url = row.get("Process Description", ""), row.get("link", "")
-        content = fetch_rendered_text_with_playwright(url)
-        if content:
-            kb_texts.append((f"Process: {description}\nContent: {content[:2000]}", description, url))
-    return kb_texts
-
-# Generate embeddings via Ollama
-def get_ollama_embedding(text):
-    import requests
+# ------------------- Helper: Embedding -------------------
+def get_embedding(text):
     response = requests.post(
-        OLLAMA_EMBED_URL,
+        EMBED_URL,
         json={"model": "nomic-embed-text", "prompt": text}
     )
     result = response.json()
     return np.array(result["embedding"], dtype=np.float32)
 
-# Build FAISS index
-def build_faiss_index(embedding_texts, output_path):
-    embeddings = [get_ollama_embedding(text) for text, _ in embedding_texts]
-    index = faiss.IndexFlatL2(len(embeddings[0]))
-    index.add(np.vstack(embeddings).astype('float32'))
-    faiss.write_index(index, output_path + ".faiss")
-    with open(output_path + ".meta.json", "w") as f:
-        json.dump([meta for _, meta in embedding_texts], f)
+# ------------------- Helper: Flatten JSON -------------------
+def flatten_activity_json(value):
+    try:
+        obj = json.loads(value)
+        if isinstance(obj, list):
+            return " | ".join(json.dumps(x) for x in obj)
+        elif isinstance(obj, dict):
+            return json.dumps(obj)
+        return str(obj)
+    except Exception:
+        return str(value)
+
+# ------------------- Helper: Infer Escalations/Tools -------------------
+def infer_keywords(text, keywords):
+    found = set()
+    for keyword in keywords:
+        if re.search(rf"\\b{re.escape(keyword)}\\b", text, re.IGNORECASE):
+            found.add(keyword)
+    return ", ".join(sorted(found))
+
+# ------------------- Step 1: Load and clean all CSVs -------------------
+def load_all_complaints():
+    merged = defaultdict(dict)
+
+    for file in os.listdir(CSV_DIR):
+        if not file.endswith(".csv"): continue
+        df = pd.read_csv(os.path.join(CSV_DIR, file))
+        for _, row in df.iterrows():
+            case_id = str(row.get("COMPLAINT_CASE_ID", "")).strip()
+            if not case_id: continue
+
+            if case_id not in merged:
+                merged[case_id] = row.to_dict()
+            else:
+                for key, val in row.items():
+                    if pd.notnull(val) and not pd.isnull(merged[case_id].get(key)):
+                        merged[case_id][key] = val
+    return list(merged.values())
+
+# ------------------- Step 2: Build full context -------------------
+def build_context(entry):
+    note = flatten_activity_json(entry.get("ACTIVITY_NOTE", ""))
+    detail = flatten_activity_json(entry.get("ACTIVITY_DETAILS", ""))
+    all_text = f"{note} {detail}"
+    escalations = infer_keywords(all_text, ESCALATION_KEYWORDS)
+    tools = infer_keywords(all_text, TOOL_KEYWORDS)
+    teams = infer_keywords(all_text, TEAM_KEYWORDS)
+
+    return f"""
+Complaint ID: {entry.get('COMPLAINT_CASE_ID', '')}
+Category: {entry.get('COMPLAINT_CASE_CATEGORY_DRIVER', '')} > {entry.get('COMPLAINT_CASE_CATEGORY_SUBDRIVER', '')}
+Narrative: {entry.get('COMPLAINT_NARRATIVE', '')}
+Agent Notes: {note}
+Activity Details: {detail}
+Escalation Path: {escalations or 'None'}
+Tools Used: {tools or 'Not specified'}
+Teams Involved: {teams or 'Not captured'}
+Agent Resolution Comment: {entry.get('COMPLAINT_RESOLUTION_COMMENT', '')}
+Tags: {entry.get('COMPLAINT_TAG_SUMMARY', '')}
+Resolution Type: {entry.get('RESOLUTION_TYPE', '')}
+Product: {entry.get('PRODUCT_FAMILY_NAME', '')}
+    """
+
+# ------------------- Step 3: Embed and Save -------------------
+def main():
+    print("📥 Loading complaints...")
+    complaints = load_all_complaints()
+
+    print("🧠 Generating embeddings...")
+    embeddings = []
+    metadata = []
+    for entry in tqdm(complaints):
+        context = build_context(entry)
+        try:
+            emb = get_embedding(context)
+            embeddings.append(emb)
+            metadata.append(entry)
+        except Exception as e:
+            print(f"⚠️ Failed embedding for case {entry.get('COMPLAINT_CASE_ID')}: {e}")
+
+    print("💾 Saving FAISS index and metadata...")
+    dim = len(embeddings[0])
+    index = faiss.IndexFlatL2(dim)
+    index.add(np.array(embeddings).astype("float32"))
+
+    os.makedirs(os.path.dirname(VECTOR_DB_PATH), exist_ok=True)
+    faiss.write_index(index, VECTOR_DB_PATH)
+
+    with open(META_PATH, "w") as f:
+        json.dump(metadata, f)
+
+    print("✅ Embedding generation complete.")
 
 if __name__ == "__main__":
-    print("Processing complaint data...")
-    complaint_df = load_and_dedupe_cases()
-    complaint_data = [
-        (build_complaint_text(row), {
-            "COMPLAINT_CASE_ID": row.get("COMPLAINT_CASE_ID"),
-            "DRIVER": row.get("COMPLAINT_CASE_CATEGORY_DRIVER"),
-            "SUBDRIVER": row.get("COMPLAINT_CASE_CATEGORY_SUBDRIVER"),
-            "NARRATIVE": row.get("COMPLAINT_NARRATIVE")
-        })
-        for _, row in complaint_df.iterrows()
-    ]
-    print(f"{len(complaint_data)} complaints processed.")
-
-    print("Processing knowledge base articles...")
-    kb_data_raw = load_knowledge_base()
-    kb_data = [(text, {"description": desc, "source_url": url}) for text, desc, url in kb_data_raw]
-    print(f"{len(kb_data)} KB articles processed.")
-
-    print("Building complaint vector index...")
-    build_faiss_index(complaint_data, COMPLAINT_INDEX_PATH)
-
-    print("Building knowledge base vector index...")
-    build_faiss_index(kb_data, KB_INDEX_PATH)
-
-    print("✅ Index generation complete.")
+    main()
 
