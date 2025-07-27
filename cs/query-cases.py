@@ -1,3 +1,4 @@
+import streamlit as st
 import faiss
 import json
 import numpy as np
@@ -7,10 +8,12 @@ VECTOR_DB_PATH = "./vector_store/faiss_index"
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
 OLLAMA_GEN_URL = "http://localhost:11434/api/generate"
 
-# Load vector index and metadata
-index = faiss.read_index(VECTOR_DB_PATH)
-with open(VECTOR_DB_PATH + ".meta.json", "r") as f:
-    metadata = json.load(f)
+@st.cache_resource
+def load_index_and_metadata():
+    index = faiss.read_index(VECTOR_DB_PATH)
+    with open(VECTOR_DB_PATH + ".meta.json", "r") as f:
+        metadata = json.load(f)
+    return index, metadata
 
 # Use Ollama to embed user query
 def get_ollama_embedding(text):
@@ -21,7 +24,7 @@ def get_ollama_embedding(text):
     result = response.json()
     return np.array(result["embedding"], dtype=np.float32)
 
-def query_vector_db(user_query, top_k=8):
+def query_vector_db(index, metadata, user_query, top_k=8):
     query_emb = get_ollama_embedding(user_query).reshape(1, -1)
     D, I = index.search(query_emb.astype('float32'), top_k)
     return [metadata[i] for i in I[0]]
@@ -68,7 +71,7 @@ def query_llama(prompt):
     )
     return response.json().get("response", "No response from model.")
 
-def answer_query(user_input):
+def answer_query(index, metadata, user_input):
     user_input_lower = user_input.lower()
     if user_input.strip().isdigit():
         for item in metadata:
@@ -76,20 +79,27 @@ def answer_query(user_input):
                 return f"Case ID: {item['COMPLAINT_CASE_ID']}\nNarrative: {item['COMPLAINT_NARRATIVE']}\nTags: {item['COMPLAINT_CASE_CATEGORY_DRIVER']}\nAgent Notes: {item.get('ACTIVITY_NOTE', '')}\nActivity Details: {item.get('ACTIVITY_DETAILS', '')}"
         return "Case ID not found."
     elif "fraud" in user_input_lower and ("team" in user_input_lower or "escalate" in user_input_lower or "referred" in user_input_lower):
-        similar = query_vector_db("cases escalated to fraud team")
+        similar = query_vector_db(index, metadata, "cases escalated to fraud team")
         prompt = build_fraud_routing_prompt(similar, user_input)
         return query_llama(prompt)
     else:
-        similar = query_vector_db(user_input)
+        similar = query_vector_db(index, metadata, user_input)
         prompt = build_resolution_prompt(similar, user_input)
         return query_llama(prompt)
 
-if __name__ == "__main__":
-    while True:
-        user_input = input("Enter case ID or scenario-based complaint question (q to quit): ")
-        if user_input.lower() == 'q':
-            break
-        print("\n--- RESPONSE ---")
-        print(answer_query(user_input))
-        print("\n----------------\n")
+# Streamlit UI
+st.set_page_config(page_title="Credit Card Complaint Resolution Assistant")
+st.title("📋 Credit Card Complaint Resolution Assistant")
+
+index, metadata = load_index_and_metadata()
+
+user_input = st.text_area("Enter a case ID or scenario-based complaint question:", height=200)
+if st.button("Get Resolution"):
+    if not user_input.strip():
+        st.warning("Please enter a valid input.")
+    else:
+        with st.spinner("Analyzing..."):
+            response = answer_query(index, metadata, user_input)
+        st.markdown("### 🧠 Suggested Response")
+        st.markdown(response)
 
