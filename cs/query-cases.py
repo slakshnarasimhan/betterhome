@@ -3,90 +3,80 @@ import json
 import numpy as np
 import requests
 
-VECTOR_DB_PATH = "./vector_store/faiss_index"
+COMPLAINT_INDEX_PATH = "./vector_store/complaints_index"
+KB_INDEX_PATH = "./vector_store/kb_index"
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
 OLLAMA_GEN_URL = "http://localhost:11434/api/generate"
 
-# Load vector index and metadata
-index = faiss.read_index(VECTOR_DB_PATH)
-with open(VECTOR_DB_PATH + ".meta.json", "r") as f:
-    metadata = json.load(f)
+# Load indexes and metadata
+complaint_index = faiss.read_index(COMPLAINT_INDEX_PATH + ".faiss")
+kb_index = faiss.read_index(KB_INDEX_PATH + ".faiss")
+with open(COMPLAINT_INDEX_PATH + ".meta.json", "r") as f:
+    complaint_meta = json.load(f)
+with open(KB_INDEX_PATH + ".meta.json", "r") as f:
+    kb_meta = json.load(f)
 
-# Use Ollama to embed user query
+# Embedding
 def get_ollama_embedding(text):
     response = requests.post(
         OLLAMA_EMBED_URL,
         json={"model": "nomic-embed-text", "prompt": text}
     )
-    result = response.json()
-    return np.array(result["embedding"], dtype=np.float32)
+    return np.array(response.json()["embedding"], dtype=np.float32)
 
-def query_vector_db(user_query, top_k=10):
-    query_emb = get_ollama_embedding(user_query).reshape(1, -1)
-    D, I = index.search(query_emb.astype('float32'), top_k)
-    return [metadata[i] for i in I[0]]
+# Query FAISS index
+def query_index(index, meta, query_text, top_k=5):
+    emb = get_ollama_embedding(query_text).reshape(1, -1)
+    D, I = index.search(emb.astype('float32'), top_k)
+    return [meta[i] for i in I[0]], D[0]
 
-def build_mixed_prompt(results, user_input):
-    complaints = []
-    kb_articles = []
+# Build mixed prompt
+def build_answer_prompt(kb_hits, complaint_hits, query):
+    kb_part = "\n".join(f"Process KB: {hit.get('description')}\nSource: {hit.get('source_url')}" for hit in kb_hits)
+    complaint_part = "\n".join(f"Complaint Narrative: {hit.get('NARRATIVE')}\nCategory: {hit.get('DRIVER')} > {hit.get('SUBDRIVER')}" for hit in complaint_hits)
+    return f"""
+You are a regulatory-compliant customer support expert for credit card complaints.
+You are given two sets of information:
+1. Official process documentation
+2. Real complaint narratives with category context
 
-    for item in results:
-        if item.get("type") == "complaint":
-            complaints.append(
-                f"Complaint: {item.get('COMPLAINT_NARRATIVE', '')}\nTags: {item.get('COMPLAINT_CASE_CATEGORY_DRIVER', '')}\nAgent Notes: {item.get('ACTIVITY_NOTE', '')}\nActivity Details: {item.get('ACTIVITY_DETAILS', '')}"
-            )
-        elif item.get("type") == "knowledge_base":
-            kb_articles.append(
-                f"Source: {item.get('source_url', '')}\nSummary: {item.get('description', '')}"
-            )
+Based on both, answer the question below with a clear and concise summary.
 
-    prompt = f"""
-You are a banking domain expert and complaint resolution assistant. You are well-versed in:
-- The Credit Card Accountability Responsibility and Disclosure (CARD) Act of 2009
-- The Truth in Lending Act (TILA)
-- Federal regulations enforced by the Consumer Financial Protection Bureau (CFPB)
-
-You are provided with two sources of information:
-1. Historical complaint cases with agent actions.
-2. Official process documentation from a knowledge base.
-
-Answer the following question using evidence from both sources:
-"{user_input}"
+Question: {query}
 
 ---
-Relevant Complaints:
-{chr(10).join(complaints[:5])}
+Knowledge Articles:
+{kb_part if kb_part else 'None'}
 
----
-Relevant Knowledge Articles:
-{chr(10).join(kb_articles[:3])}
+Complaint Examples:
+{complaint_part if complaint_part else 'None'}
 
-Provide a clear, evidence-based summary.
+Answer:
 """
-    return prompt
 
-def query_llama(prompt):
-    response = requests.post(
-        OLLAMA_GEN_URL,
-        json={"model": "llama3.2", "prompt": prompt, "stream": False}
-    )
-    return response.json().get("response", "No response from model.")
-
+# Answer logic
 def answer_query(user_input):
-    user_input_lower = user_input.lower()
-    if user_input.strip().isdigit():
-        for item in metadata:
-            if item.get("COMPLAINT_CASE_ID") == user_input.strip():
-                return f"Case ID: {item['COMPLAINT_CASE_ID']}\nNarrative: {item['COMPLAINT_NARRATIVE']}\nTags: {item['COMPLAINT_CASE_CATEGORY_DRIVER']}\nAgent Notes: {item.get('ACTIVITY_NOTE', '')}\nActivity Details: {item.get('ACTIVITY_DETAILS', '')}"
+    user_input_clean = user_input.strip()
+    if user_input_clean.isdigit():
+        for item in complaint_meta:
+            if item.get("COMPLAINT_CASE_ID") == user_input_clean:
+                return f"Case ID: {item['COMPLAINT_CASE_ID']}\nNarrative: {item.get('NARRATIVE')}\nCategory: {item.get('DRIVER')} > {item.get('SUBDRIVER')}"
         return "Case ID not found."
     else:
-        results = query_vector_db(user_input)
-        prompt = build_mixed_prompt(results, user_input)
-        return query_llama(prompt)
+        kb_hits, kb_scores = query_index(kb_index, kb_meta, user_input, top_k=3)
+        if all(score > 1.5 for score in kb_scores):  # no good KB match
+            fallback_driver = user_input.split(" ")[0]
+            complaint_hits = [m for m in complaint_meta if fallback_driver.lower() in str(m.get("DRIVER", "")).lower()][:5]
+        else:
+            complaint_hits, _ = query_index(complaint_index, complaint_meta, user_input, top_k=5)
+
+        prompt = build_answer_prompt(kb_hits, complaint_hits, user_input)
+        response = requests.post(OLLAMA_GEN_URL, json={"model": "llama3.2", "prompt": prompt, "stream": False})
+        return response.json().get("response", "No response from model.")
 
 if __name__ == "__main__":
     while True:
-        user_input = input("Enter case ID or scenario-based complaint question (q to quit): ")
+        user_input = input("Enter case ID or question (q to quit): ")
         if user_input.lower() == 'q':
             break
         print("\n--- RESPONSE ---")

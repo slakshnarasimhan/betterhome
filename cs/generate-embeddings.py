@@ -8,12 +8,13 @@ from bs4 import BeautifulSoup
 import faiss
 import numpy as np
 
-VECTOR_DB_PATH = "./vector_store/faiss_index"
+COMPLAINT_INDEX_PATH = "./vector_store/complaints_index"
+KB_INDEX_PATH = "./vector_store/kb_index"
 CASE_DIR = "./case-summary/"
 PROCESS_KB_CSV = "./knowledge_base/process_articles.csv"
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
 
-# Step 1: Load and merge CSVs
+# Load and deduplicate complaints
 def load_and_dedupe_cases():
     all_files = glob.glob(os.path.join(CASE_DIR, "*.csv"))
     df_list = [pd.read_csv(f, dtype=str, keep_default_na=False) for f in all_files]
@@ -29,8 +30,8 @@ def load_and_dedupe_cases():
     deduped = full_df.groupby("COMPLAINT_CASE_ID", as_index=False).apply(merge_rows).reset_index(drop=True)
     return deduped
 
-# Step 2: Create embedding text block
-def build_embedding_text(row):
+# Build complaint text block
+def build_complaint_text(row):
     def parse_json_field(field):
         try:
             parsed = json.loads(field)
@@ -46,7 +47,7 @@ def build_embedding_text(row):
     agent_note = parse_json_field(row.get('ACTIVITY_NOTE', ''))
     activity_details = parse_json_field(row.get('ACTIVITY_DETAILS', ''))
 
-    fields = [
+    return "\n".join([
         f"Complaint ID: {row.get('COMPLAINT_CASE_ID', '')}",
         f"Product: {row.get('PRODUCT_FAMILY_NAME', '')}",
         f"Main Issue: {row.get('COMPLAINT_CASE_CATEGORY_DRIVER', '')}",
@@ -58,10 +59,9 @@ def build_embedding_text(row):
         f"Complaint Tags: {row.get('COMPLAINT_TAG_SUMMARY', '')}",
         f"Agent Notes: {agent_note}",
         f"Activity Details: {activity_details}"
-    ]
-    return "\n".join(fields)
+    ])
 
-# Step 3: Download and extract knowledge base articles
+# Load knowledge base articles
 def load_knowledge_base():
     if not os.path.exists(PROCESS_KB_CSV):
         return []
@@ -73,12 +73,12 @@ def load_knowledge_base():
             response = requests.get(url, timeout=10)
             soup = BeautifulSoup(response.text, "html.parser")
             content = soup.get_text(separator=" ", strip=True)
-            kb_texts.append((f"Process: {description}\nContent: {content[:2000]}", url))
+            kb_texts.append((f"Process: {description}\nContent: {content[:2000]}", description, url))
         except Exception as e:
             print(f"Failed to fetch {url}: {e}")
     return kb_texts
 
-# Step 4: Use Ollama to generate embeddings
+# Generate embeddings via Ollama
 def get_ollama_embedding(text):
     response = requests.post(
         OLLAMA_EMBED_URL,
@@ -87,48 +87,39 @@ def get_ollama_embedding(text):
     result = response.json()
     return np.array(result["embedding"], dtype=np.float32)
 
-# Step 5: Build vector store
-def build_vector_db(df, kb_data):
-    embeddings = []
-    metadata = []
-
-    for _, row in tqdm(df.iterrows(), total=len(df)):
-        text = build_embedding_text(row)
-        emb = get_ollama_embedding(text)
-        embeddings.append(emb)
-        metadata.append({
-            "type": "complaint",
-            "COMPLAINT_CASE_ID": row.get("COMPLAINT_CASE_ID"),
-            "PRODUCT_FAMILY_NAME": row.get("PRODUCT_FAMILY_NAME"),
-            "COMPLAINT_CASE_CATEGORY_DRIVER": row.get("COMPLAINT_CASE_CATEGORY_DRIVER"),
-            "COMPLAINT_NARRATIVE": row.get("COMPLAINT_NARRATIVE")
-        })
-
-    for kb_text, url in kb_data:
-        emb = get_ollama_embedding(kb_text)
-        embeddings.append(emb)
-        metadata.append({
-            "type": "knowledge_base",
-            "source_url": url,
-            "description": kb_text[:100] + "..."
-        })
-
-    embeddings_np = np.vstack(embeddings).astype('float32')
-    index = faiss.IndexFlatL2(embeddings_np.shape[1])
-    index.add(embeddings_np)
-
-    faiss.write_index(index, VECTOR_DB_PATH)
-    with open(VECTOR_DB_PATH + ".meta.json", "w") as f:
-        json.dump(metadata, f)
+# Build FAISS index
+def build_faiss_index(embedding_texts, output_path):
+    embeddings = [get_ollama_embedding(text) for text, _ in embedding_texts]
+    index = faiss.IndexFlatL2(len(embeddings[0]))
+    index.add(np.vstack(embeddings).astype('float32'))
+    faiss.write_index(index, output_path + ".faiss")
+    with open(output_path + ".meta.json", "w") as f:
+        json.dump([meta for _, meta in embedding_texts], f)
 
 if __name__ == "__main__":
-    print("Loading and deduplicating complaints...")
-    df = load_and_dedupe_cases()
-    print(f"{len(df)} unique complaints loaded.")
-    print("Loading external knowledge base articles...")
-    kb_data = load_knowledge_base()
-    print(f"{len(kb_data)} articles loaded.")
-    print("Generating embeddings via Ollama and saving to vector DB...")
-    build_vector_db(df, kb_data)
-    print("Done.")
+    print("Processing complaint data...")
+    complaint_df = load_and_dedupe_cases()
+    complaint_data = [
+        (build_complaint_text(row), {
+            "COMPLAINT_CASE_ID": row.get("COMPLAINT_CASE_ID"),
+            "DRIVER": row.get("COMPLAINT_CASE_CATEGORY_DRIVER"),
+            "SUBDRIVER": row.get("COMPLAINT_CASE_CATEGORY_SUBDRIVER"),
+            "NARRATIVE": row.get("COMPLAINT_NARRATIVE")
+        })
+        for _, row in complaint_df.iterrows()
+    ]
+    print(f"{len(complaint_data)} complaints processed.")
+
+    print("Processing knowledge base articles...")
+    kb_data_raw = load_knowledge_base()
+    kb_data = [(text, {"description": desc, "source_url": url}) for text, desc, url in kb_data_raw]
+    print(f"{len(kb_data)} KB articles processed.")
+
+    print("Building complaint vector index...")
+    build_faiss_index(complaint_data, COMPLAINT_INDEX_PATH)
+
+    print("Building knowledge base vector index...")
+    build_faiss_index(kb_data, KB_INDEX_PATH)
+
+    print("✅ Index generation complete.")
 
