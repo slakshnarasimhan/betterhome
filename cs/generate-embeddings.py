@@ -14,7 +14,7 @@ OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
 # Step 1: Load and merge CSVs
 def load_and_dedupe_cases():
     all_files = glob.glob(os.path.join(CASE_DIR, "*.csv"))
-    df_list = [pd.read_csv(f) for f in all_files]
+    df_list = [pd.read_csv(f, dtype=str, keep_default_na=False) for f in all_files]
     full_df = pd.concat(df_list, ignore_index=True)
 
     # Group by Complaint ID and select the most informative (longest field values)
@@ -30,6 +30,21 @@ def load_and_dedupe_cases():
 
 # Step 2: Create embedding text block
 def build_embedding_text(row):
+    def parse_json_field(field):
+        try:
+            parsed = json.loads(field)
+            if isinstance(parsed, dict):
+                return "; ".join(f"{k}: {v}" for k, v in parsed.items())
+            elif isinstance(parsed, list):
+                return ", ".join(map(str, parsed))
+            else:
+                return str(parsed)
+        except:
+            return field
+
+    agent_note = parse_json_field(row.get('ACTIVITY_NOTE', ''))
+    activity_details = parse_json_field(row.get('ACTIVITY_DETAILS', ''))
+
     fields = [
         f"Complaint ID: {row.get('COMPLAINT_CASE_ID', '')}",
         f"Product: {row.get('PRODUCT_FAMILY_NAME', '')}",
@@ -39,7 +54,9 @@ def build_embedding_text(row):
         f"Agent Summary: {row.get('COMPLAINT_COMMENT', '')}",
         f"Agent Resolution: {row.get('COMPLAINT_RESOLUTION_COMMENT', '')}",
         f"Resolution Type: {row.get('RESOLUTION_TYPE', '')}",
-        f"Complaint Tags: {row.get('COMPLAINT_TAG_SUMMARY', '')}"
+        f"Complaint Tags: {row.get('COMPLAINT_TAG_SUMMARY', '')}",
+        f"Agent Notes: {agent_note}",
+        f"Activity Details: {activity_details}"
     ]
     return "\n".join(fields)
 
@@ -65,7 +82,9 @@ def build_vector_db(df):
             "COMPLAINT_CASE_ID": row.get("COMPLAINT_CASE_ID"),
             "PRODUCT_FAMILY_NAME": row.get("PRODUCT_FAMILY_NAME"),
             "COMPLAINT_CASE_CATEGORY_DRIVER": row.get("COMPLAINT_CASE_CATEGORY_DRIVER"),
-            "COMPLAINT_NARRATIVE": row.get("COMPLAINT_NARRATIVE")
+            "COMPLAINT_NARRATIVE": row.get("COMPLAINT_NARRATIVE"),
+            "ACTIVITY_NOTE": row.get("ACTIVITY_NOTE"),
+            "ACTIVITY_DETAILS": row.get("ACTIVITY_DETAILS")
         })
 
     embeddings_np = np.vstack(embeddings).astype('float32')
