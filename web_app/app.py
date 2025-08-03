@@ -11,6 +11,10 @@ from s3_config import S3Handler
 from flask import Flask, request, jsonify
 from twilio.rest import Client
 import os
+from dotenv import load_dotenv
+
+
+load_dotenv() # Load environment variables from .env file
 
 betterhome = Flask(__name__)
 betterhome.config['DEBUG'] = True
@@ -45,9 +49,9 @@ if not os.path.exists(logo_dest_path):
             print(f"Copied logo from {source_path} to {logo_dest_path}")
             break
 # Twilio config (use env vars or config file)
-TWILIO_ACCOUNT_SID = os.environ['TWILIO_ACCOUNT_SID']
-TWILIO_AUTH_TOKEN = os.environ['TWILIO_AUTH_TOKEN']
-TWILIO_VERIFY_SERVICE_SID = os.environ['TWILIO_VERIFY_SERVICE_SID']
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_VERIFY_SERVICE_SID = os.getenv('TWILIO_VERIFY_SERVICE_SID')
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
