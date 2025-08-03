@@ -8,6 +8,9 @@ import shutil
 from werkzeug.utils import secure_filename
 from combined_script import analyze_user_requirements, generate_html_file
 from s3_config import S3Handler
+from flask import Flask, request, jsonify
+from twilio.rest import Client
+import os
 
 betterhome = Flask(__name__)
 betterhome.config['DEBUG'] = True
@@ -41,7 +44,41 @@ if not os.path.exists(logo_dest_path):
             shutil.copy(source_path, logo_dest_path)
             print(f"Copied logo from {source_path} to {logo_dest_path}")
             break
+# Twilio config (use env vars or config file)
+TWILIO_ACCOUNT_SID = os.environ['TWILIO_ACCOUNT_SID']
+TWILIO_AUTH_TOKEN = os.environ['TWILIO_AUTH_TOKEN']
+TWILIO_VERIFY_SERVICE_SID = os.environ['TWILIO_VERIFY_SERVICE_SID']
 
+client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+@betterhome.route('/send_otp', methods=['POST'])
+def send_otp():
+    data = request.get_json()
+    mobile = data.get('mobile')
+    try:
+        verification = client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID).verifications.create(
+            to=f'+91{mobile}', channel='sms'
+        )
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@betterhome.route('/verify_otp', methods=['POST'])
+def verify_otp():
+    data = request.get_json()
+    mobile = data.get('mobile')
+    otp = data.get('otp')
+    try:
+        verification_check = client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID).verification_checks.create(
+            to=f'+91{mobile}', code=otp
+        )
+        if verification_check.status == 'approved':
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    
 @betterhome.route('/')
 def index():
     response = make_response(render_template('index.html'))
