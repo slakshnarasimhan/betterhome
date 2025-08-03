@@ -929,7 +929,7 @@ document.getElementById('validateMobileBtn').addEventListener('click', function(
     });
     // Confirm OTP
 document.getElementById('confirmOtpBtn').addEventListener('click', function() {
-    alert('Confirm button clicked!');
+    
     const mobile = document.getElementById('mobile').value.trim();
     const otp = document.getElementById('otpInput').value.trim();
     fetch('/verify_otp', {
