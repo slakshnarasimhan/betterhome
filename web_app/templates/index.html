@@ -82,7 +82,11 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="mobile" class="form-label required">Mobile Number (Preferably on WhatsApp)</label>
-                        <input type="tel" class="form-control" id="mobile" name="mobile" required>
+                        <div class="input-group">
+                          <input type="tel" class="form-control" id="mobile" name="mobile" required>
+                          <button type="button" class="btn btn-outline-primary" id="validateMobileBtn" disabled>Validate</button>
+                        </div>
+                        <small id="mobileValidationMsg" class="text-danger"></small>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -858,6 +862,101 @@
                 });
             }
         });
-    </script>
+        // Enable validate button only for 10-digit numbers
+document.getElementById('mobile').addEventListener('input', function() {
+    const mobile = this.value.trim();
+    const validateBtn = document.getElementById('validateMobileBtn');
+    const msg = document.getElementById('mobileValidationMsg');
+    if (/^\d{10}$/.test(mobile)) {
+        validateBtn.disabled = false;
+        msg.textContent = '';
+    } else {
+        validateBtn.disabled = true;
+        msg.textContent = 'Enter a valid 10-digit mobile number';
+    }
+});
+
+// Send OTP on validate click
+document.getElementById('validateMobileBtn').addEventListener('click', function() {
+    const mobile = document.getElementById('mobile').value.trim();
+    fetch('/send_otp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mobile})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Show OTP modal
+            var otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
+            otpModal.show();
+        } else {
+            document.getElementById('mobileValidationMsg').textContent = data.error || 'Failed to send OTP';
+        }
+    });
+});
+
+
+</script>
+    <!-- OTP Modal -->
+<div class="modal fade" id="otpModal" tabindex="-1" aria-labelledby="otpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="otpModalLabel">Enter OTP</h5>
+        </div>
+        <div class="modal-body">
+          <input type="text" id="otpInput" class="form-control" maxlength="6" placeholder="Enter 6-digit OTP">
+          <div id="otpError" class="text-danger mt-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="confirmOtpBtn" class="btn btn-primary">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Disable all form fields except mobile and validate button initially
+    window.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input, select, textarea').forEach(field => {
+        // Don't disable mobile, validate button, or OTP modal fields
+        if (
+            field.id !== 'mobile' &&
+            field.id !== 'otpInput'
+        ) {
+            field.disabled = true;
+        }
+    });
+    // Confirm OTP
+document.getElementById('confirmOtpBtn').addEventListener('click', function() {
+    alert('Confirm button clicked!');
+    const mobile = document.getElementById('mobile').value.trim();
+    const otp = document.getElementById('otpInput').value.trim();
+    fetch('/verify_otp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mobile, otp})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Hide modal, enable rest of form
+            var otpModal = bootstrap.Modal.getInstance(document.getElementById('otpModal'));
+            otpModal.hide();
+            // Enable all form fields except mobile
+            document.querySelectorAll('input, select, textarea').forEach(field => {
+                if (field.id !== 'mobile') field.disabled = false;
+            });
+            document.getElementById('mobile').readOnly = true;
+            document.getElementById('validateMobileBtn').disabled = true;
+            document.getElementById('mobileValidationMsg').textContent = 'Mobile number verified!';
+        } else {
+            document.getElementById('otpError').textContent = data.error || 'Invalid OTP';
+        }
+    });
+});
+
+});
+  </script>
 </body>
 </html> 
