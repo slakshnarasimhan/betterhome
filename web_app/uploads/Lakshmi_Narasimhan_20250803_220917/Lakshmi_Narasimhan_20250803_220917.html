@@ -1,0 +1,2511 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BetterHome Product Recommendations</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <!-- Excel libraries with integrity checks and error handling -->
+        <script src="/static/xlsx.full.min.js"></script>
+        <script src="/static/FileSaver.min.js"></script>
+        <style>
+            /* Modern typography and base styles */
+            body {
+                font-family: 'Poppins', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                line-height: 1.6;
+                color: #333;
+                background-color: #f9f9f9;
+            }
+            
+            .container {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 30px;
+            }
+            
+            header {
+                text-align: center;
+                margin-bottom: 40px;
+                border-bottom: 1px solid #eaeaea;
+                padding-bottom: 30px;
+                background: linear-gradient(to right, #f8f9fa, #e9ecef);
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            }
+            
+            .logo {
+                max-width: 200px;
+                margin-bottom: 15px;
+                transition: transform 0.3s ease;
+            }
+            
+            .logo:hover {
+                transform: scale(1.05);
+            }
+            
+            /* Client information styling */
+            .client-info {
+                margin: 30px 0;
+                padding: 20px;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+            
+            @media (min-width: 768px) {
+                .client-info {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            
+            .client-info-item {
+                margin-bottom: 0;
+            }
+            
+            .client-info-label {
+                font-weight: 500;
+                color: #666;
+                margin-bottom: 4px;
+            }
+            
+            .client-info-value {
+                font-weight: 600;
+                color: #333;
+            }
+            
+            /* Product card and grid styling */
+            .products-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 30px;
+                margin-top: 20px;
+            }
+            
+            @media (min-width: 768px) {
+                .products-grid {
+                    grid-template-columns: repeat(3, 1fr);  // Change to 3 columns
+                }
+            }
+            
+            .product-card {
+                background: #fff;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+                transition: transform 0.3s ease;
+                position: relative;
+            }
+
+            .product-card.best-product {
+                border: 2px solid #3498db;  // Emphasize the best product
+                transform: scale(1.05);  // Slightly enlarge the best product
+            }
+            
+            .product-selection {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                z-index: 10;
+            }
+            
+            .product-checkbox {
+                width: 20px;
+                height: 20px;
+                cursor: pointer;
+            }
+            
+            .product-checkbox:checked + label {
+                font-weight: bold;
+                color: #3498db;
+            }
+            
+            .selection-label {
+                background: #3498db;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                margin-left: 5px;
+                display: none;
+            }
+            
+            .product-checkbox:checked ~ .selection-label {
+                display: inline-block;
+            }
+            
+            .product-image-container {
+                position: relative;
+                height: 200px;
+                overflow: hidden;
+            }
+            
+            .product-image {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                transition: transform 0.3s ease;
+            }
+            
+            .product-card:hover .product-image {
+                transform: scale(1.05);
+            }
+            
+            /* Badge styling */
+            .bestseller-badge, .recommended-badge {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 12px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            
+            .bestseller-badge {
+                background-color: #ff6b00;
+            }
+            
+            .recommended-badge {
+                background-color: #27ae60;
+            }
+            
+            .bestseller-badge i, .recommended-badge i {
+                font-size: 14px;
+            }
+            
+            /* Product details styling */
+            .product-details {
+                padding: 20px;
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .product-type {
+                font-size: 12px;
+                text-transform: uppercase;
+                color: #666;
+                margin-bottom: 5px;
+                letter-spacing: 1px;
+            }
+            
+            .product-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin: 0 0 15px;
+                color: #333;
+            }
+            
+            .price-container {
+                margin-bottom: 15px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: baseline;
+            }
+            
+            .current-price {
+                font-size: 20px;
+                font-weight: 700;
+                color: #e74c3c;
+            }
+            
+            .retail-price {
+                font-size: 16px;
+                color: #7f8c8d;
+                text-decoration: line-through;
+            }
+            
+            .savings {
+                font-size: 14px;
+                color: #27ae60;
+                font-weight: 500;
+            }
+            
+            .product-info-item {
+                margin-bottom: 10px;
+                font-size: 14px;
+                color: #555;
+            }
+            
+            .product-info-label {
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .reasons-list {
+                list-style: none;
+                padding: 0;
+                margin: 0 0 20px;
+            }
+            
+            .reasons-list li {
+                margin-bottom: 8px;
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .reasons-list i {
+                color: #3498db;
+                margin-top: 3px;
+            }
+            
+            .buy-button {
+                display: inline-block;
+                background-color: #3498db;
+                color: white;
+                padding: 10px 20px;
+                margin-top: auto;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: 500;
+                transition: background-color 0.3s;
+            }
+            
+            .buy-button:hover {
+                background-color: #2980b9;
+            }
+            
+            /* Budget summary styling */
+            .budget-summary {
+                margin: 30px 0;
+                padding: 25px;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            }
+            
+            .budget-summary h2 {
+                margin-top: 0;
+                margin-bottom: 20px;
+                color: #333;
+                font-weight: 600;
+            }
+            
+            .budget-info {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            
+            @media (min-width: 768px) {
+                .budget-info {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            
+            .budget-item {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-radius: 6px;
+            }
+            
+            .budget-item-label {
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 8px;
+            }
+            
+            .budget-item-value {
+                font-size: 18px;
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .budget-status {
+                padding: 12px 15px;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+            
+            .budget-status.good {
+                background-color: #d4edda;
+                color: #155724;
+            }
+            
+            .budget-status.warning {
+                background-color: #fff3cd;
+                color: #856404;
+            }
+            
+            /* Room styling */
+            .room-section {
+                margin: 40px 0;
+            }
+            
+            .room-section h2 {
+                font-size: 24px;
+                color: #2c3e50;
+                margin-bottom: 10px;
+                position: relative;
+                padding-bottom: 10px;
+            }
+            
+            .room-section h2:after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 50px;
+                height: 3px;
+                background-color: #3498db;
+            }
+            
+            .room-description {
+                font-size: 16px;
+                color: #555;
+                margin-bottom: 20px;
+                line-height: 1.5;
+            }
+            
+            /* Generate Recommendation Button */
+            .generate-container {
+                text-align: center;
+                margin: 40px 0;
+                padding: 20px;
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            
+            .generate-button {
+                display: inline-block;
+                background-color: #2ecc71;
+                color: white;
+                padding: 15px 30px;
+                border-radius: 6px;
+                font-size: 18px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: background-color 0.3s;
+                border: none;
+                cursor: pointer;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            
+            .generate-button:hover {
+                background-color: #27ae60;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+            }
+            
+            .generate-button:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            .download-button {
+                background-color: #3498db;
+                margin-left: 10px;
+            }
+            
+            .download-button:hover {
+                background-color: #2980b9;
+            }
+
+            /* Footer styling */
+            footer {
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 1px solid #eaeaea;
+                text-align: center;
+                color: #7f8c8d;
+                font-size: 14px;
+            }
+            
+            /* Print styles */
+            @media print {
+                body {
+                    background-color: white;
+                }
+                
+                .container {
+                    max-width: 100%;
+                    padding: 0;
+                    margin: 0;
+                }
+                
+                .generate-container,
+                .product-selection,
+                .buy-button {
+                    display: none !important;
+                }
+                
+                .product-card {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                    box-shadow: none;
+                    border: 1px solid #eaeaea;
+                }
+                
+                .room-section {
+                    page-break-before: always;
+                }
+                
+                .room-section:first-child {
+                    page-break-before: avoid;
+                }
+                
+                header {
+                    page-break-after: avoid;
+                }
+                
+                .client-info, .budget-summary {
+                    page-break-inside: avoid;
+                }
+            }
+            
+            /* Accordion styles */
+            .accordion {
+                background-color: #f1f1f1;
+                color: #333;
+                cursor: pointer;
+                padding: 18px;
+                width: 100%;
+                border: none;
+                text-align: left;
+                outline: none;
+                font-size: 18px;
+                transition: background-color 0.2s;
+                border-radius: 8px 8px 0 0;
+                margin-bottom: 0;
+            }
+            
+            .accordion.active, .accordion:hover {
+                background-color: #e2e6ea;
+            }
+            
+            .panel {
+                padding: 0 18px 18px 18px;
+                background-color: white;
+                display: none;
+                overflow: hidden;
+                border-radius: 0 0 8px 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            }
+            
+            .panel[style*='display: block'] {
+                display: block;
+            }
+
+            .features-toggle.open .arrow {
+                transform: rotate(90deg);
+            }
+        </style>
+        <script>
+            // Wait for the document to be fully loaded
+            window.addEventListener('load', function() {
+                console.log('Document fully loaded');
+                
+                // Debug helper to check if elements exist
+                function checkElement(id) {
+                    const element = document.getElementById(id);
+                    console.log(`Element ${id} exists: ${!!element}`);
+                    return element;
+                }
+                // Ensure only one product per category can be selected
+                const setupCategorySelections = () => {
+                    const categories = {};
+                    const processedProducts = new Set(); // To prevent duplicate handling of products
+                    
+                    // Group checkboxes by category
+                    document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+                        const category = checkbox.getAttribute('data-category');
+                        const room = checkbox.getAttribute('data-room');
+                        const productId = checkbox.getAttribute('data-product-id');
+                        const key = `${room}-${category}`;
+                        
+                        // Skip if already processed (for dupicate products)
+                        if (processedProducts.has(productId)) {
+                            return;
+                        }
+                        processedProducts.add(productId);
+                        
+                        if (!categories[key]) {
+                            categories[key] = [];
+                        }
+                        categories[key].push(checkbox);
+                        
+                        // Add change listener
+                        checkbox.addEventListener('change', function() {
+                            const isChecked = this.checked;
+                            
+                            // Update the 'selected' class for this product's card
+                            const productCard = this.closest('.product-card');
+                            if (isChecked) {
+                                productCard.classList.add('selected');
+                                
+                                // Uncheck other checkboxes in the same category (maintain single selection per category)
+                                categories[key].forEach(cb => {
+                                    if (cb !== this) {
+                                        cb.checked = false;
+                                        cb.closest('.product-card').classList.remove('selected');
+                                    }
+                                });
+                            } else {
+                                productCard.classList.remove('selected');
+                            }
+                        });
+                    });
+                };
+                
+                // Handle generate final recommendation
+                const setupGenerateButton = () => {
+                    console.log('Setting up generate button');
+                    const generateButton = checkElement('generate-final');
+                    if (!generateButton) {
+                        console.error('Generate button not found in the DOM');
+                        return;
+                    }
+                    
+                    // Automatically run initial selection for best products
+                    // This ensures initial visual state matches pre-selected products
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        const productCard = checkbox.closest('.product-card');
+                        if (productCard) {
+                            productCard.classList.add('selected');
+                        }
+                    });
+                    
+                    generateButton.addEventListener('click', function(e) {
+                        console.log('Generate button clicked');
+                        e.preventDefault();
+                        
+                        // Collect all selected products
+                        const selectedProducts = [];
+                        document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                            const productId = checkbox.getAttribute('data-product-id');
+                            const room = checkbox.getAttribute('data-room');
+                            const category = checkbox.getAttribute('data-category');
+                            const brand = checkbox.getAttribute('data-brand');
+                            const model = checkbox.getAttribute('data-model');
+                            const price = checkbox.getAttribute('data-price');
+                            const image = checkbox.getAttribute('data-image');
+                            
+                            selectedProducts.push({
+                                id: productId,
+                                room: room,
+                                category: category,
+                                brand: brand,
+                                model: model,
+                                price: price,
+                                image: image
+                            });
+                        });
+                        
+                        if (selectedProducts.length === 0) {
+                            alert("Please select at least one product before generating the final recommendation.");
+                            return;
+                        }
+                        
+                        // Store selected products in local storage
+                        localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+                        
+                        // Calculate total price
+                        const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
+                        localStorage.setItem('totalPrice', totalPrice);
+                        
+                        // Hide recommendation page and show final page
+                        document.querySelector('.container').style.display = 'none';
+                        const finalPage = document.getElementById('final-recommendation-page');
+                        finalPage.style.display = 'block';
+                        
+                        // Populate selected products
+                        displayFinalRecommendation(selectedProducts, totalPrice);
+                    });
+                    
+                    // Function to display final recommendation
+                    function displayFinalRecommendation(products, totalPrice) {
+                        const container = document.getElementById('selected-products-container');
+                        container.innerHTML = '';
+                        
+                        // Group products by room
+                        const roomProducts = {};
+                        products.forEach(product => {
+                            if (!roomProducts[product.room]) {
+                                roomProducts[product.room] = [];
+                            }
+                            roomProducts[product.room].push(product);
+                        });
+                        
+                        // Create room sections
+                        for (const [room, roomItems] of Object.entries(roomProducts)) {
+                            const roomTitle = room.replace('_', ' ').toUpperCase();
+                            const roomSection = document.createElement('div');
+                            roomSection.className = 'room-section';
+                            roomSection.innerHTML = `<h2>${roomTitle}</h2>`;
+                            
+                            // Create product grid
+                            const productGrid = document.createElement('div');
+                            productGrid.className = 'products-grid';
+                            
+                            // Add products
+                            roomItems.forEach(product => {
+                                const productCard = document.createElement('div');
+                                productCard.className = 'product-card';
+                                
+                                const categoryTitle = product.category.replace('_', ' ').toUpperCase();
+                                const price = parseFloat(product.price).toLocaleString('en-IN', {
+                                    style: 'currency',
+                                    currency: 'INR',
+                                    maximumFractionDigits: 2
+                                });
+                                
+                                productCard.innerHTML = `
+                                    <div class="product-image-container">
+                                        <img class="product-image" src="${product.image || 'https://via.placeholder.com/300x300?text=No+Image+Available'}" alt="${product.brand} ${product.model}">
+                                    </div>
+                                    <div class="product-details">
+                                        <span class="product-type">${categoryTitle}</span>
+                                        <h3 class="product-title">${product.brand} ${product.model}</h3>
+                                        <div class="price-container">
+                                            <span class="current-price">${price}</span>
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                productGrid.appendChild(productCard);
+                            });
+                            
+                            roomSection.appendChild(productGrid);
+                            container.appendChild(roomSection);
+                        }
+                        
+                        // Update budget information
+                        const totalElement = document.getElementById('final-total-cost');
+                        totalElement.textContent = totalPrice.toLocaleString('en-IN', {
+                            style: 'currency',
+                            currency: 'INR',
+                            maximumFractionDigits: 2
+                        });
+                        
+                        // Calculate budget utilization
+                        const budget = parseFloat(totalElement.nextElementSibling.nextElementSibling.textContent.replace(/[^0-9.]/g, ''));
+                        const utilization = (totalPrice / budget) * 100;
+                        document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
+                        
+                        // Update budget status
+                        const budgetStatus = document.getElementById('final-budget-status');
+                        if (utilization > 100) {
+                            budgetStatus.className = 'budget-status warning';
+                            budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
+                        }
+                    }
+                };
+                
+                // Function to export to Excel
+                const setupExportButton = () => {
+                    console.log('Setting up export button');
+                    const exportButton = checkElement('export-excel');
+                    if (!exportButton) {
+                        console.error('Export button not found in the DOM');
+                        return;
+                    }
+                    
+                    exportButton.addEventListener('click', function() {
+                        console.log('Export button clicked');
+                        const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+                        if (selectedProducts.length === 0) {
+                            alert('Please select at least one product first');
+                            return;
+                        }
+                        
+                        // Prepare data for Excel
+                        const data = [
+                            ['Room', 'Category', 'Brand', 'Model', 'Price']
+                        ];
+                        
+                        selectedProducts.forEach(product => {
+                            data.push([
+                                product.room.replace('_', ' ').toUpperCase(),
+                                product.category.replace('_', ' ').toUpperCase(),
+                                product.brand,
+                                product.model,
+                                product.price
+                            ]);
+                        });
+                        
+                        // Add total row
+                        const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
+                        data.push(['', '', '', 'TOTAL', totalPrice.toFixed(2)]);
+                        
+                        try {
+                            console.log('Creating Excel file with data:', data);
+                            
+                            // Check if XLSX is available
+                            if (typeof XLSX === 'undefined') {
+                                console.error('XLSX library not loaded');
+                                alert('Excel export library not loaded. Please check your internet connection.');
+                                return;
+                            }
+                            
+                            // Create worksheet
+                            const ws = XLSX.utils.aoa_to_sheet(data);
+                            
+                            // Create workbook
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
+                            
+                            // Save file
+                            XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                            console.log('Excel file created successfully');
+                        } catch (error) {
+                            console.error('Error creating Excel file:', error);
+                            alert('Failed to create Excel file. Error: ' + error.message);
+                        }
+                    });
+                };
+                
+                // Setup the download button for final recommendation
+                const setupFinalDownloadButton = () => {
+                    console.log('Setting up final download button');
+                    const downloadButton = checkElement('download-final-excel');
+                    if (!downloadButton) {
+                        console.error('Final download button not found in the DOM');
+                        return;
+                    }
+                    
+                    downloadButton.addEventListener('click', function() {
+                        console.log('Download final button clicked');
+                        const selectedProducts = [];
+                        
+                        // Collect all products from the selected-products-container
+                        const roomSections = document.querySelectorAll('#selected-products-container .room-section');
+                        roomSections.forEach(section => {
+                            const roomName = section.querySelector('h2').textContent;
+                            const productCards = section.querySelectorAll('.product-card');
+                            
+                            productCards.forEach(card => {
+                                const category = card.querySelector('.product-type').textContent;
+                                const title = card.querySelector('.product-title').textContent;
+                                const price = card.querySelector('.current-price').textContent;
+                                
+                                // Split title into brand and model - assumes format "Brand Model"
+                                const titleParts = title.split(' ');
+                                const brand = titleParts[0];
+                                const model = titleParts.slice(1).join(' ');
+                                
+                                selectedProducts.push({
+                                    room: roomName,
+                                    category: category,
+                                    brand: brand,
+                                    model: model,
+                                    price: price.replace(/[^0-9.]/g, '') // Remove currency symbols
+                                });
+                            });
+                        });
+                        
+                        // Prepare data for Excel
+                        const data = [
+                            ['Room', 'Category', 'Brand', 'Model', 'Price']
+                        ];
+                        
+                        selectedProducts.forEach(product => {
+                            data.push([
+                                product.room,
+                                product.category,
+                                product.brand,
+                                product.model,
+                                product.price
+                            ]);
+                        });
+                        
+                        // Add total price
+                        const totalElement = document.getElementById('final-total-cost');
+                        const totalPrice = totalElement.textContent.replace(/[^0-9.]/g, '');
+                        data.push(['', '', '', 'TOTAL', totalPrice]);
+                        
+                        // Add client information
+                        data.push([]);
+                        data.push(['Client Information']);
+                        const clientInfoItems = document.querySelectorAll('.client-info .client-info-item');
+                        clientInfoItems.forEach(item => {
+                            const label = item.querySelector('.client-info-label').textContent;
+                            const value = item.querySelector('.client-info-value').textContent;
+                            data.push([label, value]);
+                        });
+                        
+                        // Create worksheet
+                        const ws = XLSX.utils.aoa_to_sheet(data);
+                        
+                        // Create workbook
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
+                        
+                        // Save file
+                        XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                    });
+                    
+                    // Setup print button
+                    console.log('Setting up print button');
+                    const printButton = checkElement('print-final');
+                    if (!printButton) {
+                        console.error('Print button not found in the DOM');
+                        return;
+                    }
+                    
+                    printButton.addEventListener('click', function() {
+                        console.log('Print button clicked');
+                        window.print();
+                    });
+                };
+                
+                // Setup accordion for room sections
+                // Use a dedicated function for the accordion that will be called when DOM is ready
+                function setupAccordion() {
+                    console.log('Setting up accordion functionality');
+                    const accordionButtons = document.querySelectorAll('.accordion');
+                    console.log('Found accordion buttons:', accordionButtons.length);
+                    
+                    accordionButtons.forEach((btn, idx) => {
+                        // Mark the first one as active
+                        if (idx === 0) btn.classList.add('active');
+                        
+                        btn.onclick = function() {
+                            console.log('Accordion button clicked');
+                            const panel = this.nextElementSibling;
+                            console.log('Panel element:', panel);
+                            const isOpen = panel.style.display === 'block';
+                            console.log('Is panel open?', isOpen);
+                            
+                            // Close all panels and remove active class
+                            document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+                            document.querySelectorAll('.accordion').forEach(b => b.classList.remove('active'));
+                            
+                            // If it wasn't open before, open it now
+                            if (!isOpen) {
+                                panel.style.display = 'block';
+                                this.classList.add('active');
+                                console.log('Panel opened');
+                            }
+                        };
+                    });
+                }
+                
+                // Add setupAccordion to window load and also call it directly
+                window.addEventListener('DOMContentLoaded', setupAccordion);
+                window.addEventListener('load', setupAccordion);
+
+                // Initialize all event handlers
+                function initializeEventHandlers() {
+                    console.log('Initializing all event handlers');
+                    
+                    // Add a small delay to ensure DOM is fully processed
+                    setTimeout(() => {
+                        try {
+                            setupCategorySelections();
+                            setupGenerateButton();
+                            setupExportButton();
+                            setupFinalDownloadButton();
+                            console.log('All event handlers initialized successfully');
+                        } catch (error) {
+                            console.error('Error initializing event handlers:', error);
+                        }
+                    }, 500);
+                }
+                
+                // Call initialization
+                initializeEventHandlers();
+            });
+        </script>
+    </head>
+    <body>
+        <div class="container">
+    
+            <div class="client-info">
+                <div class="client-info-item">
+                    <div class="client-info-label">Name</div>
+                    <div class="client-info-value">Lakshmi Narasimhan </div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Mobile</div>
+                    <div class="client-info-value">9845731544</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Email</div>
+                    <div class="client-info-value">slakshnarasimhan@gmail.com</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Address</div>
+                    <div class="client-info-value">112, Prestige Silver Oak, ECC Rd, Whitefield </div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Total Budget</div>
+                    <div class="client-info-value">₹600,000.00</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Family Size</div>
+                    <div class="client-info-value">6 members</div>
+                </div>
+            </div>
+    
+            <div class="budget-summary">
+                <h2>Budget Analysis</h2>
+                <div class="budget-info">
+                    <div class="budget-item">
+                        <div class="budget-item-label">Total Recommended Products</div>
+                        <div class="budget-item-value">₹320,573.00</div>
+                    </div>
+                    <div class="budget-item">
+                        <div class="budget-item-label">Your Budget</div>
+                        <div class="budget-item-value">₹600,000.00</div>
+                    </div>
+                    <div class="budget-item">
+                        <div class="budget-item-label">Budget Utilization</div>
+                        <div class="budget-item-value">53.4%</div>
+                    </div>
+                </div>
+                <div class="budget-item">
+                    <div class="budget-item-label">Total Savings</div>
+                    <div class="budget-item-value">₹0</div>
+                </div>
+    
+                <div class="budget-status good">
+                    ✓ Your selected products fit comfortably within your budget!
+                </div>
+        
+            </div>
+    
+            <div class="room-section">
+                <button class='accordion' type='button'>Hall</button>
+                <div class='panel' style='display: block;'>
+                            <div class="room-description">A welcoming space of approximately 200.0 sq ft with 1 fan(s) and an AC (1.5 Ton recommended), complemented by a White color theme.</div>
+<h4 style="margin-top:20px;">Ac</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="hall-ac-0"
+                                class="product-checkbox"
+                                name="hall-ac"
+                                data-product-id="hall-ac-0"
+                                data-room="hall"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser"
+                                data-price="32792.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210"
+                                checked>
+                            <label for="hall-ac-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹32,792</span>
+                                <span class="retail-price">₹40,990</span>
+                                <span class="savings">Save ₹8,198</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="hall-ac-1"
+                                class="product-checkbox"
+                                name="hall-ac"
+                                data-product-id="hall-ac-1"
+                                data-room="hall"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser"
+                                data-price="33592.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709"
+                                >
+                            <label for="hall-ac-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹33,592</span>
+                                <span class="retail-price">₹41,990</span>
+                                <span class="savings">Save ₹8,398</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="hall-ac-2"
+                                class="product-checkbox"
+                                name="hall-ac"
+                                data-product-id="hall-ac-2"
+                                data-room="hall"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser"
+                                data-price="38392.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549"
+                                >
+                            <label for="hall-ac-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549" alt="Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹38,392</span>
+                                <span class="retail-price">₹47,990</span>
+                                <span class="savings">Save ₹9,598</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Fans</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="hall-fans-0"
+                                class="product-checkbox"
+                                name="hall-fans"
+                                data-product-id="hall-fans-0"
+                                data-room="hall"
+                                data-category="fans"
+                                data-brand="Superfan"
+                                data-model="Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm (48" inches)"
+                                data-price="0.0"
+                                data-image="https://via.placeholder.com/300x300?text=No+Image+Available"
+                                checked>
+                            <label for="hall-fans-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="#" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Superfan Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm (48" inches)">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Fans</span>
+                            <h3 class="product-title">Superfan Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm (48" inches)</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹0</span>
+                                <span class="retail-price">₹0</span>
+                                <span class="savings">Save ₹0</span>
+                            </div>
+                            <div class="product-info-item">No description available</div>
+                            <a href="#" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="hall-fans-1"
+                                class="product-checkbox"
+                                name="hall-fans"
+                                data-product-id="hall-fans-1"
+                                data-room="hall"
+                                data-category="fans"
+                                data-brand="Superfan"
+                                data-model="Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm (48" inches)"
+                                data-price="0.0"
+                                data-image="https://via.placeholder.com/300x300?text=No+Image+Available"
+                                >
+                            <label for="hall-fans-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="#" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://via.placeholder.com/300x300?text=No+Image+Available" alt="Superfan Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm (48" inches)">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Fans</span>
+                            <h3 class="product-title">Superfan Superfan Super myQ Smart BLDC Fan with 5 Years Warranty - 120 cm (48" inches)</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹0</span>
+                                <span class="retail-price">₹0</span>
+                                <span class="savings">Save ₹0</span>
+                            </div>
+                            <div class="product-info-item">No description available</div>
+                            <a href="#" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Kitchen</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">A functional kitchen of 100.0 sq ft with a 60 cm chimney, standard with 3 burners, and a small fan.</div>
+<h4 style="margin-top:20px;">Chimney</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-chimney-0"
+                                class="product-checkbox"
+                                name="kitchen-chimney"
+                                data-product-id="kitchen-chimney-0"
+                                data-room="kitchen"
+                                data-category="chimney"
+                                data-brand="Bosch"
+                                data-model="Bosch Undercabinet Chimney 60 CM - DHU636CQI - Series 2 - Built-Under Cooker Hood - Black"
+                                data-price="11880.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschUndercabinetChimney60CM-DHU636CQI-Series2-Built-UnderCookerHood-Black-Frontview.webp?v=1733327886"
+                                checked>
+                            <label for="kitchen-chimney-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/bosch-undercabinet-chimney-60-cm-dhu636cqi-series-2-built-under-cooker-hood-black" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschUndercabinetChimney60CM-DHU636CQI-Series2-Built-UnderCookerHood-Black-Frontview.webp?v=1733327886" alt="Bosch Bosch Undercabinet Chimney 60 CM - DHU636CQI - Series 2 - Built-Under Cooker Hood - Black">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Chimney</span>
+                            <h3 class="product-title">Bosch Bosch Undercabinet Chimney 60 CM - DHU636CQI - Series 2 - Built-Under Cooker Hood - Black</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹11,880</span>
+                                <span class="retail-price">₹13,200</span>
+                                <span class="savings">Save ₹1,320</span>
+                            </div>
+                            <div class="product-info-item">Elevate your kitchen with this sleek 60 cm built-in chimney, offering versatile installation options and a convertible operating mode. Enjoy efficient smoke extraction and a modern aesthetic, making it the perfect choice for a stylish and functional cooking space.</div>
+                            <a href="https://betterhomeapp.com/products/bosch-undercabinet-chimney-60-cm-dhu636cqi-series-2-built-under-cooker-hood-black" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-chimney-1"
+                                class="product-checkbox"
+                                name="kitchen-chimney"
+                                data-product-id="kitchen-chimney-1"
+                                data-room="kitchen"
+                                data-category="chimney"
+                                data-brand="Faber"
+                                data-model="Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney"
+                                data-price="15290.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Faber_Hood_Sunny_IN_HC_SC_FL_LG_60_Auto_Clean_Filterless_Chimney-Full_View_3.webp?v=1746450177"
+                                >
+                            <label for="kitchen-chimney-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Faber_Hood_Sunny_IN_HC_SC_FL_LG_60_Auto_Clean_Filterless_Chimney-Full_View_3.webp?v=1746450177" alt="Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Chimney</span>
+                            <h3 class="product-title">Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹15,290</span>
+                                <span class="retail-price">₹26,990</span>
+                                <span class="savings">Save ₹11,700</span>
+                            </div>
+                            <div class="product-info-item">Elevate your kitchen with this sleek 60 cm wall-mounted chimney boasting a powerful 1200 m3/hr suction capacity and convenient auto clean function. Say goodbye to filter replacements with its innovative filterless design, making this chimney a hassle-free and efficient choice for your cooking needs.</div>
+                            <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-chimney-2"
+                                class="product-checkbox"
+                                name="kitchen-chimney"
+                                data-product-id="kitchen-chimney-2"
+                                data-room="kitchen"
+                                data-category="chimney"
+                                data-brand="Faber"
+                                data-model="Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney"
+                                data-price="15290.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Faber_Hood_Sunny_IN_HC_SC_FL_LG_60_Auto_Clean_Filterless_Chimney-Full_View_1.webp?v=1746450177"
+                                >
+                            <label for="kitchen-chimney-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Faber_Hood_Sunny_IN_HC_SC_FL_LG_60_Auto_Clean_Filterless_Chimney-Full_View_1.webp?v=1746450177" alt="Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Chimney</span>
+                            <h3 class="product-title">Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹15,290</span>
+                                <span class="retail-price">₹26,990</span>
+                                <span class="savings">Save ₹11,700</span>
+                            </div>
+                            <div class="product-info-item">Effortlessly keep your kitchen smoke-free with this sleek 60 cm wall-mounted chimney that boasts a powerful 1200 m3/hr suction capacity and convenient auto clean function. With its filterless design and efficient performance, this chimney offers a hassle-free solution for maintaining a clean and odor-free cooking space.</div>
+                            <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Dishwasher</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-dishwasher-0"
+                                class="product-checkbox"
+                                name="kitchen-dishwasher"
+                                data-product-id="kitchen-dishwasher-0"
+                                data-room="kitchen"
+                                data-category="dishwasher"
+                                data-brand="Bosch"
+                                data-model="Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS66GW01I - White"
+                                data-price="40491.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch-Free-Standing-Dishwasher-13Place-Settings-Series6-60Cm-SMS66GW01I-White-FrontView.webp?v=1736572280"
+                                checked>
+                            <label for="kitchen-dishwasher-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/bosch-free-standing-dishwasher-13-place-settings-series-6-60-cm-sms66gw01i-white" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch-Free-Standing-Dishwasher-13Place-Settings-Series6-60Cm-SMS66GW01I-White-FrontView.webp?v=1736572280" alt="Bosch Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS66GW01I - White">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Dishwasher</span>
+                            <h3 class="product-title">Bosch Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS66GW01I - White</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹40,491</span>
+                                <span class="retail-price">₹44,990</span>
+                                <span class="savings">Save ₹4,499</span>
+                            </div>
+                            <div class="product-info-item">Effortlessly clean your dishes with our efficient dishwasher that offers a range of programs to suit your needs, from Intensive Plus to Eco-friendly cycles. With low energy and water consumption, quiet operation, and convenient dimensions, this dishwasher is the perfect blend of performance and convenience for your kitchen.</div>
+                            <a href="https://betterhomeapp.com/products/bosch-free-standing-dishwasher-13-place-settings-series-6-60-cm-sms66gw01i-white" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-dishwasher-1"
+                                class="product-checkbox"
+                                name="kitchen-dishwasher"
+                                data-product-id="kitchen-dishwasher-1"
+                                data-room="kitchen"
+                                data-category="dishwasher"
+                                data-brand="Bosch"
+                                data-model="Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS66GI01I - Brushed steel anti-fingerprint"
+                                data-price="47900.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch-Free-Standing-Dishwasher-13Place-Settings-Series6-60Cm-SMS66GI01I-Brushed-steelanti-fingerprint-FrontView.webp?v=1736568077"
+                                >
+                            <label for="kitchen-dishwasher-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/bosch-free-standing-dishwasher-13-place-settings-series-6-60-cm-sms66gi01i-brushed-steel-anti-fingerprint" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch-Free-Standing-Dishwasher-13Place-Settings-Series6-60Cm-SMS66GI01I-Brushed-steelanti-fingerprint-FrontView.webp?v=1736568077" alt="Bosch Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS66GI01I - Brushed steel anti-fingerprint">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Dishwasher</span>
+                            <h3 class="product-title">Bosch Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS66GI01I - Brushed steel anti-fingerprint</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹47,900</span>
+                                <span class="retail-price">₹61,190</span>
+                                <span class="savings">Save ₹13,290</span>
+                            </div>
+                            <div class="product-info-item">Efficient and quiet, this dishwasher consumes just 1.35 kWh of energy and 13 liters of water, with a noise level of 52 dB, making it an eco-friendly and peaceful addition to your kitchen. Choose this sleek 84.5 x 60 x 60 cm appliance for its energy-saving Eco 50 program that uses only 1.02 kWh, ensuring sparkling clean dishes with minimal environmental impact.</div>
+                            <a href="https://betterhomeapp.com/products/bosch-free-standing-dishwasher-13-place-settings-series-6-60-cm-sms66gi01i-brushed-steel-anti-fingerprint" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-dishwasher-2"
+                                class="product-checkbox"
+                                name="kitchen-dishwasher"
+                                data-product-id="kitchen-dishwasher-2"
+                                data-room="kitchen"
+                                data-category="dishwasher"
+                                data-brand="Bosch"
+                                data-model="Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS6ITI01I - Brushed steel anti-fingerprint"
+                                data-price="56871.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch-Free-standingDishwasher-13-Place-Settings-60-Cm-SMS6ITI01I-Series6-FullView.webp?v=1735388132"
+                                >
+                            <label for="kitchen-dishwasher-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/bosch-free-standing-dishwasher-13-place-settings-60-cm-sms6iti01i-series-6" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch-Free-standingDishwasher-13-Place-Settings-60-Cm-SMS6ITI01I-Series6-FullView.webp?v=1735388132" alt="Bosch Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS6ITI01I - Brushed steel anti-fingerprint">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Dishwasher</span>
+                            <h3 class="product-title">Bosch Bosch Free-Standing Dishwasher 13 Place Settings - Series 6 - 60 Cm - SMS6ITI01I - Brushed steel anti-fingerprint</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹56,871</span>
+                                <span class="retail-price">₹63,190</span>
+                                <span class="savings">Save ₹6,319</span>
+                            </div>
+                            <div class="product-info-item">Efficient and quiet, this dishwasher consumes a mere 1.35 kWh of energy and 11.5 litres of water per cycle while operating at a noise level of 52 dB. With 6 versatile programmes including Intensive Kadhai 70 C and Eco 50 C, this dishwasher offers exceptional cleaning performance in a compact 84.5 x 60 x 60 cm package, making it the perfect choice for a modern kitchen.</div>
+                            <a href="https://betterhomeapp.com/products/bosch-free-standing-dishwasher-13-place-settings-60-cm-sms6iti01i-series-6" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Refrigerator</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-refrigerator-0"
+                                class="product-checkbox"
+                                name="kitchen-refrigerator"
+                                data-product-id="kitchen-refrigerator-0"
+                                data-room="kitchen"
+                                data-category="refrigerator"
+                                data-brand="Bosch"
+                                data-model="Bosch 187L 4 Star Single Door Refrigerator Series 4 CST18S24NI - Fine Steel"
+                                data-price="20566.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch_-_187L_-_4Star_-_Single_Door_Refrigerator_-_Series4_-_CST18S24NI_-_FineSteel_-_Frontview.webp?v=1734403355"
+                                checked>
+                            <label for="kitchen-refrigerator-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/bosch-187l-4-star-single-door-refrigerator-series-4-cst18s24ni-fine-steel" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch_-_187L_-_4Star_-_Single_Door_Refrigerator_-_Series4_-_CST18S24NI_-_FineSteel_-_Frontview.webp?v=1734403355" alt="Bosch Bosch 187L 4 Star Single Door Refrigerator Series 4 CST18S24NI - Fine Steel">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Refrigerator</span>
+                            <h3 class="product-title">Bosch Bosch 187L 4 Star Single Door Refrigerator Series 4 CST18S24NI - Fine Steel</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹20,566</span>
+                                <span class="retail-price">₹24,490</span>
+                                <span class="savings">Save ₹3,924</span>
+                            </div>
+                            <div class="product-info-item">Keep your groceries fresh and organized with this sleek Refrigerator boasting a spacious 187-liter net capacity and a stylish fine steel finish. With its compact design, ample storage space, and energy-efficient performance, this Refrigerator is the perfect choice for any modern kitchen.</div>
+                            <a href="https://betterhomeapp.com/products/bosch-187l-4-star-single-door-refrigerator-series-4-cst18s24ni-fine-steel" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-refrigerator-1"
+                                class="product-checkbox"
+                                name="kitchen-refrigerator"
+                                data-product-id="kitchen-refrigerator-1"
+                                data-room="kitchen"
+                                data-category="refrigerator"
+                                data-brand="Bosch"
+                                data-model="Bosch 187L Series 4 Direct Cool Single Door 4 Star Refrigerator with Base Drawer -CST18B34PI"
+                                data-price="21656.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BOSCH_-_187L_-_Series4_-_Direct_-_Cool_-_Single_-_Door_-_4_Star_-_Refrigerator_-_with_-_Base_-_Drawer_-_CST18B34PI-FrontView.webp?v=1734349966"
+                                >
+                            <label for="kitchen-refrigerator-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/bosch-187l-series-4-direct-cool-single-door-4-star-refrigerator-with-base-drawer-cst18b34pi" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BOSCH_-_187L_-_Series4_-_Direct_-_Cool_-_Single_-_Door_-_4_Star_-_Refrigerator_-_with_-_Base_-_Drawer_-_CST18B34PI-FrontView.webp?v=1734349966" alt="Bosch Bosch 187L Series 4 Direct Cool Single Door 4 Star Refrigerator with Base Drawer -CST18B34PI">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Refrigerator</span>
+                            <h3 class="product-title">Bosch Bosch 187L Series 4 Direct Cool Single Door 4 Star Refrigerator with Base Drawer -CST18B34PI</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹21,656</span>
+                                <span class="retail-price">₹25,490</span>
+                                <span class="savings">Save ₹3,834</span>
+                            </div>
+                            <div class="product-info-item">Keep your food fresh and organized with this spacious refrigerator that offers a total unit net capacity of 187 liters. With a freezer capacity of 20 liters and convenient accessories like an egg tray and pedestal with drawer, this appliance maximizes storage efficiency in a compact design, making it the ideal choice for your kitchen.</div>
+                            <a href="https://betterhomeapp.com/products/bosch-187l-series-4-direct-cool-single-door-4-star-refrigerator-with-base-drawer-cst18b34pi" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="kitchen-refrigerator-2"
+                                class="product-checkbox"
+                                name="kitchen-refrigerator"
+                                data-product-id="kitchen-refrigerator-2"
+                                data-room="kitchen"
+                                data-category="refrigerator"
+                                data-brand="Bosch"
+                                data-model="Bosch 243L 3 Star Double Door Top Mount Refrigerator Series 2 - CTN27S031I"
+                                data-price="31084.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch_243L_3_Star_Double_Door_Top_Mount_Refrigerator_Series_2_-_CTN27S031I_-_Full_Vew.webp?v=1734374308"
+                                >
+                            <label for="kitchen-refrigerator-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/bosch-243l-3-star-double-door-top-mount-refrigerator-series-2-ctn27s031i" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Bosch_243L_3_Star_Double_Door_Top_Mount_Refrigerator_Series_2_-_CTN27S031I_-_Full_Vew.webp?v=1734374308" alt="Bosch Bosch 243L 3 Star Double Door Top Mount Refrigerator Series 2 - CTN27S031I">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Refrigerator</span>
+                            <h3 class="product-title">Bosch Bosch 243L 3 Star Double Door Top Mount Refrigerator Series 2 - CTN27S031I</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹31,084</span>
+                                <span class="retail-price">₹38,590</span>
+                                <span class="savings">Save ₹7,506</span>
+                            </div>
+                            <div class="product-info-item">Keep your groceries fresh and organized with this spacious refrigerator boasting a total storage volume of 243 L and separate compartments for freezer and fridge needs. Standing at 156 cm tall and 60.5 cm wide, this refrigerator offers ample storage space and efficient cooling, making it the perfect choice for busy households looking to keep their food fresh and accessible.</div>
+                            <a href="https://betterhomeapp.com/products/bosch-243l-3-star-double-door-top-mount-refrigerator-series-2-ctn27s031i" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Dining</button>
+                <div class='panel' style='display: none;'>
+        <h4 style="margin-top:20px;">Ac</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="dining-ac-0"
+                                class="product-checkbox"
+                                name="dining-ac"
+                                data-product-id="dining-ac-0"
+                                data-room="dining"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser"
+                                data-price="32792.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210"
+                                checked>
+                            <label for="dining-ac-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹32,792</span>
+                                <span class="retail-price">₹40,990</span>
+                                <span class="savings">Save ₹8,198</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="dining-ac-1"
+                                class="product-checkbox"
+                                name="dining-ac"
+                                data-product-id="dining-ac-1"
+                                data-room="dining"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser"
+                                data-price="33592.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709"
+                                >
+                            <label for="dining-ac-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹33,592</span>
+                                <span class="retail-price">₹41,990</span>
+                                <span class="savings">Save ₹8,398</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="dining-ac-2"
+                                class="product-checkbox"
+                                name="dining-ac"
+                                data-product-id="dining-ac-2"
+                                data-room="dining"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser"
+                                data-price="38392.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549"
+                                >
+                            <label for="dining-ac-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549" alt="Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹38,392</span>
+                                <span class="retail-price">₹47,990</span>
+                                <span class="savings">Save ₹9,598</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Laundry</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Laundry area of 50.0 sq ft equipped with a Front-Load washing machine and a dryer.</div>
+<h4 style="margin-top:20px;">Washing Machine</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="laundry-washing_machine-0"
+                                class="product-checkbox"
+                                name="laundry-washing_machine"
+                                data-product-id="laundry-washing_machine-0"
+                                data-room="laundry"
+                                data-category="washing_machine"
+                                data-brand="Bosch"
+                                data-model="Bosch Top Load Washing Machine 7Kg Fully Automatic - WOE701W0IN"
+                                data-price="21500.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschTopLoadWashingMachine7KgFullyAutomatic-WOE701W0IN-Fullview2.webp?v=1733368619"
+                                checked>
+                            <label for="laundry-washing_machine-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/https-sviak3ptfl67k8f8-81052401956-shopifypreview-com-products_preview-preview_key-19e2c79f9965b0ba5bcb1cdd38694ad4" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschTopLoadWashingMachine7KgFullyAutomatic-WOE701W0IN-Fullview2.webp?v=1733368619" alt="Bosch Bosch Top Load Washing Machine 7Kg Fully Automatic - WOE701W0IN">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Washing Machine</span>
+                            <h3 class="product-title">Bosch Bosch Top Load Washing Machine 7Kg Fully Automatic - WOE701W0IN</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹21,500</span>
+                                <span class="retail-price">₹26,990</span>
+                                <span class="savings">Save ₹5,490</span>
+                            </div>
+                            <div class="product-info-item">Efficient and versatile, this freestanding washing machine offers a generous 7.0 kg capacity, perfect for handling your laundry needs with ease. Its sleek white design, compact dimensions, and lightweight construction make it a practical and stylish choice for any home.</div>
+                            <a href="https://betterhomeapp.com/products/https-sviak3ptfl67k8f8-81052401956-shopifypreview-com-products_preview-preview_key-19e2c79f9965b0ba5bcb1cdd38694ad4" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="laundry-washing_machine-1"
+                                class="product-checkbox"
+                                name="laundry-washing_machine"
+                                data-product-id="laundry-washing_machine-1"
+                                data-room="laundry"
+                                data-category="washing_machine"
+                                data-brand="Bosch"
+                                data-model="Bosch Series 6 Top Load Washing Machine 7Kg Fully Automatic - WOI705B0IN"
+                                data-price="26500.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschTopLoadWashingMachine7KgFullyAutomatic-WOI705B0IN-FrontView.webp?v=1733366262"
+                                >
+                            <label for="laundry-washing_machine-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/https-sviak3ptfl67k8f8-81052401956-shopifypreview-com-products_preview-preview_key-338707fb4eb7bd1664dbce1b3c46b0e7" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschTopLoadWashingMachine7KgFullyAutomatic-WOI705B0IN-FrontView.webp?v=1733366262" alt="Bosch Bosch Series 6 Top Load Washing Machine 7Kg Fully Automatic - WOI705B0IN">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Washing Machine</span>
+                            <h3 class="product-title">Bosch Bosch Series 6 Top Load Washing Machine 7Kg Fully Automatic - WOI705B0IN</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹26,500</span>
+                                <span class="retail-price">₹34,790</span>
+                                <span class="savings">Save ₹8,290</span>
+                            </div>
+                            <div class="product-info-item">Revolutionize your laundry routine with this freestanding washing machine, boasting a generous 7.0 kg loading capacity and a speedy 680 rpm spin cycle. At just 1015x542x600 mm, this compact yet powerful appliance features a specialized Cottons programme for efficient 30°C washing, making it the perfect choice for effortless laundry days.</div>
+                            <a href="https://betterhomeapp.com/products/https-sviak3ptfl67k8f8-81052401956-shopifypreview-com-products_preview-preview_key-338707fb4eb7bd1664dbce1b3c46b0e7" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="laundry-washing_machine-2"
+                                class="product-checkbox"
+                                name="laundry-washing_machine"
+                                data-product-id="laundry-washing_machine-2"
+                                data-room="laundry"
+                                data-category="washing_machine"
+                                data-brand="Bosch"
+                                data-model="Bosch Front Load Washing Machine Series 6 7Kg 1200 rpm - WGA1220PIN"
+                                data-price="31860.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschFrontLoadWashingMachineSeries67Kg1200rpm-WGA1220PIN-FrontView.webp?v=1733372127"
+                                >
+                            <label for="laundry-washing_machine-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/https-sviak3ptfl67k8f8-81052401956-shopifypreview-com-products_preview-preview_key-0dd3daabec48b75e698c5d578462f73b" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/BoschFrontLoadWashingMachineSeries67Kg1200rpm-WGA1220PIN-FrontView.webp?v=1733372127" alt="Bosch Bosch Front Load Washing Machine Series 6 7Kg 1200 rpm - WGA1220PIN">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Washing Machine</span>
+                            <h3 class="product-title">Bosch Bosch Front Load Washing Machine Series 6 7Kg 1200 rpm - WGA1220PIN</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹31,860</span>
+                                <span class="retail-price">₹50,990</span>
+                                <span class="savings">Save ₹19,130</span>
+                            </div>
+                            <div class="product-info-item">Revolutionize your laundry routine with this innovative freestanding washing machine, boasting a spacious drum volume and sleek silver-black grey design. With its generous dimensions and convenient features, this washing machine offers the perfect blend of efficiency and style for your home.</div>
+                            <a href="https://betterhomeapp.com/products/https-sviak3ptfl67k8f8-81052401956-shopifypreview-com-products_preview-preview_key-0dd3daabec48b75e698c5d578462f73b" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Master Bedroom</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Master bedroom of 100.0 sq ft with White theme, an AC (1.0 Ton recommended), and a bathroom equipped with Shower water heating.</div>
+<h4 style="margin-top:20px;">Ac</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="master_bedroom-ac-0"
+                                class="product-checkbox"
+                                name="master_bedroom-ac"
+                                data-product-id="master_bedroom-ac-0"
+                                data-room="master_bedroom"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser"
+                                data-price="32792.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210"
+                                checked>
+                            <label for="master_bedroom-ac-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹32,792</span>
+                                <span class="retail-price">₹40,990</span>
+                                <span class="savings">Save ₹8,198</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="master_bedroom-ac-1"
+                                class="product-checkbox"
+                                name="master_bedroom-ac"
+                                data-product-id="master_bedroom-ac-1"
+                                data-room="master_bedroom"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser"
+                                data-price="33592.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709"
+                                >
+                            <label for="master_bedroom-ac-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹33,592</span>
+                                <span class="retail-price">₹41,990</span>
+                                <span class="savings">Save ₹8,398</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="master_bedroom-ac-2"
+                                class="product-checkbox"
+                                name="master_bedroom-ac"
+                                data-product-id="master_bedroom-ac-2"
+                                data-room="master_bedroom"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser"
+                                data-price="38392.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549"
+                                >
+                            <label for="master_bedroom-ac-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549" alt="Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹38,392</span>
+                                <span class="retail-price">₹47,990</span>
+                                <span class="savings">Save ₹9,598</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Water Heater</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="master_bedroom-water_heater-0"
+                                class="product-checkbox"
+                                name="master_bedroom-water_heater"
+                                data-product-id="master_bedroom-water_heater-0"
+                                data-room="master_bedroom"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="7062.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/5a4c7c6b-42b9-481f-b499-ebbf72a6c5fe_cro105b.png?v=1695421056"
+                                checked>
+                            <label for="master_bedroom-water_heater-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/5a4c7c6b-42b9-481f-b499-ebbf72a6c5fe_cro105b.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹7,062</span>
+                                <span class="retail-price">₹10,500</span>
+                                <span class="savings">Save ₹3,438</span>
+                            </div>
+                            <div class="product-info-item">Experience endless hot water on demand with our Storage Water Heater, providing a steady supply for your daily needs. Featuring smart control technology for efficient energy usage, quick heating capabilities, and a sleek design, this heater ensures convenience and comfort in your home. Choose reliability and convenience with our Storage Water Heater for a constant supply of hot water whenever you need it.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="master_bedroom-water_heater-1"
+                                class="product-checkbox"
+                                name="master_bedroom-water_heater"
+                                data-product-id="master_bedroom-water_heater-1"
+                                data-room="master_bedroom"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="7814.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/ecd4fed4-0f54-4eee-bae5-460a845638cd_cro105a.png?v=1695421056"
+                                >
+                            <label for="master_bedroom-water_heater-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/ecd4fed4-0f54-4eee-bae5-460a845638cd_cro105a.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹7,814</span>
+                                <span class="retail-price">₹11,635</span>
+                                <span class="savings">Save ₹3,821</span>
+                            </div>
+                            <div class="product-info-item">Experience ultimate convenience with our Storage Water Heater, featuring smart control technology that allows you to adjust settings effortlessly. With a large storage capacity, quick heating element, and energy-efficient design, this water heater ensures a steady supply of hot water for your daily needs. Upgrade to this advanced appliance for a hassle-free and comfortable lifestyle.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="master_bedroom-water_heater-2"
+                                class="product-checkbox"
+                                name="master_bedroom-water_heater"
+                                data-product-id="master_bedroom-water_heater-2"
+                                data-room="master_bedroom"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="8885.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/104c1ab4-e37c-4781-9fd4-77dd86ed2900_cro105.png?v=1695421056"
+                                >
+                            <label for="master_bedroom-water_heater-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/104c1ab4-e37c-4781-9fd4-77dd86ed2900_cro105.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹8,885</span>
+                                <span class="retail-price">₹13,250</span>
+                                <span class="savings">Save ₹4,365</span>
+                            </div>
+                            <div class="product-info-item">Efficient and reliable, this Storage Water Heater provides consistent hot water for your daily needs. With smart control technology and rapid heating capabilities, enjoy convenience and comfort in your home all year round.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Bedroom 2</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Second bedroom of 100.0 sq ft with White theme, an AC (1.0 Ton recommended), and a bathroom equipped with Shower water heating.</div>
+<h4 style="margin-top:20px;">Ac</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_2-ac-0"
+                                class="product-checkbox"
+                                name="bedroom_2-ac"
+                                data-product-id="bedroom_2-ac-0"
+                                data-room="bedroom_2"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser"
+                                data-price="32792.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210"
+                                checked>
+                            <label for="bedroom_2-ac-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹32,792</span>
+                                <span class="retail-price">₹40,990</span>
+                                <span class="savings">Save ₹8,198</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_2-ac-1"
+                                class="product-checkbox"
+                                name="bedroom_2-ac"
+                                data-product-id="bedroom_2-ac-1"
+                                data-room="bedroom_2"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser"
+                                data-price="33592.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709"
+                                >
+                            <label for="bedroom_2-ac-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹33,592</span>
+                                <span class="retail-price">₹41,990</span>
+                                <span class="savings">Save ₹8,398</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_2-ac-2"
+                                class="product-checkbox"
+                                name="bedroom_2-ac"
+                                data-product-id="bedroom_2-ac-2"
+                                data-room="bedroom_2"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser"
+                                data-price="38392.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549"
+                                >
+                            <label for="bedroom_2-ac-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549" alt="Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹38,392</span>
+                                <span class="retail-price">₹47,990</span>
+                                <span class="savings">Save ₹9,598</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Water Heater</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_2-water_heater-0"
+                                class="product-checkbox"
+                                name="bedroom_2-water_heater"
+                                data-product-id="bedroom_2-water_heater-0"
+                                data-room="bedroom_2"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="7062.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/5a4c7c6b-42b9-481f-b499-ebbf72a6c5fe_cro105b.png?v=1695421056"
+                                checked>
+                            <label for="bedroom_2-water_heater-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/5a4c7c6b-42b9-481f-b499-ebbf72a6c5fe_cro105b.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹7,062</span>
+                                <span class="retail-price">₹10,500</span>
+                                <span class="savings">Save ₹3,438</span>
+                            </div>
+                            <div class="product-info-item">Experience endless hot water on demand with our Storage Water Heater, providing a steady supply for your daily needs. Featuring smart control technology for efficient energy usage, quick heating capabilities, and a sleek design, this heater ensures convenience and comfort in your home. Choose reliability and convenience with our Storage Water Heater for a constant supply of hot water whenever you need it.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_2-water_heater-1"
+                                class="product-checkbox"
+                                name="bedroom_2-water_heater"
+                                data-product-id="bedroom_2-water_heater-1"
+                                data-room="bedroom_2"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="7814.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/ecd4fed4-0f54-4eee-bae5-460a845638cd_cro105a.png?v=1695421056"
+                                >
+                            <label for="bedroom_2-water_heater-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/ecd4fed4-0f54-4eee-bae5-460a845638cd_cro105a.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹7,814</span>
+                                <span class="retail-price">₹11,635</span>
+                                <span class="savings">Save ₹3,821</span>
+                            </div>
+                            <div class="product-info-item">Experience ultimate convenience with our Storage Water Heater, featuring smart control technology that allows you to adjust settings effortlessly. With a large storage capacity, quick heating element, and energy-efficient design, this water heater ensures a steady supply of hot water for your daily needs. Upgrade to this advanced appliance for a hassle-free and comfortable lifestyle.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_2-water_heater-2"
+                                class="product-checkbox"
+                                name="bedroom_2-water_heater"
+                                data-product-id="bedroom_2-water_heater-2"
+                                data-room="bedroom_2"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="8885.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/104c1ab4-e37c-4781-9fd4-77dd86ed2900_cro105.png?v=1695421056"
+                                >
+                            <label for="bedroom_2-water_heater-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/104c1ab4-e37c-4781-9fd4-77dd86ed2900_cro105.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹8,885</span>
+                                <span class="retail-price">₹13,250</span>
+                                <span class="savings">Save ₹4,365</span>
+                            </div>
+                            <div class="product-info-item">Efficient and reliable, this Storage Water Heater provides consistent hot water for your daily needs. With smart control technology and rapid heating capabilities, enjoy convenience and comfort in your home all year round.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Bedroom 3</button>
+                <div class='panel' style='display: none;'>
+                            <div class="room-description">Third bedroom of nan sq ft with nan theme, an AC (2.0 Ton recommended), and a bathroom equipped with nan water heating.</div>
+<h4 style="margin-top:20px;">Ac</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_3-ac-0"
+                                class="product-checkbox"
+                                name="bedroom_3-ac"
+                                data-product-id="bedroom_3-ac-0"
+                                data-room="bedroom_3"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser"
+                                data-price="32792.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210"
+                                checked>
+                            <label for="bedroom_3-ac-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0Ton-5Star-Inverter-SplitAC-_FTKU35UV16W_RKU35UV16W_CopperCondenser_-FullView.png?v=1733802210" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKU35UV16W and RKU35UV16W - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹32,792</span>
+                                <span class="retail-price">₹40,990</span>
+                                <span class="savings">Save ₹8,198</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftku35uv16w-and-rku35uv16w-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_3-ac-1"
+                                class="product-checkbox"
+                                name="bedroom_3-ac"
+                                data-product-id="bedroom_3-ac-1"
+                                data-room="bedroom_3"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser"
+                                data-price="33592.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709"
+                                >
+                            <label for="bedroom_3-ac-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.0-Ton-5Star-Inverter-SplitAC-_FTKM35UV16_RKM35UV16_CopperCondenser_-FrontView.png?v=1733976709" alt="Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.0 Ton - Inverter - 5 Star - Split AC - FTKM35UV16 and RKM35UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹33,592</span>
+                                <span class="retail-price">₹41,990</span>
+                                <span class="savings">Save ₹8,398</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-0-ton-inverter-5-star-split-ac-ftkm35uv16-and-rkm35uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_3-ac-2"
+                                class="product-checkbox"
+                                name="bedroom_3-ac"
+                                data-product-id="bedroom_3-ac-2"
+                                data-room="bedroom_3"
+                                data-category="ac"
+                                data-brand="Daikin"
+                                data-model="Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser"
+                                data-price="38392.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549"
+                                >
+                            <label for="bedroom_3-ac-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/Daikin-1.5-Ton-5Star-Inverter-SplitAC-_FTKM50UV16_RKM50UV16_CopperCondenser_-FrontView.png?v=1734004549" alt="Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ac</span>
+                            <h3 class="product-title">Daikin Daikin AC - 1.5 Ton - Inverter - 5 Star - Split AC - FTKM50UV16 and RKM50UV16 - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹38,392</span>
+                                <span class="retail-price">₹47,990</span>
+                                <span class="savings">Save ₹9,598</span>
+                            </div>
+                            <div class="product-info-item">nan</div>
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-5-star-split-ac-ftkm50uv16-and-rkm50uv16-copper-condenser" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Water Heater</h4><div class="products-grid"><div class="product-card selected">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_3-water_heater-0"
+                                class="product-checkbox"
+                                name="bedroom_3-water_heater"
+                                data-product-id="bedroom_3-water_heater-0"
+                                data-room="bedroom_3"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="7062.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/5a4c7c6b-42b9-481f-b499-ebbf72a6c5fe_cro105b.png?v=1695421056"
+                                checked>
+                            <label for="bedroom_3-water_heater-0"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/5a4c7c6b-42b9-481f-b499-ebbf72a6c5fe_cro105b.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            <div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹7,062</span>
+                                <span class="retail-price">₹10,500</span>
+                                <span class="savings">Save ₹3,438</span>
+                            </div>
+                            <div class="product-info-item">Experience endless hot water on demand with our Storage Water Heater, providing a steady supply for your daily needs. Featuring smart control technology for efficient energy usage, quick heating capabilities, and a sleek design, this heater ensures convenience and comfort in your home. Choose reliability and convenience with our Storage Water Heater for a constant supply of hot water whenever you need it.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_3-water_heater-1"
+                                class="product-checkbox"
+                                name="bedroom_3-water_heater"
+                                data-product-id="bedroom_3-water_heater-1"
+                                data-room="bedroom_3"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="7814.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/ecd4fed4-0f54-4eee-bae5-460a845638cd_cro105a.png?v=1695421056"
+                                >
+                            <label for="bedroom_3-water_heater-1"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/ecd4fed4-0f54-4eee-bae5-460a845638cd_cro105a.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹7,814</span>
+                                <span class="retail-price">₹11,635</span>
+                                <span class="savings">Save ₹3,821</span>
+                            </div>
+                            <div class="product-info-item">Experience ultimate convenience with our Storage Water Heater, featuring smart control technology that allows you to adjust settings effortlessly. With a large storage capacity, quick heating element, and energy-efficient design, this water heater ensures a steady supply of hot water for your daily needs. Upgrade to this advanced appliance for a hassle-free and comfortable lifestyle.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div><div class="product-card">
+                        <div class="product-selection">
+                            <input type="checkbox"
+                                id="bedroom_3-water_heater-2"
+                                class="product-checkbox"
+                                name="bedroom_3-water_heater"
+                                data-product-id="bedroom_3-water_heater-2"
+                                data-room="bedroom_3"
+                                data-category="water_heater"
+                                data-brand="Crompton"
+                                data-model="Crompton Amica Storage Water Heater"
+                                data-price="8885.0"
+                                data-image="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/104c1ab4-e37c-4781-9fd4-77dd86ed2900_cro105.png?v=1695421056"
+                                >
+                            <label for="bedroom_3-water_heater-2"></label>
+                            <span class="selection-label">Selected</span>
+                        </div>
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://cdn.shopify.com/s/files/1/0810/5240/1956/files/104c1ab4-e37c-4781-9fd4-77dd86ed2900_cro105.png?v=1695421056" alt="Crompton Crompton Amica Storage Water Heater">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Heater</span>
+                            <h3 class="product-title">Crompton Crompton Amica Storage Water Heater</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹8,885</span>
+                                <span class="retail-price">₹13,250</span>
+                                <span class="savings">Save ₹4,365</span>
+                            </div>
+                            <div class="product-info-item">Efficient and reliable, this Storage Water Heater provides consistent hot water for your daily needs. With smart control technology and rapid heating capabilities, enjoy convenience and comfort in your home all year round.</div>
+                            <a href="https://betterhomeapp.com/products/crompton-amica-storage-water-heater" class="buy-button" target="_blank">Buy Now</a>
+                        </div>
+                    </div></div></div></div>
+            <div class="generate-container">
+                <h2>Select Your Preferred Products</h2>
+                <p>Please select one product from each category above that best suits your needs.</p>
+                <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+            </div>
+            
+            <footer>
+                <p>This product recommendation brochure was created for Lakshmi Narasimhan  on 2025-08-06</p>
+                <p> © 2025 BetterHome. All recommendations are personalized based on your specific requirements.</p>
+            </footer>
+        </div>
+        
+        <!-- Create the final recommendation page -->
+        <div id="final-recommendation-page" style="display: none;">
+         <div id="final-recommendation-content"></div>
+            <div class="container">
+                <header>
+                    <img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">
+                    <h1>Your Final Product Selections</h1>
+                    <p>Specially curated for Lakshmi Narasimhan </p>
+                </header>
+                <div id="selected-products-container"></div>
+                <div class="budget-summary">
+                    <h2>Budget Summary</h2>
+                    <p>Total Cost: <span id="total-cost">320573.0</span></p>
+                    <p>Total Savings: <span id="total-savings">0</span></p>
+                    <p id="budget-utilization"></p>
+                </div>
+                <div style="display: flex; justify-content: center; margin-top: 24px;">
+                    <button onclick="backToSelection()" class="generate-button">Back to Selection</button>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            function backToSelection() {
+                window.location.reload();
+
+            }
+
+            function generateFinalRecommendation() {
+                const selectedProducts = [];
+                let totalCost = 0;
+                let totalRetailCost = 0;
+                let totalSavings = 0;
+
+                // Get all selected products (no room-category deduplication)
+                document.querySelectorAll('.product-card.selected').forEach(card => {
+                    const room = card.getAttribute('data-room');
+                    const category = card.getAttribute('data-category');
+                    const product = {
+                        room: room,
+                        category: category,
+                        name: card.querySelector('.product-title').textContent,
+                        price: parseFloat(card.querySelector('.current-price').textContent.replace('₹', '').replace(/,/g, '')),
+                        retailPrice: parseFloat(card.querySelector('.retail-price').textContent.replace('₹', '').replace(/,/g, '')),
+                        savings: parseFloat(card.querySelector('.savings').textContent.replace('Save ₹', '').replace(/,/g, '')),
+                        image: card.querySelector('.product-image').src,
+                        warranty: card.querySelector('.product-info-item:nth-child(4)').textContent.replace('Warranty:', '').trim(),
+                        delivery: card.querySelector('.product-info-item:nth-child(5)').textContent.replace('Delivery:', '').trim(),
+                        reason: card.querySelector('.reasons-list li').textContent,
+                        purchaseUrl: card.querySelector('.buy-button').href
+                    };
+                    selectedProducts.push(product);
+                    totalCost += product.price;
+                    totalRetailCost += product.retailPrice;
+                    totalSavings += product.savings;
+                });
+
+                if (selectedProducts.length === 0) {
+                    alert('Please select at least one product before generating final recommendations.');
+                    return;
+                }
+
+                // Generate HTML for selected products
+                let finalHtml = '';
+                selectedProducts.forEach(product => {
+                    finalHtml += `
+                        <div class="final-product-card">
+                            <div class="final-product-image">
+                                <img src="${product.image}" alt="${product.name}">
+                            </div>
+                            <div class="final-product-details">
+                                <h3>${product.name}</h3>
+                                <div class="final-product-info">
+                                    <p><strong>Room:</strong> ${product.room}</p>
+                                    <p><strong>Category:</strong> ${product.category}</p>
+                                    <p><strong>Price:</strong> ₹${product.price.toLocaleString('en-IN')}</p>
+                                    <p><strong>Warranty:</strong> ${product.warranty}</p>
+                                    <p><strong>Delivery:</strong> ${product.delivery}</p>
+                                    <p><strong>Why this product:</strong> ${product.reason}</p>
+                                </div>
+                                <a href="${product.purchaseUrl}" class="buy-button" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Update the final recommendation page
+                const selectedProductsContainer = document.getElementById('selected-products-container');
+                const totalCostElement = document.getElementById('total-cost');
+                const totalSavingsElement = document.getElementById('total-savings');
+                const budgetUtilizationElement = document.getElementById('budget-utilization');
+                const selectionPage = document.getElementById('product-selection-page');
+                const finalPage = document.getElementById('final-recommendation-page');
+
+                if (selectedProductsContainer) selectedProductsContainer.innerHTML = finalHtml;
+                if (totalCostElement) totalCostElement.textContent = `₹${totalCost.toLocaleString('en-IN')}`;
+                if (totalSavingsElement) totalSavingsElement.textContent = `₹${totalSavings.toLocaleString('en-IN')}`;
+                if (budgetUtilizationElement) {
+                    let budgetText = '';
+                    const userBudget = 600000.0;
+                    if (totalCost > userBudget) {
+                        budgetText = `Budget exceeded by ₹${(totalCost - userBudget).toLocaleString('en-IN')}`;
+                    } else {
+                        budgetText = `Budget utilized: ₹${totalCost.toLocaleString('en-IN')} of ₹600,000.00`;
+                    }
+                    budgetUtilizationElement.textContent = budgetText;
+                }
+
+                // Show final recommendation page
+                if (selectionPage && finalPage) {
+                    selectionPage.style.display = 'none';
+                    finalPage.style.display = 'block';
+                }
+            }
+
+            // Set up accordion functionality
+            (function() {
+                const accordionButtons = document.querySelectorAll('.accordion');
+                console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
+                
+                for (let i = 0; i < accordionButtons.length; i++) {
+                    const btn = accordionButtons[i];
+                    
+                    // Set active class on first button
+                    if (i === 0) {
+                        btn.classList.add('active');
+                    }
+                    
+                    // Direct event binding
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const panel = this.nextElementSibling;
+                        const isOpen = panel.style.display === 'block';
+                        
+                        // Close all panels and remove active class
+                        const allPanels = document.querySelectorAll('.panel');
+                        for (let j = 0; j < allPanels.length; j++) {
+                            allPanels[j].style.display = 'none';
+                        }
+                        
+                        const allButtons = document.querySelectorAll('.accordion');
+                        for (let j = 0; j < allButtons.length; j++) {
+                            allButtons[j].classList.remove('active');
+                        }
+                        
+                        // If it wasn't open before, open it now
+                        if (!isOpen) {
+                            panel.style.display = 'block';
+                            this.classList.add('active');
+                            console.log('DIRECT: Panel opened');
+                        }
+                        
+                        return false;
+                    });
+                    console.log('DIRECT: Setup click handler for:', btn.textContent);
+                }
+                
+                console.log('DIRECT: Setting up accordion - complete');
+            })();
+        </script>
+        
+        <script>
+        function toggleFeatures(btn) {{
+            var content = btn.nextElementSibling;
+            if (content.style.display === "none" || content.style.display === "") {{
+                content.style.display = "block";
+                btn.querySelector('.arrow').innerHTML = "&#9660;"; // Down arrow
+                btn.classList.add('open');
+            }} else {{
+                content.style.display = "none";
+                btn.querySelector('.arrow').innerHTML = "&#9654;"; // Right arrow
+                btn.classList.remove('open');
+            }}
+        }}
+        </script>
+      
+    </body>
+    </html>
+    

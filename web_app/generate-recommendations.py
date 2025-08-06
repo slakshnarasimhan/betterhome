@@ -22,12 +22,17 @@ from s3_config import S3Handler
 from os.path import splitext
 import sys
 
+# Update the read_best_sellers_csv function to read from Google Sheets CSV export
+BEST_SELLERS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/18Z8nJdJstXKGgmExWnXqtB5dCOgWelp36AKG9DOGkXs/export?format=csv'
+
+
+
 def read_best_sellers_csv(csv_path: str) -> List[Dict[str, Any]]:
-    """Read and parse the best-sellers.csv file into a list of product dicts."""
+    """Read and parse the best-sellers.csv file into a list of product dicts with only required fields."""
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+    df.columns = [col.strip() for col in df.columns]
     products = []
     for _, row in df.iterrows():
-        # Clean up and parse numeric fields
         def parse_price(val):
             val = str(val).replace(',', '').replace('"', '').strip()
             try:
@@ -41,28 +46,16 @@ def read_best_sellers_csv(csv_path: str) -> List[Dict[str, Any]]:
                 return 0
         product = {
             'sku': row.get('SKU Code', '').strip(),
-            'brand': row.get('Brand', '').strip(),
-            'category': row.get(' Category', '').strip(),
-            'title': row.get('Product', '').strip(),
+            'category': row.get('Category', '').strip(),
+            'bh_price': parse_price(row.get('BH Price', '')),
             'standard_premium': row.get('Standard/Premium', '').strip(),
-            'priority': parse_int(row.get('Priority', '999')),
-            'mrp': parse_price(row.get('MRP Price', '0')),
-            'purchase_price': parse_price(row.get('Purchase Price', '0')),
-            'bh_price': parse_price(row.get('BH Price', '0')),
-            'retail_price': parse_price(row.get('Recommended Retail Price', '0')),
-            'market_price_1': parse_price(row.get('Market Price 1', '0')),
-            'market_price_2': parse_price(row.get('Market Price 2', '0')),
-            'discount': parse_price(row.get('Discount', '0')),
-            'margin': parse_price(row.get('Margin', '0')),
-            'margin_percent': row.get('Margin %', '').strip(),
-            'top_benefits': row.get('Top Benefits', '').strip(),
+            'brand': row.get('Brand', '').strip(),
+            'title': row.get('Title', '').strip(),
+            'priority': parse_int(row.get('Priority', '')),
+            'image_src': row.get('Product Image URL', '').strip()  # <-- Add this line
         }
-        # Only add products with a title and category
-        if product['title'] and product['category']:
-            products.append(product)
+        products.append(product)
     return products
-
-
 def get_recommended_products(products: List[Dict[str, Any]], category: str, budget: float) -> List[Dict[str, Any]]:
     """Filter and sort products for a given category and budget."""
     # Budget logic: <400000 = Standard, >=400000 = Premium
@@ -339,84 +332,74 @@ def main(user_xlsx: str, best_sellers_csv: str):
     # Hall
     recommendations['hall'] = {}
     if user_data['hall'].get('ac'):
-        ac_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['ac'], total_budget)
+        ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['hall']['ac'] = ac_recs
     if user_data['hall'].get('fans', 0) > 0:
-        fan_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['ceiling_fan'], total_budget)
-        recommendations['hall']['fans'] = fan_recs[:user_data['hall']['fans']]
+        fan_recs = get_appliance_recommendations(products, appliance_map['ceiling_fan'], total_budget, user_data['hall']['fans'])
+        recommendations['hall']['fans'] = fan_recs
 
     # Kitchen
     recommendations['kitchen'] = {}
     if user_data['kitchen'].get('chimney_width'):
-        chimney_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['chimney'], total_budget)
+        chimney_recs = get_appliance_recommendations(products, appliance_map['chimney'], total_budget)
         recommendations['kitchen']['chimney'] = chimney_recs
     if user_data['kitchen'].get('dishwasher_capacity'):
-        dishwasher_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['dishwasher'], total_budget)
+        dishwasher_recs = get_appliance_recommendations(products, appliance_map['dishwasher'], total_budget)
         recommendations['kitchen']['dishwasher'] = dishwasher_recs
     if user_data['kitchen'].get('refrigerator_type'):
-        refrigerator_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['refrigerator'], total_budget)
+        refrigerator_recs = get_appliance_recommendations(products, appliance_map['refrigerator'], total_budget)
         recommendations['kitchen']['refrigerator'] = refrigerator_recs
     if user_data['kitchen'].get('num_burners', 0) > 0:
-        hob_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['hob'], total_budget)
+        hob_recs = get_appliance_recommendations(products, appliance_map['hob'], total_budget)
         recommendations['kitchen']['hob'] = hob_recs
 
     # Master Bedroom
     recommendations['master_bedroom'] = {}
     if user_data['master_bedroom'].get('ac'):
-        ac_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['ac'], total_budget)
+        ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['master_bedroom']['ac'] = ac_recs
     if user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type'):
-        water_heater_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['water_heater'], total_budget)
+        water_heater_recs = get_appliance_recommendations(products, appliance_map['water_heater'], total_budget)
         recommendations['master_bedroom']['water_heater'] = water_heater_recs
 
     # Bedroom 2
     recommendations['bedroom_2'] = {}
     if user_data['bedroom_2'].get('ac'):
-        ac_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['ac'], total_budget)
+        ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['bedroom_2']['ac'] = ac_recs
     if user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type'):
-        water_heater_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['water_heater'], total_budget)
+        water_heater_recs = get_appliance_recommendations(products, appliance_map['water_heater'], total_budget)
         recommendations['bedroom_2']['water_heater'] = water_heater_recs
 
     # Bedroom 3
     recommendations['bedroom_3'] = {}
     if user_data['bedroom_3'].get('ac'):
-        ac_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['ac'], total_budget)
+        ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['bedroom_3']['ac'] = ac_recs
     if user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type'):
-        water_heater_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['water_heater'], total_budget)
+        water_heater_recs = get_appliance_recommendations(products, appliance_map['water_heater'], total_budget)
         recommendations['bedroom_3']['water_heater'] = water_heater_recs
 
     # Laundry
     recommendations['laundry'] = {}
     if user_data['laundry'].get('washing_machine_type'):
-        washing_machine_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['washing_machine'], total_budget)
+        washing_machine_recs = get_appliance_recommendations(products, appliance_map['washing_machine'], total_budget)
         recommendations['laundry']['washing_machine'] = washing_machine_recs
 
     # Dining
     recommendations['dining'] = {}
     if user_data['dining'].get('ac'):
-        ac_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['ac'], total_budget)
+        ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['dining']['ac'] = ac_recs
     if user_data['dining'].get('fans', 0) > 0:
-        fan_recs = get_recommended_products_with_fallback(products, load_product_catalog_json("product_catalog.json"), appliance_map['ceiling_fan'], total_budget)
-        recommendations['dining']['fans'] = fan_recs[:user_data['dining']['fans']]
+        fan_recs = get_appliance_recommendations(products, appliance_map['ceiling_fan'], total_budget, user_data['dining']['fans'])
+        recommendations['dining']['fans'] = fan_recs
 
     # Enrich best-seller products with catalog info
     catalog_products = load_product_catalog_json("product_catalog.json")
-    def enrich_recommendations(recs):
-        if isinstance(recs, dict):
-            for k, v in recs.items():
-                recs[k] = enrich_recommendations(v)
-            return recs
-        elif isinstance(recs, list):
-            for i, prod in enumerate(recs):
-                if prod.get('source') == 'best-seller':
-                    recs[i] = enrich_best_seller_product(prod, catalog_products)
-            return recs
-        else:
-            return recs
-    recommendations = enrich_recommendations(recommendations)
+
+
+    recommendations = enrich_recommendations(recommendations, catalog_products)
 
     # Step 4: Write HTML output
     base, _ = splitext(user_xlsx)
@@ -430,60 +413,79 @@ def main(user_xlsx: str, best_sellers_csv: str):
 # if __name__ == "__main__":
 #     main("user_input.xlsx", "web_app/best-sellers.csv")
 
-# Copy of generate_html_file from combined_script.py
-import pandas as pd
+def enrich_recommendations(recs, catalog_products):
+    if isinstance(recs, dict):
+        for k, v in recs.items():
+            recs[k] = enrich_recommendations(v, catalog_products)
+        return recs
+    elif isinstance(recs, list):
+        for i, prod in enumerate(recs):
+            recs[i] = enrich_best_seller_product(prod, catalog_products)
+        return recs
+    else:
+        return recs
+    
+import re
+
+def render_top_benefits(top_benefits):
+    if not top_benefits:
+        return ""
+    # Split on numbered points (e.g., 1. ... 2. ... 3. ...)
+    points = re.split(r'(?:^|\\n|\\r|;|\\.)\\s*(\\d+\\.)', top_benefits)
+    # The split will keep the numbers as separate elements, so we need to recombine them
+    items = []
+    i = 1
+    while i < len(points):
+        # points[i] is the number (e.g., '1.')
+        # points[i+1] is the text
+        if i+1 < len(points):
+            text = points[i+1].strip()
+            if text:
+                items.append(text)
+        i += 2
+    # Fallback: if nothing found, just show the whole string as one item
+    if not items:
+        items = [top_benefits.strip()]
+    html = "<ul class='top-benefits-list'>"
+    for item in items:
+        html += f"<li>{item}</li>"
+    html += "</ul>"
+    return html
 
 
 def calculate_total_cost(recommendations):
-    """Calculate total cost of recommendations
-    
-    This estimates what the customer would pay if they selected the best product (highest score/recommended)
-    from each product category.
-    """
+    """Calculate total cost of recommendations using bh_price."""
     total_cost = 0
-    processed_keys = set()  # Track room-product_type combinations we've already counted
-    
+    processed_keys = set()
     for room, products in recommendations.items():
         if not isinstance(products, dict):
             continue
-        
         for product_type, options in products.items():
-            # For nested structures like bathroom
             if isinstance(options, dict):
                 for nested_type, nested_options in options.items():
                     if not nested_options or not isinstance(nested_options, list):
                         continue
-                    
                     key = f"{room}-{product_type}-{nested_type}"
                     if key not in processed_keys:
                         try:
-                            # Use better_home_price (what customers pay) when available
                             if nested_options and isinstance(nested_options[0], dict):
                                 best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0))
-                                price = float(best_product.get('better_home_price', 
-                                             best_product.get('price', 
-                                             best_product.get('retail_price', 0))))
+                                price = float(best_product.get('bh_price', 0))
                                 total_cost += price
                             processed_keys.add(key)
                         except (ValueError, TypeError):
                             continue
-            
-            # For regular product lists
             elif isinstance(options, list) and options:
                 key = f"{room}-{product_type}"
                 if key not in processed_keys:
                     try:
-                        # Use better_home_price (what customers pay) when available
                         if options and isinstance(options[0], dict):
                             best_product = max(options, key=lambda x: x.get('feature_match_score', 0))
-                            price = float(best_product.get('better_home_price', 
-                                         best_product.get('price', 
-                                         best_product.get('retail_price', 0))))
+                            price = float(best_product.get('bh_price', 0))
                             total_cost += price
                         processed_keys.add(key)
                     except (ValueError, TypeError):
                         continue
-    
     return total_cost
 
 
@@ -1728,28 +1730,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         model = product.get('model', product.get('title', 'Unknown Model'))
                         image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                         description = product.get('description', 'No description available')
-                        better_home_price = float(product.get('better_home_price', 0.0))
-                        retail_price = float(product.get('retail_price', 0.0))
-                        if better_home_price <= 0:
-                            better_home_price = float(product.get('price', retail_price * 0.8))
-                        if retail_price <= 0:
-                            retail_price = better_home_price * 1.25
-                        if retail_price <= better_home_price:
-                            retail_price = better_home_price * 1.25
-                        savings = retail_price - better_home_price
+                        better_home_price = float(product.get('bh_price', 0.0))
+                        original_price = float(product.get('market_price_1', 0.0))
+                        if original_price <= 0:
+                            original_price = better_home_price * 1.25
+                        discount = original_price - better_home_price
                         warranty = product.get('warranty', 'Standard warranty applies')
                         delivery_time = product.get('delivery_time', 'Contact store for details')
                         purchase_url = product.get('url', '#')
                         product_type_title = sub_appliance_type.replace('_', ' ').title()
+                        # top_benefits_html = render_top_benefits(product.get('top_benefits', ''))
+                        # if top_benefits_html:
+                        #     html_content += top_benefits_html
                         reason_text = get_product_recommendation_reason(
-                            product, 
-                            sub_appliance_type, 
-                            room, 
-                            user_data['demographics'],
-                            user_data['total_budget'],
-                            {},
-                            user_data
-                        )
+                                product, 
+                                sub_appliance_type, 
+                                room, 
+                                user_data['demographics'],
+                                user_data['total_budget'],
+                                {},
+                                user_data
+                            )
+                        html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                         # Badges
                         badges = ""
                         if product.get('is_bestseller', False):
@@ -1795,8 +1797,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <h3 class="product-title">{brand} {model}</h3>
                                 <div class="price-container">
                                     <span class="current-price">₹{int(better_home_price):,}</span>
-                                    <span class="retail-price">₹{int(retail_price):,}</span>
-                                    <span class="savings">Save ₹{int(savings):,}</span>
+                                    <span class="retail-price">₹{int(original_price):,}</span>
+                                    <span class="savings">Save ₹{int(discount):,}</span>
                                 </div>
                                 <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
@@ -1819,28 +1821,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     model = product.get('model', product.get('title', 'Unknown Model'))
                     image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                     description = product.get('description', 'No description available')
-                    better_home_price = float(product.get('better_home_price', 0.0))
-                    retail_price = float(product.get('retail_price', 0.0))
-                    if better_home_price <= 0:
-                        better_home_price = float(product.get('price', retail_price * 0.8))
-                    if retail_price <= 0:
-                        retail_price = better_home_price * 1.25
-                    if retail_price <= better_home_price:
-                        retail_price = better_home_price * 1.25
-                    savings = retail_price - better_home_price
+                    better_home_price = float(product.get('bh_price', 0.0))
+                    original_price = float(product.get('market_price_1', 0.0))
+                    if original_price <= 0:
+                        original_price = better_home_price * 1.25
+                    discount = original_price - better_home_price
                     warranty = product.get('warranty', 'Standard warranty applies')
                     delivery_time = product.get('delivery_time', 'Contact store for details')
                     purchase_url = product.get('url', '#')
                     product_type_title = appliance_type.replace('_', ' ').title()
+                    # top_benefits_html = render_top_benefits(product.get('top_benefits', ''))
+                    # if top_benefits_html:
+                    #     html_content += top_benefits_html
                     reason_text = get_product_recommendation_reason(
-                        product, 
-                        appliance_type, 
-                        room, 
-                        user_data['demographics'],
-                        user_data['total_budget'],
-                        {},
-                        user_data
-                    )
+                            product, 
+                            appliance_type, 
+                            room, 
+                            user_data['demographics'],
+                            user_data['total_budget'],
+                            {},
+                            user_data
+                        )
+                    html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                     concise_description = product.get('concise_description') or product.get('description', 'No description available')
                     description_html = f'<div class="product-info-item">{concise_description}</div>'
                     badges = ""
@@ -1892,8 +1894,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             <h3 class="product-title">{brand} {model}</h3>
                             <div class="price-container">
                                 <span class="current-price">₹{int(better_home_price):,}</span>
-                                <span class="retail-price">₹{int(retail_price):,}</span>
-                                <span class="savings">Save ₹{int(savings):,}</span>
+                                <span class="retail-price">₹{int(original_price):,}</span>
+                                <span class="savings">Save ₹{int(discount):,}</span>
                             </div>
                             {description_html}
                             <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
@@ -2192,16 +2194,110 @@ def enrich_best_seller_product(best_seller, catalog_products):
     match = None
     if sku:
         match = next((p for p in catalog_products if p.get('sku', '').strip() == sku), None)
-    if match:
-        # Copy over missing fields if not already present
-        for field in ['image_src', 'description', 'features', 'model', 'warranty', 'delivery_time', 'url']:
-            if field in match and not best_seller.get(field):
-                best_seller[field] = match[field]
+    # Use Top Benefits as description if present
+    if best_seller.get('top_benefits'):
+        best_seller['description'] = best_seller['top_benefits']
+    elif match:
+        # Use only concise_description from catalog, never description
+        best_seller['description'] = match.get('concise_description', '')
+    # Prefer image_src from CSV, but fallback to catalog if missing
+    if not best_seller.get('image_src') and match and 'image_src' in match:
+        best_seller['image_src'] = match['image_src']
+    # Always set url from catalog if available
+    if match and 'url' in match:
+        best_seller['url'] = match['url']
+    # Set concise_description if not present
+    if 'concise_description' not in best_seller or not best_seller.get('concise_description'):
+        best_seller['concise_description'] = match.get('concise_description', '') if match else ''
+    # Set title if not present
+    if 'title' not in best_seller or not best_seller.get('title'):
+        if match and 'title' in match:
+            best_seller['title'] = match['title']
     return best_seller
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python generate-recommendations.py <user_input.xlsx>")
+
+def get_ac_recommendations(products, budget, top_n=3):
+    """
+    Prioritize ACs by Priority and Standard/Premium. If budget >= 400000, prefer Premium, else Standard.
+    If not enough in preferred type, fill with fallback type.
+    """
+    if budget < 400000:
+        preferred_type = 'Standard'
+        fallback_type = 'Premium'
     else:
-        main(sys.argv[1], "best-sellers.csv")
+        preferred_type = 'Premium'
+        fallback_type = 'Standard'
+    # Filter for ACs
+    acs = [p for p in products if p['category'].strip().lower() == 'air conditioner']
+    # Preferred type, sorted by priority
+    preferred = [p for p in acs if p['standard_premium'].strip().lower() == preferred_type.lower()]
+    preferred.sort(key=lambda x: x['priority'])
+    # Fallback type, sorted by priority
+    fallback = [p for p in acs if p['standard_premium'].strip().lower() == fallback_type.lower()]
+    fallback.sort(key=lambda x: x['priority'])
+    # Combine, but only enough to fill top_n
+    result = preferred[:top_n]
+    if len(result) < top_n:
+        result += fallback[:top_n - len(result)]
+    return result[:top_n]
+
+
+def get_appliance_recommendations(products, category, budget, top_n=3):
+    """
+    Prioritize appliances by Priority and Standard/Premium. If budget >= 400000, prefer Premium, else Standard.
+    If not enough in preferred type, fill with fallback type. Remove duplicates by SKU or brand+model.
+    """
+    if budget < 400000:
+        preferred_type = 'Standard'
+        fallback_type = 'Premium'
+    else:
+        preferred_type = 'Premium'
+        fallback_type = 'Standard'
+    # Filter for category
+    items = [p for p in products if p['category'].strip().lower() == category.strip().lower()]
+    # Preferred type, sorted by priority
+    preferred = [p for p in items if p['standard_premium'].strip().lower() == preferred_type.lower()]
+    preferred.sort(key=lambda x: x['priority'])
+    # Fallback type, sorted by priority
+    fallback = [p for p in items if p['standard_premium'].strip().lower() == fallback_type.lower()]
+    fallback.sort(key=lambda x: x['priority'])
+    # Combine, but only enough to fill top_n
+    result = preferred[:top_n]
+    if len(result) < top_n:
+        result += fallback[:top_n - len(result)]
+    # Remove duplicates by SKU or brand+model
+    seen = set()
+    unique = []
+    for p in result:
+        key = p.get('sku') or (p.get('brand', '').lower(), p.get('title', '').lower())
+        if key and key not in seen:
+            unique.append(p)
+            seen.add(key)
+    return unique[:top_n]
+# Add this helper function near the HTML generation code
+def render_top_benefits(top_benefits):
+    if not top_benefits:
+        return ""
+    # Normalize line endings
+    text = top_benefits.replace('\r\n', '\n').replace('\r', '\n')
+    # Try to split on numbered points at the start of a line
+    items = re.split(r'(?:^|\n)\s*\d+\.\s*', text)
+    # Remove empty and whitespace-only items
+    items = [item.strip() for item in items if item.strip()]
+    # Fallback: if only one item, try splitting by newlines or semicolons
+    if len(items) == 1:
+        items = [line.strip() for line in re.split(r'[\n;]', text) if line.strip()]
+    if not items:
+        return ""
+    html = "<ul class='top-benefits-list'>"
+    for item in items:
+        html += f"<li>{item}</li>"
+    html += "</ul>"
+    return html
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("Usage: python generate-recommendations.py <user_input.xlsx> <best_sellers_csv>")
+    else:
+        main(sys.argv[1], sys.argv[2])
+
