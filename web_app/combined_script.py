@@ -3646,7 +3646,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         // Mark the first one as active
                         if (idx === 0) btn.classList.add('active');
                         
-                        btn.onclick = function() {
+                        btn.onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const prevY = window.scrollY;
                             console.log('Accordion button clicked');
                             const panel = this.nextElementSibling;
                             console.log('Panel element:', panel);
@@ -3663,6 +3666,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 this.classList.add('active');
                                 console.log('Panel opened');
                             }
+                            this.blur();
+                            requestAnimationFrame(() => {{ window.scrollTo(0, prevY); }});
                         };
                     });
                 }
@@ -4213,7 +4218,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     btn.addEventListener('click', function(e) {{
                         e.preventDefault();
                         e.stopPropagation();
-                        
+                        const prevY = window.scrollY;
                         const panel = this.nextElementSibling;
                         const isOpen = panel.style.display === 'block';
                         
@@ -4234,7 +4239,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             this.classList.add('active');
                             console.log('DIRECT: Panel opened');
                         }}
-                        
+                        this.blur();
+                        requestAnimationFrame(() => {{ window.scrollTo(0, prevY); }});
                         return false;
                     }});
                     console.log('DIRECT: Setup click handler for:', btn.textContent);

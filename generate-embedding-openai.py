@@ -423,7 +423,7 @@ def generate_concise_description(description: str, features: Dict[str, Any], pro
         key_features = list(features['parsed_features'].items())[:5]
     
     # Prepare a more concise prompt
-    prompt = f"""Create a 3-sentence product description for a {product_type}:
+    prompt = f"""Create a 2-sentence product description for a {product_type}:
 1. Main benefit/unique selling point
 2. 2-3 key features: {', '.join([f"{k}: {v}" for k, v in key_features])}
 3. Compelling reason to choose this product
