@@ -678,19 +678,18 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 background-color: #fff;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.05);
                 display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 15px;
+                grid-template-columns: 1fr; /* Mobile-first: single column */
+                gap: 12px;
             }
             
-            @media (min-width: 768px) {
-                .client-info {
-                      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-                }
+            @media (min-width: 600px) {
+                .client-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            }
+            @media (min-width: 900px) {
+                .client-info { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
             }
             
-            .client-info-item {
-                margin-bottom: 0;
-            }
+            .client-info-item { margin-bottom: 0; min-width: 0; }
             
             .client-info-label {
                 font-weight: 500;
@@ -701,6 +700,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             .client-info-value {
                 font-weight: 600;
                 color: #333;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                min-width: 0;
+            }
+
+            @media (max-width: 480px) {
+                .container { padding: 20px 16px; }
             }
             
             /* Product card and grid styling */
