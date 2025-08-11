@@ -2505,6 +2505,11 @@ def generate_default_recommendations(
 
         # If tier is chosen, filter products to that tier only
         tiered_products = [p for p in enriched_products if (selected_tier is None or p.get('standard_premium', '').strip().lower() == selected_tier.lower())]
+        print(f"[defaults] Tier={selected_tier}, candidates after tier filter: {len(tiered_products)}")
+        # Fallback: if no products match the selected tier (e.g., no Premium defaults yet), fall back to Standard
+        if selected_tier and not tiered_products:
+            print(f"[defaults] No products found for tier {selected_tier}. Falling back to Standard products.")
+            tiered_products = [p for p in enriched_products if p.get('standard_premium', '').strip().lower() == 'standard']
 
         for p in tiered_products:
             category_name = p.get('category', '').strip()
