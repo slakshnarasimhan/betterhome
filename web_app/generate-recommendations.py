@@ -456,38 +456,46 @@ def render_top_benefits(top_benefits):
 
 
 def calculate_total_cost(recommendations):
-    """Calculate total cost of recommendations using bh_price."""
-    total_cost = 0
-    processed_keys = set()
+    """Calculate total cost by summing BH price for all selected items including quantities.
+
+    - For list entries, sum the price of each product in the list (duplicates represent quantity).
+    - For nested dict entries (e.g., bathrooms), also sum each product in the nested lists.
+    - Prefer 'bh_price'; if missing/zero, fall back to 'better_home_price' then 'market_price_1'.
+    """
+    def extract_price(product: dict) -> float:
+        try:
+            price = float(product.get('bh_price', 0) or 0)
+            if price and price > 0:
+                return price
+        except Exception:
+            pass
+        # Fallbacks
+        for fld in ('better_home_price', 'market_price_1'):
+            try:
+                val = float(product.get(fld, 0) or 0)
+                if val and val > 0:
+                    return val
+            except Exception:
+                continue
+        return 0.0
+
+    total_cost = 0.0
     for room, products in recommendations.items():
         if not isinstance(products, dict):
             continue
         for product_type, options in products.items():
             if isinstance(options, dict):
+                # Nested categories (e.g., bathroom)
                 for nested_type, nested_options in options.items():
-                    if not nested_options or not isinstance(nested_options, list):
+                    if not isinstance(nested_options, list):
                         continue
-                    key = f"{room}-{product_type}-{nested_type}"
-                    if key not in processed_keys:
-                        try:
-                            if nested_options and isinstance(nested_options[0], dict):
-                                best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0))
-                                price = float(best_product.get('bh_price', 0))
-                                total_cost += price
-                            processed_keys.add(key)
-                        except (ValueError, TypeError):
-                            continue
-            elif isinstance(options, list) and options:
-                key = f"{room}-{product_type}"
-                if key not in processed_keys:
-                    try:
-                        if options and isinstance(options[0], dict):
-                            best_product = max(options, key=lambda x: x.get('feature_match_score', 0))
-                            price = float(best_product.get('bh_price', 0))
-                            total_cost += price
-                        processed_keys.add(key)
-                    except (ValueError, TypeError):
-                        continue
+                    for product in nested_options:
+                        if isinstance(product, dict):
+                            total_cost += extract_price(product)
+            elif isinstance(options, list):
+                for product in options:
+                    if isinstance(product, dict):
+                        total_cost += extract_price(product)
     return total_cost
 
 
@@ -1515,7 +1523,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             }
                             // Keep viewport position and remove focus to avoid jumps
                             this.blur();
-                            requestAnimationFrame(() => { window.scrollTo(0, prevY); });
+                            // Use double RAF to ensure layout is settled before restoring scroll
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    window.scrollTo(0, prevY);
+                                });
+                            });
                         };
                     });
                 }
@@ -1709,8 +1722,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             room_desc = get_room_description(room, user_data)
         if room_desc:
             html_content += f'                    <div class="room-description">{room_desc}</div>\n'
-        # Group by appliance type (and sub-type)
-        for appliance_type, products in appliances.items():
+        # Group by appliance type (and sub-type), ensuring room items appear before bathroom/nested items
+        ordered_items = [
+            (k, v) for k, v in appliances.items() if not isinstance(v, dict)
+        ] + [
+            (k, v) for k, v in appliances.items() if isinstance(v, dict)
+        ]
+        for appliance_type, products in ordered_items:
             # Handle nested appliance groups (e.g., bathroom)
             if isinstance(products, dict):
                 for sub_appliance_type, sub_products in products.items():
@@ -2392,12 +2410,18 @@ def generate_default_recommendations(
         print(f"[defaults] Failed to load budget config {cfg_path}: {e}")
         cfg = {}
 
-    # Read the CSV and filter for Default List == 'Y'
+    # Read the CSV and filter curated rows using new semantics
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
     df.columns = [col.strip() for col in df.columns]
-    default_items = df[df['Default List'].str.upper() == 'Y']
-    print('Filtered default items:')
-    print(default_items)
+    dl_col = df.get('Default List', '').astype(str)
+    # Curated rows are those explicitly tagged for any list (Standard/Premium) or legacy 'Y'
+    mask_any_list = (
+        dl_col.str.upper().eq('Y') |
+        dl_col.str.contains('Standard List', case=False, na=False) |
+        dl_col.str.contains('Premium List', case=False, na=False)
+    )
+    default_items = df[mask_any_list].copy()
+    print('[defaults] Filtered curated rows (any list):', len(default_items))
     products = []
 
     def parse_price(val):
@@ -2422,7 +2446,15 @@ def generate_default_recommendations(
             'priority': parse_int(row.get('Priority', '')),
             'image_src': row.get('Product Image URL', '').strip(),
             'url': row.get('Product URL', '').strip() if 'Product URL' in row else '',
+            'default_list_raw': row.get('Default List', '').strip(),
         }
+        # Parse Default List membership flags
+        dl_raw_upper = product['default_list_raw'].upper()
+        dl_raw_lower = product['default_list_raw'].lower()
+        in_standard_list = ('standard list' in dl_raw_lower) or (dl_raw_upper == 'Y')
+        in_premium_list = ('premium list' in dl_raw_lower) or (dl_raw_upper == 'Y')
+        product['in_standard_list'] = in_standard_list
+        product['in_premium_list'] = in_premium_list
         products.append(product)
     # Load catalog for enrichment
     catalog_products = load_product_catalog_json(catalog_path)
@@ -2434,6 +2466,7 @@ def generate_default_recommendations(
         'Ceiling Fan': ['hall', 'dining','master_bedroom', 'bedroom_2', 'bedroom_3'],
         'Chimney': ['kitchen'],
         'Cooktop': ['kitchen'],
+        'Hob': ['kitchen'],
         'Dishwasher': ['kitchen'],
         'Instant Water Heater': ['master_bedroom', 'bedroom_2', 'bedroom_3'],
         'Storage Water Heater': ['master_bedroom', 'bedroom_2', 'bedroom_3'],
@@ -2503,13 +2536,38 @@ def generate_default_recommendations(
             'bedroom_3': {'bathroom': {}},
         }
 
-        # If tier is chosen, filter products to that tier only
-        tiered_products = [p for p in enriched_products if (selected_tier is None or p.get('standard_premium', '').strip().lower() == selected_tier.lower())]
-        print(f"[defaults] Tier={selected_tier}, candidates after tier filter: {len(tiered_products)}")
-        # Fallback: if no products match the selected tier (e.g., no Premium defaults yet), fall back to Standard
-        if selected_tier and not tiered_products:
-            print(f"[defaults] No products found for tier {selected_tier}. Falling back to Standard products.")
+        # If tier is chosen, apply Default List semantics with per-category handling
+        if selected_tier:
+            # Group by category for fine-grained fallback behavior
+            by_category: Dict[str, List[Dict[str, Any]]] = {}
+            for p in enriched_products:
+                cat = p.get('category', '').strip() or 'Uncategorized'
+                by_category.setdefault(cat, []).append(p)
+
+            tiered_products: List[Dict[str, Any]] = []
+            if selected_tier.lower() == 'standard':
+                # Include items tagged for Standard List (includes shared Standard+Premium)
+                for cat, items in by_category.items():
+                    std_items = [x for x in items if x.get('in_standard_list')]
+                    tiered_products.extend(std_items)
+            else:
+                # Premium: Prefer Premium-only items; if none exist for a category, include shared Standard+Premium items
+                for cat, items in by_category.items():
+                    premium_only = [x for x in items if x.get('in_premium_list') and not x.get('in_standard_list')]
+                    if premium_only:
+                        tiered_products.extend(premium_only)
+                        continue
+                    shared_premium = [x for x in items if x.get('in_premium_list')]
+                    tiered_products.extend(shared_premium)
+            print(f"[defaults] Tier={selected_tier}, candidates after Default List filtering: {len(tiered_products)}")
+            # Legacy fallback: if nothing made it through, fall back to Standard tier by Standard/Premium column
+            if not tiered_products:
+                print(f"[defaults] No products after Default List filtering for tier {selected_tier}. Falling back to Standard tier via Standard/Premium column.")
             tiered_products = [p for p in enriched_products if p.get('standard_premium', '').strip().lower() == 'standard']
+        else:
+            # No selected tier (no threshold decision) → keep all curated products
+            tiered_products = list(enriched_products)
+            print(f"[defaults] Tier=None, using all curated products: {len(tiered_products)}")
 
         for p in tiered_products:
             category_name = p.get('category', '').strip()
