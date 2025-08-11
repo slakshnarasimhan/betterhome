@@ -1762,8 +1762,6 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         badges = ""
                         if product.get('is_bestseller', False):
                             badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
-                        if product == best_product:
-                            badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
                         # Checkbox and selection
                         product_id = f"{room}-{sub_appliance_type}-{idx}"
                         # Use a unique key for the product (brand+model)
@@ -1810,7 +1808,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
                                 <ul class="reasons-list"><li>{reason_text}</li></ul>
-                                <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
+                                
                             </div>
                         </div>'''
                     html_content += '</div>'
@@ -1857,8 +1855,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     badges = ""
                     if product.get('is_bestseller', False):
                         badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
-                    if product == best_product:
-                        badges += '<div class="recommended-badge"><i class="fas fa-thumbs-up"></i> RECOMMENDED</div>'
+                    
                     product_id = f"{room}-{appliance_type}-{idx}"
                     product_key = f"{brand}::{model}"
                     if product_key not in checked_product_keys and product == best_product:
@@ -1908,7 +1905,6 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="savings">Save ₹{int(discount):,}</span>
                             </div>
                             {description_html}
-                            <a href="{purchase_url}" class="buy-button" target="_blank">Buy Now</a>
                         </div>
                     </div>'''
                 html_content += '</div>'
