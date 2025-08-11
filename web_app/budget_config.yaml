@@ -1,7 +1,7 @@
 home_appliance:
-standard:
-"2BHK": 291280
-"3BHK": 346530
-premium:
-"2BHK": 472610
-"3BHK": 535880
+  standard:
+    "2BHK": 291280
+    "3BHK": 346530
+  premium:
+    "2BHK": 472610
+    "3BHK": 535880

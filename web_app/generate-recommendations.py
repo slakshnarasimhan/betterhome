@@ -1619,12 +1619,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         continue
                     best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0), default=None)
                     if best_product:
-                        print(f"[DEBUG] Room: {room}, Type: {product_type}, Subtype: {nested_type}, Title: {best_product.get('title')}, Savings: {best_product.get('savings', 0)}, Retail: {best_product.get('retail_price')}, BH: {best_product.get('better_home_price')}")
+                        #print(f"[DEBUG] Room: {room}, Type: {product_type}, Subtype: {nested_type}, Title: {best_product.get('title')}, Savings: {best_product.get('savings', 0)}, Retail: {best_product.get('retail_price')}, BH: {best_product.get('better_home_price')}")
                         total_savings += best_product.get('savings', 0)
             elif isinstance(options, list) and options:
                 best_product = max(options, key=lambda x: x.get('feature_match_score', 0), default=None)
                 if best_product:
-                    print(f"[DEBUG] Room: {room}, Type: {product_type}, Title: {best_product.get('title')}, Savings: {best_product.get('savings', 0)}, Retail: {best_product.get('retail_price')}, BH: {best_product.get('better_home_price')}")
+                    #print(f"[DEBUG] Room: {room}, Type: {product_type}, Title: {best_product.get('title')}, Savings: {best_product.get('savings', 0)}, Retail: {best_product.get('retail_price')}, BH: {best_product.get('better_home_price')}")
                     total_savings += best_product.get('savings', 0)
     if not default_mode:
         budget_summary_section = f"""
