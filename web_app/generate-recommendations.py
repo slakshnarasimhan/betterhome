@@ -10,7 +10,7 @@ import sys
 from reportlab.pdfgen import canvas
 import requests
 import os
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote_plus
 import re # Add import for regex
 from reportlab.platypus import Image
 from reportlab.lib.colors import HexColor
@@ -21,6 +21,7 @@ import pprint
 from s3_config import S3Handler
 from os.path import splitext
 import sys
+import argparse
 
 # Update the read_best_sellers_csv function to read from Google Sheets CSV export
 BEST_SELLERS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/18Z8nJdJstXKGgmExWnXqtB5dCOgWelp36AKG9DOGkXs/export?format=csv'
@@ -56,6 +57,7 @@ def read_best_sellers_csv(csv_path: str) -> List[Dict[str, Any]]:
         }
         products.append(product)
     return products
+
 def get_recommended_products(products: List[Dict[str, Any]], category: str, budget: float) -> List[Dict[str, Any]]:
     """Filter and sort products for a given category and budget."""
     # Budget logic: <400000 = Standard, >=400000 = Premium
@@ -66,7 +68,7 @@ def get_recommended_products(products: List[Dict[str, Any]], category: str, budg
     filtered = [p for p in products if p['category'].lower() == category.lower() and p['standard_premium'].lower() == filter_type.lower()]
     # Sort by priority (ascending), then by price (ascending)
     filtered.sort(key=lambda x: (x['priority'], x['bh_price'] or x['retail_price'] or x['mrp']))
-    return filtered[:3]  # Return top 3 by priority
+    return filtered  # Return top 3 by priority
 
 
 def load_product_catalog_json(json_path: str) -> List[Dict[str, Any]]:
@@ -105,7 +107,7 @@ def get_recommended_products_with_fallback(
     filtered.sort(key=lambda x: (float(x.get(price_field, 0)), x.get('title', '')))
     for p in filtered:
         p['source'] = 'catalog'
-    return filtered[:3]
+    return filtered
 
 
 def analyze_user_requirements(excel_file: str):
@@ -404,7 +406,7 @@ def main(user_xlsx: str, best_sellers_csv: str):
     # Step 4: Write HTML output
     base, _ = splitext(user_xlsx)
     html_filename = base + ".html"
-    generate_html_file(user_data, recommendations, html_filename)
+    generate_html_file(user_data, recommendations, html_filename, default_mode=True)
     # Assuming generate_html_file is available or needs to be copied
     # For now, we'll just print the filename
     print(f"Generated HTML recommendations: {html_filename}")
@@ -576,7 +578,7 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
     return ""
 
 # Function to generate an HTML file with recommendations
-def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
+def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str, default_mode: bool = False) -> None:
     #import pprint
     #pprint.pprint(final_list)
     # print("[DEBUG HTML] final_list keys:", list(final_list.keys()))
@@ -674,7 +676,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             @media (min-width: 768px) {
                 .client-info {
-                    grid-template-columns: repeat(3, 1fr);
+                      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
                 }
             }
             
@@ -703,7 +705,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             @media (min-width: 768px) {
                 .products-grid {
-                    grid-template-columns: repeat(3, 1fr);  // Change to 3 columns
+                       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
                 }
             }
             
@@ -920,7 +922,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             @media (min-width: 768px) {
                 .budget-info {
-                    grid-template-columns: repeat(3, 1fr);
+                       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
                 }
             }
             
@@ -1491,7 +1493,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         // Mark the first one as active
                         if (idx === 0) btn.classList.add('active');
                         
-                        btn.onclick = function() {
+                        btn.onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const prevY = window.scrollY;
                             console.log('Accordion button clicked');
                             const panel = this.nextElementSibling;
                             console.log('Panel element:', panel);
@@ -1508,6 +1513,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 this.classList.add('active');
                                 console.log('Panel opened');
                             }
+                            // Keep viewport position and remove focus to avoid jumps
+                            this.blur();
+                            requestAnimationFrame(() => { window.scrollTo(0, prevY); });
                         };
                     });
                 }
@@ -1553,6 +1561,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     """
             
     # Add client info section with explicit f-string
+    # Determine budget display: in default mode, show calculated total instead of provided budget
+    # We'll compute total_cost a bit later; set a placeholder that we'll replace
     client_info_section = f"""
             <div class="client-info">
                 <div class="client-info-item">
@@ -1577,12 +1587,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
                 <div class="client-info-item">
                     <div class="client-info-label">Total Budget</div>
-                    <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
-                </div>
-                
-                <div class="client-info-item">
-                    <div class="client-info-label">Family Size</div>
-                    <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
+                    <div class="client-info-value" id="client-total-budget">₹{user_data['total_budget']:,.2f}</div>
                 </div>
             </div>
     """
@@ -1590,6 +1595,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
 
     # Add budget summary
     total_cost = calculate_total_cost(final_list)
+    # If in default mode, also update the client info budget to reflect total cost
+    if default_mode:
+        html_content = html_content.replace(
+            f"id=\"client-total-budget\">₹{user_data['total_budget']:,.2f}",
+            f"id=\"client-total-budget\">₹{total_cost:,.2f}"
+        )
+        # Ensure user_data has the updated value to avoid downstream math issues
+        try:
+            user_data['total_budget'] = float(total_cost)
+        except Exception:
+            user_data['total_budget'] = total_cost
     budget_utilization = (total_cost / user_data['total_budget']) * 100
     # Calculate total_savings for the default recommended set
     total_savings = 0
@@ -1610,7 +1626,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 if best_product:
                     print(f"[DEBUG] Room: {room}, Type: {product_type}, Title: {best_product.get('title')}, Savings: {best_product.get('savings', 0)}, Retail: {best_product.get('retail_price')}, BH: {best_product.get('better_home_price')}")
                     total_savings += best_product.get('savings', 0)
-    budget_summary_section = f"""
+    if not default_mode:
+        budget_summary_section = f"""
             <div class="budget-summary">
                 <h2>Budget Analysis</h2>
                 <div class="budget-info">
@@ -1631,43 +1648,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <div class="budget-item-label">Total Savings</div>
                     <div class="budget-item-value">₹{int(total_savings):,}</div>
                 </div>
-    """
-    html_content += budget_summary_section
-    
-    if budget_utilization <= 100:
-        html_content += """
+        """
+        html_content += budget_summary_section
+        
+        if budget_utilization <= 100:
+            html_content += """
                 <div class="budget-status good">
                     ✓ Your selected products fit comfortably within your budget!
                 </div>
-        """
-    else:
-        html_content += """
+            """
+        else:
+            html_content += """
                 <div class="budget-status warning">
                     ⚠ The total cost slightly exceeds your budget. Consider reviewing options if needed.
                 </div>
-        """
-    
-    html_content += """
+            """
+        
+        html_content += """
             </div>
-    """
+        """
 
     # Debug: Print the final list for kitchen before generating HTML
     # print("[DEBUG FINAL LIST] Kitchen hob tops:", final_list['kitchen']['hob_top'])
-
-    # Add logic to ensure at least three recommendations are displayed
-    def ensure_three_recommendations(products, allow_duplicates=False):
-        """
-        Ensure that there are at least three product recommendations.
-        
-        If allow_duplicates is True and there are fewer than 3 products, 
-        duplicate existing products to reach 3 total.
-        Otherwise, return the original list without duplication.
-        """
-        if allow_duplicates and len(products) < 3 and len(products) > 0:
-            # Only duplicate if explicitly allowed and there's at least one product
-            products = products.copy()  # Work on a copy to avoid modifying the original
-            products.extend(products[:3 - len(products)])  # Duplicate some products if less than 3
-        return products
 
     # Process each room in specified order
     room_idx = 0
@@ -1702,7 +1704,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <button class='accordion' type='button'>{room_title}</button>
                 <div class='panel' style='display: {'block' if room_idx == 0 else 'none'};'>
         """
-        room_desc = get_room_description(room, user_data)
+        room_desc = None
+        if not default_mode:
+            room_desc = get_room_description(room, user_data)
         if room_desc:
             html_content += f'                    <div class="room-description">{room_desc}</div>\n'
         # Group by appliance type (and sub-type)
@@ -1714,7 +1718,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         continue
                     # Only allow duplication for certain types
                     allow_duplication = sub_appliance_type not in ['glass_partition', 'partition', 'shower_partition']
-                    grouped_products = ensure_three_recommendations(sub_products, allow_duplication)
+                    grouped_products = sub_products
                     # Sort by feature match score if available
                     grouped_products.sort(key=lambda x: -x.get('feature_match_score', 0))
                     # Section heading for sub-type
@@ -1743,15 +1747,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         # if top_benefits_html:
                         #     html_content += top_benefits_html
                         reason_text = get_product_recommendation_reason(
-                                product, 
-                                sub_appliance_type, 
-                                room, 
-                                user_data['demographics'],
-                                user_data['total_budget'],
-                                {},
-                                user_data
-                            )
-                        html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
+                            product, 
+                            sub_appliance_type, 
+                            room, 
+                            user_data['demographics'],
+                            user_data['total_budget'],
+                            {},
+                            user_data
+                        )
+                        # For default mode, avoid an external reasons block before the card
+                        if not default_mode:
+                            html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                         # Badges
                         badges = ""
                         if product.get('is_bestseller', False):
@@ -1769,8 +1775,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         else:
                             checked = ''
                         selected_class = ' selected' if checked else ''
-                        html_content += f'''<div class="product-card{selected_class}">
-                            <div class="product-selection">
+                        selection_html = '' if default_mode else f'''<div class="product-selection">
                                 <input type="checkbox"
                                     id="{product_id}"
                                     class="product-checkbox"
@@ -1785,7 +1790,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                     {checked}>
                                 <label for="{product_id}"></label>
                                 <span class="selection-label">Selected</span>
-                            </div>
+                            </div>'''
+                        html_content += f'''<div class="product-card{selected_class}">
+                            {selection_html}
                             <div class="product-image-container">
                                 <a href="{purchase_url}" target="_blank" rel="noopener noreferrer">
                                     <img class="product-image" src="{image_src}" alt="{brand} {model}">
@@ -1809,7 +1816,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     html_content += '</div>'
             elif isinstance(products, list) and products:
                 allow_duplication = appliance_type not in ['glass_partition', 'partition', 'shower_partition']
-                grouped_products = ensure_three_recommendations(products, allow_duplication)
+                grouped_products = products
                 grouped_products.sort(key=lambda x: -x.get('feature_match_score', 0))
                 type_title = appliance_type.replace('_', ' ').title()
                 html_content += f'<h4 style="margin-top:20px;">{type_title}</h4>'
@@ -1834,15 +1841,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     # if top_benefits_html:
                     #     html_content += top_benefits_html
                     reason_text = get_product_recommendation_reason(
-                            product, 
-                            appliance_type, 
-                            room, 
-                            user_data['demographics'],
-                            user_data['total_budget'],
-                            {},
-                            user_data
-                        )
-                    html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
+                        product, 
+                        appliance_type, 
+                        room, 
+                        user_data['demographics'],
+                        user_data['total_budget'],
+                        {},
+                        user_data
+                    )
+                    # For default mode, avoid an external reasons block before the card
+                    if not default_mode:
+                        html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                     concise_description = product.get('concise_description') or product.get('description', 'No description available')
                     description_html = f'<div class="product-info-item">{concise_description}</div>'
                     badges = ""
@@ -1866,8 +1875,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         features_html = ''.join([f'<li>{f}</li>' for f in parsed_features])
                     else:
                         features_html = ''
-                    html_content += f'''<div class="product-card{selected_class}">
-                        <div class="product-selection">
+                    selection_html = '' if default_mode else f'''<div class="product-selection">
                             <input type="checkbox"
                                 id="{product_id}"
                                 class="product-checkbox"
@@ -1882,7 +1890,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 {checked}>
                             <label for="{product_id}"></label>
                             <span class="selection-label">Selected</span>
-                        </div>
+                        </div>'''
+                    html_content += f'''<div class="product-card{selected_class}">
+                        {selection_html}
                         <div class="product-image-container">
                             <a href="{purchase_url}" target="_blank" rel="noopener noreferrer">
                                 <img class="product-image" src="{image_src}" alt="{brand} {model}">
@@ -1905,8 +1915,95 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         html_content += '</div></div>'
         room_idx += 1
 
+    if default_mode:
+        # Force single-column grid via CSS override and hide generate buttons
+        html_content += """
+                <style>
+                    .products-grid { grid-template-columns: 1fr !important; }
+                    @media (min-width: 768px) { .products-grid { grid-template-columns: 1fr !important; } }
+                </style>
+            """
+    if default_mode:
+        # Add floating Customize button linking back to landing page, with prefilled query params when available
+        # Pass bedrooms/bathrooms guess based on num_bedrooms/num_bathrooms when present
+        customize_query = f"name={quote_plus(str(user_data.get('name','')))}&mobile={quote_plus(str(user_data.get('mobile','')))}&email={quote_plus(str(user_data.get('email','')))}&address={quote_plus(str(user_data.get('address','')))}&bedrooms={quote_plus(str(user_data.get('num_bedrooms','')))}&bathrooms={quote_plus(str(user_data.get('num_bathrooms','')))}"
+        html_content += f"""
+                <a href="/" class="customize-fab" id="customizeFab">Customize</a>
+                <style>
+                    .customize-fab {{
+                        position: fixed;
+                        right: 16px;
+                        bottom: 16px;
+                        background: #0d6efd;
+                        color: #fff;
+                        padding: 12px 16px;
+                        border-radius: 999px;
+                        text-decoration: none;
+                        font-weight: 600;
+                        box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+                        z-index: 1000;
+                    }}
+                    .customize-fab:hover {{ background: #0b5ed7; color: #fff; }}
+                </style>
+                <script>
+                    (function() {{
+                        var fab = document.getElementById('customizeFab');
+                        if (fab) {{
+                            var q = '{customize_query}';
+                            // Only append if at least one value exists
+                            if (q.replace(/(name=|mobile=|email=|address=)/g,'').replace(/&/g,'').trim() !== '') {{
+                                fab.href = '/?' + q;
+                            }}
+                        }}
+                    }})();
+                </script>
+        """
+        html_content += """
+                <footer>
+                    <p>This product recommendation brochure was created on {current_date}</p>
+                    <p> © {pd.Timestamp.now().year} BetterHome.</p>
+                </footer>
+            </div>
+            """
+    else:
+        html_content += f"""
+                <div class="generate-container">
+                    <h2>Select Your Preferred Products</h2>
+                    <p>Please select one product from each category above that best suits your needs.</p>
+                    <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+                </div>
+        """
+
+    # Always ensure accordion behavior is active (both modes)
+    html_content += """
+            <script>
+            window.addEventListener('load', function() {
+                var buttons = document.querySelectorAll('.accordion');
+                for (var i = 0; i < buttons.length; i++) {
+                    (function(btn){
+                        btn.addEventListener('click', function(e){
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var prevY = window.scrollY;
+                            var panel = this.nextElementSibling;
+                            var isOpen = panel && panel.style.display === 'block';
+                            var panels = document.querySelectorAll('.panel');
+                            for (var j = 0; j < panels.length; j++) { panels[j].style.display = 'none'; }
+                            var accs = document.querySelectorAll('.accordion');
+                            for (var k = 0; k < accs.length; k++) { accs[k].classList.remove('active'); }
+                            if (!isOpen && panel) { panel.style.display = 'block'; this.classList.add('active'); }
+                            this.blur();
+                            requestAnimationFrame(function(){ window.scrollTo(0, prevY); });
+                        });
+                    })(buttons[i]);
+                }
+            });
+            </script>
+    """
+
     # Add the generate final recommendation button and JavaScript
-    html_content += f"""
+    if not default_mode:
+        html_content += f"""
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
                 <p>Please select one product from each category above that best suits your needs.</p>
@@ -2275,29 +2372,242 @@ def get_appliance_recommendations(products, category, budget, top_n=3):
             unique.append(p)
             seen.add(key)
     return unique[:top_n]
-# Add this helper function near the HTML generation code
-def render_top_benefits(top_benefits):
-    if not top_benefits:
-        return ""
-    # Normalize line endings
-    text = top_benefits.replace('\r\n', '\n').replace('\r', '\n')
-    # Try to split on numbered points at the start of a line
-    items = re.split(r'(?:^|\n)\s*\d+\.\s*', text)
-    # Remove empty and whitespace-only items
-    items = [item.strip() for item in items if item.strip()]
-    # Fallback: if only one item, try splitting by newlines or semicolons
-    if len(items) == 1:
-        items = [line.strip() for line in re.split(r'[\n;]', text) if line.strip()]
-    if not items:
-        return ""
-    html = "<ul class='top-benefits-list'>"
-    for item in items:
-        html += f"<li>{item}</li>"
-    html += "</ul>"
-    return html
+
+# New function to generate default recommendations for 2BHK and 3BHK
+
+def generate_default_recommendations(
+    csv_path: str,
+    catalog_path: str,
+    bhk_choice: str | None = None,  # '2BHK' or '3BHK'
+    name: str | None = None,
+    address: str | None = None,
+    mobile: str | None = None,
+    email: str | None = None,
+    user_budget: float | None = None,
+):
+    # Load budget config
+    cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'budget_config.yaml')
+    cfg = {}
+    try:
+        with open(cfg_path, 'r', encoding='utf-8') as f:
+            cfg = yaml.safe_load(f) or {}
+        print(f"[defaults] Loaded budget config from {cfg_path}: {cfg}")
+    except Exception as e:
+        print(f"[defaults] Failed to load budget config {cfg_path}: {e}")
+        cfg = {}
+
+    # Read the CSV and filter for Default List == 'Y'
+    df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+    df.columns = [col.strip() for col in df.columns]
+    default_items = df[df['Default List'].str.upper() == 'Y']
+    print('Filtered default items:')
+    print(default_items)
+    products = []
+
+    def parse_price(val):
+        val = str(val).replace(',', '').replace('"', '').strip()
+        try:
+            return float(val) if val else 0.0
+        except Exception:
+            return 0.0
+    def parse_int(val):
+        try:
+            return int(str(val).strip()) if str(val).strip() else 0
+        except Exception:
+            return 0
+    for _, row in default_items.iterrows():
+        product = {
+            'sku': row.get('SKU Code', '').strip(),
+            'category': row.get('Category', '').strip(),
+            'bh_price': parse_price(row.get('BH Price', '')),
+            'standard_premium': row.get('Standard/Premium', '').strip(),
+            'brand': row.get('Brand', '').strip(),
+            'title': row.get('Title', '').strip(),
+            'priority': parse_int(row.get('Priority', '')),
+            'image_src': row.get('Product Image URL', '').strip(),
+            'url': row.get('Product URL', '').strip() if 'Product URL' in row else '',
+        }
+        products.append(product)
+    # Load catalog for enrichment
+    catalog_products = load_product_catalog_json(catalog_path)
+    enriched_products = [enrich_best_seller_product(p, catalog_products) for p in products]
+    # Room mapping (customize as needed)
+    # Top-level categories mapped to one or more rooms
+    category_to_rooms = {
+        'Air Conditioner': ['hall', 'master_bedroom', 'bedroom_2', 'bedroom_3'],
+        'Ceiling Fan': ['hall', 'dining','master_bedroom', 'bedroom_2', 'bedroom_3'],
+        'Chimney': ['kitchen'],
+        'Cooktop': ['kitchen'],
+        'Dishwasher': ['kitchen'],
+        'Instant Water Heater': ['master_bedroom', 'bedroom_2', 'bedroom_3'],
+        'Storage Water Heater': ['master_bedroom', 'bedroom_2', 'bedroom_3'],
+        'LED Mirror': ['master_bedroom', 'bedroom_2', 'bedroom_3'],
+        'Water Purifier': ['kitchen'],
+        'Refrigerator': ['kitchen'],
+        'Exhaust Fan': ['kitchen','master_bedroom', 'bedroom_2', 'bedroom_3'],
+        'Washing Machine': ['laundry'],
+    }
+    # Categories that should be shown inside the bathroom section of bedrooms
+    bathroom_nested_categories = ['Storage Water Heater', 'LED Mirror']
+
+    bhk_list = [bhk_choice] if bhk_choice in ('2BHK', '3BHK') else ['2BHK', '3BHK']
+    for bhk in bhk_list:
+        # Decide Standard vs Premium using config thresholds
+        threshold = None
+        try:
+            tier_cfg = cfg.get('home_appliance', {})
+            # Use 'standard' threshold for decision as per instruction: if budget >= standard threshold -> premium
+            if bhk == '2BHK':
+                threshold = float(tier_cfg.get('standard', {}).get('2BHK')) if tier_cfg else None
+            else:
+                threshold = float(tier_cfg.get('standard', {}).get('3BHK')) if tier_cfg else None
+        except Exception:
+            threshold = None
+        selected_tier = None
+        if user_budget is not None and threshold is not None:
+            selected_tier = 'Premium' if user_budget >= threshold else 'Standard'
+        print(f"[defaults] Tier decision → BHK={bhk}, user_budget={user_budget}, threshold={threshold}, selected_tier={selected_tier}")
+        # Fall back to CSV Standard/Premium mix if not determined
+
+        user_data = {
+            'name': (name or f'Default {bhk} User'),
+            'mobile': (mobile or ''),
+            'email': (email or ''),
+            'address': (address or ''),
+            'total_budget': float(user_budget) if user_budget is not None else (600000.0 if bhk == '2BHK' else 900000.0),
+            'num_bedrooms': 2 if bhk == '2BHK' else 3,
+            'num_bathrooms': 2 if bhk == '2BHK' else 3,
+            'demographics': {'adults': 2, 'elders': 0, 'kids': 0},
+        }
+        # Provide minimal room data expected by get_room_description and HTML
+        user_data.update({
+            'hall': {'size_sqft': 200.0, 'fans': 1, 'ac': True, 'color_theme': 'White', 'is_for_kids': False},
+            'kitchen': {'size_sqft': 100.0, 'chimney_width': '60 cm', 'num_burners': 3, 'small_fan': True, 'color_theme': 'Grey', 'is_for_kids': False},
+            'dining': {'size_sqft': 120.0, 'fans': 1, 'ac': False, 'color_theme': 'Grey', 'is_for_kids': False},
+            'laundry': {'size_sqft': 50.0, 'washing_machine_type': 'Front-Load', 'dryer_type': 'No', 'is_for_kids': False},
+            'master_bedroom': {
+                'size_sqft': 140.0, 'ac': True, 'color_theme': 'White', 'is_for_kids': False,
+                'bathroom': {'water_heater_type': 'Shower', 'exhaust_fan_size': '150mm', 'water_heater_ceiling': 'No', 'led_mirror': True, 'glass_partition': False}
+            },
+            'bedroom_2': {
+                'size_sqft': 120.0, 'ac': True, 'color_theme': 'White', 'is_for_kids': False,
+                'bathroom': {'water_heater_type': 'Shower', 'exhaust_fan_size': '150mm', 'water_heater_ceiling': 'No', 'led_mirror': True, 'glass_partition': False}
+            },
+            'bedroom_3': {
+                'size_sqft': 120.0, 'ac': True, 'color_theme': 'White', 'is_for_kids': False,
+                'bathroom': {'water_heater_type': 'Shower', 'exhaust_fan_size': '150mm', 'water_heater_ceiling': 'No', 'led_mirror': True, 'glass_partition': False}
+            },
+        })
+
+        # Initialize recommendations with all expected rooms
+        recommendations = {
+            'hall': {}, 'kitchen': {}, 'dining': {}, 'laundry': {},
+            'master_bedroom': {'bathroom': {}},
+            'bedroom_2': {'bathroom': {}},
+            'bedroom_3': {'bathroom': {}},
+        }
+
+        # If tier is chosen, filter products to that tier only
+        tiered_products = [p for p in enriched_products if (selected_tier is None or p.get('standard_premium', '').strip().lower() == selected_tier.lower())]
+
+        for p in tiered_products:
+            category_name = p.get('category', '').strip()
+            if not category_name:
+                continue
+            # Bathroom-nested categories go under each bedroom's bathroom
+            if category_name in bathroom_nested_categories:
+                for room_key in ['master_bedroom', 'bedroom_2', 'bedroom_3']:
+                    bathroom = recommendations[room_key].setdefault('bathroom', {})
+                    bathroom.setdefault(category_name, []).append(p)
+                continue
+            # Top-level categories mapped to one or more rooms
+            target_rooms = category_to_rooms.get(category_name)
+            if target_rooms:
+                for room_key in target_rooms:
+                    recommendations[room_key].setdefault(category_name, []).append(p)
+            else:
+                # If no mapping, place under hall by default
+                recommendations['hall'].setdefault(category_name, []).append(p)
+
+        # Enforce per-room instance counts regardless of how many items exist
+        def get_required_count(room_key: str, category_name: str) -> int:
+            if category_name == 'Air Conditioner':
+                return 1
+            if category_name == 'Ceiling Fan':
+                return 2 if room_key == 'hall' else 1
+            if category_name == 'Chimney':
+                return 1 if room_key == 'kitchen' else 0
+            if category_name == 'Washing Machine':
+                return 1 if room_key == 'laundry' else 0
+            if category_name == 'Dishwasher':
+                return 1 if room_key == 'kitchen' else 0
+            if category_name == 'Exhaust Fan':
+                return 1
+            return -1  # -1 means leave as-is
+
+        for room_key, room_cats in list(recommendations.items()):
+            if not isinstance(room_cats, dict):
+                continue
+            for category_name, items in list(room_cats.items()):
+                required = get_required_count(room_key, category_name)
+                if required == -1:
+                    continue
+                if required == 0:
+                    # Remove categories that should not appear in this room
+                    del room_cats[category_name]
+                    continue
+                if not isinstance(items, list) or len(items) == 0:
+                    # Nothing to choose from
+                    continue
+                # Pick the single highest-priority item (priority ascending)
+                def priority_of(prod):
+                    try:
+                        return int(prod.get('priority', 999999) or 999999)
+                    except Exception:
+                        return 999999
+                items.sort(key=priority_of)
+                best = items[0]
+                # Duplicate the best item to match required count when needed (e.g., 2 fans for hall)
+                room_cats[category_name] = [best for _ in range(required)]
+
+        # Enforce counts for bathroom-nested categories (1 per category in each bathroom)
+        def best_by_priority(items_list):
+            def priority_of(prod):
+                try:
+                    return int(prod.get('priority', 999999) or 999999)
+                except Exception:
+                    return 999999
+            items_list.sort(key=priority_of)
+            return items_list[0]
+
+        for room_key in ['master_bedroom', 'bedroom_2', 'bedroom_3']:
+            bathroom = recommendations.get(room_key, {}).get('bathroom')
+            if not isinstance(bathroom, dict):
+                continue
+            for cat in list(bathroom.keys()):
+                items = bathroom.get(cat)
+                if not isinstance(items, list) or not items:
+                    continue
+                bathroom[cat] = [best_by_priority(items)]  # exactly 1 per bathroom category
+
+        # Determine output filename based on selected tier for clarity
+        tier_for_filename = (selected_tier or 'Standard').lower()
+        output_filename = f'{tier_for_filename}_default_recommendations_{bhk}.html'
+        generate_html_file(user_data, recommendations, output_filename, default_mode=True)
+        print(f"Generated {selected_tier or 'Standard'} default recommendations for {bhk}: {output_filename}")
+
+# Update main block to handle --generate-defaults
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python generate-recommendations.py <user_input.xlsx> <best_sellers_csv>")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('user_xlsx', nargs='?', default=None)
+    parser.add_argument('best_sellers_csv', nargs='?', default=None)
+    parser.add_argument('--generate-defaults', action='store_true')
+    parser.add_argument('--catalog', default='product_catalog.json')
+    args = parser.parse_args()
+    if args.generate_defaults:
+        generate_default_recommendations(args.best_sellers_csv, args.catalog)
+    elif args.user_xlsx and args.best_sellers_csv:
+        main(args.user_xlsx, args.best_sellers_csv)
     else:
-        main(sys.argv[1], sys.argv[2])
+        print("Usage: python generate-recommendations.py <user_input.xlsx> <best_sellers_csv> [--generate-defaults] [--catalog <catalog_path>]")
 
