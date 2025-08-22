@@ -53,7 +53,8 @@ def read_best_sellers_csv(csv_path: str) -> List[Dict[str, Any]]:
             'brand': row.get('Brand', '').strip(),
             'title': row.get('Title', '').strip(),
             'priority': parse_int(row.get('Priority', '')),
-            'image_src': row.get('Product Image URL', '').strip()  # <-- Add this line
+            'image_src': row.get('Product Image URL', '').strip(),  # <-- Add this line
+            'top_benefits': row.get('Top Benefits', '').strip(),
         }
         products.append(product)
     return products
@@ -593,6 +594,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     
     # Get current date for the footer
     current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
+    current_year = pd.Timestamp.now().year
     
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
@@ -618,6 +620,29 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     if logo_exists:
         logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
     
+    # Helper to render Top Benefits as a clean list with separators (no auto numbers)
+    def render_benefits(benefits_text: str) -> str:
+        if not benefits_text:
+            return ""
+        text = str(benefits_text).strip()
+        if not text:
+            return ""
+        items = []
+        # Try splitting by common separators
+        for sep in ["\n", "•", ";", "|", " — ", " - ", "·"]:
+            parts = [p.strip() for p in text.split(sep) if p and p.strip()]
+            if len(parts) >= 2:
+                items = parts
+                break
+        # Fallback to sentence split
+        if not items:
+            parts = re.split(r"\.(?:\s+|$)", text)
+            items = [p.strip() for p in parts if p and p.strip()]
+        if not items:
+            items = [text]
+        lis = ''.join([f'<li>{p}</li>' for p in items])
+        return f'<ul class="benefits-list">{lis}</ul>'
+
     # Create HTML header (CSS part)
     html_content = """
     <!DOCTYPE html>
@@ -893,6 +918,19 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 color: #3498db;
                 margin-top: 3px;
             }
+            
+            .benefits-list {
+                list-style: none;
+                margin: 8px 0 0 0;
+                padding: 0;
+                color: #444;
+            }
+            .benefits-list li {
+                padding: 8px 0;
+                border-top: 1px solid #eee;
+                line-height: 1.4;
+            }
+            .benefits-list li:first-child { border-top: none; }
             
             .buy-button {
                 display: inline-block;
@@ -1782,6 +1820,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         # For default mode, avoid an external reasons block before the card
                         if not default_mode:
                             html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
+                        # Prefer Top Benefits as the description if present (render as numbered list)
+                        benefits_html = render_benefits(product.get('top_benefits'))
+                        concise_description = product.get('concise_description') or product.get('description', 'No description available')
+                        description_html = benefits_html if benefits_html else f'<div class="product-info-item">{concise_description}</div>'
                         # Badges
                         badges = ""
                         if product.get('is_bestseller', False):
@@ -1832,6 +1874,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
                                 <ul class="reasons-list"><li>{reason_text}</li></ul>
+                                {description_html}
                                 
                             </div>
                         </div>'''
@@ -1874,8 +1917,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     # For default mode, avoid an external reasons block before the card
                     if not default_mode:
                         html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
+                    # Prefer Top Benefits as the description if present (render as numbered list)
+                    benefits_html = render_benefits(product.get('top_benefits'))
                     concise_description = product.get('concise_description') or product.get('description', 'No description available')
-                    description_html = f'<div class="product-info-item">{concise_description}</div>'
+                    description_html = benefits_html if benefits_html else f'<div class="product-info-item">{concise_description}</div>'
                     badges = ""
                     if product.get('is_bestseller', False):
                         badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
@@ -1978,10 +2023,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     }})();
                 </script>
         """
-        html_content += """
+        html_content += f"""
                 <footer>
                     <p>This product recommendation brochure was created on {current_date}</p>
-                    <p> © {pd.Timestamp.now().year} BetterHome.</p>
+                    <p> © {current_year} BetterHome.</p>
                 </footer>
             </div>
             """
@@ -2032,7 +2077,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             <footer>
                 <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
-                <p> © {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
+                <p> © {current_year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
             </footer>
         </div>
         
@@ -2074,6 +2119,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 document.querySelectorAll('.product-card.selected').forEach(card => {{
                     const room = card.getAttribute('data-room');
                     const category = card.getAttribute('data-category');
+                    const infoItems = Array.from(card.querySelectorAll('.product-info-item'));
+                    const findByLabel = (label) => {{
+                        const el = infoItems.find(it => (it.querySelector('.product-info-label')?.textContent || '').trim().startsWith(label));
+                        return el ? el.textContent.replace(label, '').trim() : '';
+                    }};
+                    const warrantyText = findByLabel('Warranty:');
+                    const deliveryText = findByLabel('Delivery:');
                     const product = {{
                         room: room,
                         category: category,
@@ -2082,8 +2134,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         retailPrice: parseFloat(card.querySelector('.retail-price').textContent.replace('₹', '').replace(/,/g, '')),
                         savings: parseFloat(card.querySelector('.savings').textContent.replace('Save ₹', '').replace(/,/g, '')),
                         image: card.querySelector('.product-image').src,
-                        warranty: card.querySelector('.product-info-item:nth-child(4)').textContent.replace('Warranty:', '').trim(),
-                        delivery: card.querySelector('.product-info-item:nth-child(5)').textContent.replace('Delivery:', '').trim(),
+                        warranty: warrantyText,
+                        delivery: deliveryText,
                         reason: card.querySelector('.reasons-list li').textContent,
                         purchaseUrl: card.querySelector('.buy-button').href
                     }};
@@ -2452,6 +2504,7 @@ def generate_default_recommendations(
             'priority': parse_int(row.get('Priority', '')),
             'image_src': row.get('Product Image URL', '').strip(),
             'url': row.get('Product URL', '').strip() if 'Product URL' in row else '',
+            'top_benefits': row.get('Top Benefits', '').strip(),
             'default_list_raw': row.get('Default List', '').strip(),
         }
         # Parse Default List membership flags

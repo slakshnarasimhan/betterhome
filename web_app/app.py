@@ -286,7 +286,7 @@ def submit():
             print(f"[submit/use_default] bhk={bhk}, budget_str='{budget_str}', parsed_budget={user_budget}")
             # Kick off generation synchronously so the file is ready
             try:
-                csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best-seller-3.csv')
+                csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best-seller-4.csv')
                 catalog_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'product_catalog.json')
                 bhk_choice = '2BHK' if bhk == '2' else '3BHK'
                 # Pass email through to default recommendations so it appears on the page
