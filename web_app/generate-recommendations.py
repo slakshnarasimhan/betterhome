@@ -53,8 +53,10 @@ def read_best_sellers_csv(csv_path: str) -> List[Dict[str, Any]]:
             'brand': row.get('Brand', '').strip(),
             'title': row.get('Title', '').strip(),
             'priority': parse_int(row.get('Priority', '')),
-            'image_src': row.get('Product Image URL', '').strip(),  # <-- Add this line
+            'image_src': row.get('Product Image URL', '').strip(),
             'top_benefits': row.get('Top Benefits', '').strip(),
+            'mrp_price': parse_price(row.get('MRP Price', '')),
+            'market_price_1': parse_price(row.get('Market Price 1', '')),
         }
         products.append(product)
     return products
@@ -616,9 +618,16 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         print("Logo not found in any of the expected locations")
     
     # Always use a relative URL path that will be handled by Flask
+    # For PDF generation, use a text-based logo to reduce file size
     logo_html = ""
     if logo_exists:
-        logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+        logo_html = '''<div class="logo-container">
+            <img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo print-hide">
+            <div class="logo-text print-only" style="display: none;">
+                <h1 style="margin: 0; color: #3498db; font-size: 24px; font-weight: bold;">BetterHome</h1>
+                <p style="margin: 0; color: #666; font-size: 14px;">Product Recommendations</p>
+            </div>
+        </div>'''
     
     # Helper to render Top Benefits as a clean list with separators (no auto numbers)
     def render_benefits(benefits_text: str) -> str:
@@ -642,7 +651,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             items = [text]
         lis = ''.join([f'<li>{p}</li>' for p in items])
         return f'<ul class="benefits-list">{lis}</ul>'
-
+    
     # Create HTML header (CSS part)
     html_content = """
     <!DOCTYPE html>
@@ -1098,10 +1107,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 font-size: 14px;
             }
             
-            /* Print styles */
+            /* Print styles - Optimized for PDF generation */
             @media print {
+                * {
+                    -webkit-print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                }
+                
                 body {
-                    background-color: white;
+                    background-color: white !important;
+                    background-image: none !important;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    margin: 0;
+                    padding: 10px;
                 }
                 
                 .container {
@@ -1110,19 +1129,98 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     margin: 0;
                 }
                 
+                /* Hide unnecessary visual elements for PDF */
                 .generate-container,
                 .product-selection,
-                .buy-button {
+                .buy-button,
+                .customize-fab,
+                .download-button,
+                #download-pdf,
+                .print-hide {
                     display: none !important;
                 }
                 
-                .product-card {
-                    break-inside: avoid;
-                    page-break-inside: avoid;
-                    box-shadow: none;
-                    border: 1px solid #eaeaea;
+                .print-only {
+                    display: block !important;
                 }
                 
+                /* Optimize header */
+                .header {
+                    background: none !important;
+                    background-image: none !important;
+                    box-shadow: none !important;
+                    border-radius: 0 !important;
+                    padding: 10px 0 !important;
+                    margin-bottom: 15px !important;
+                }
+                
+                .logo {
+                    max-width: 120px !important;
+                    height: auto !important;
+                    margin-bottom: 10px !important;
+                }
+                
+                /* Optimize product images for print */
+                .product-image-container {
+                    height: 120px !important;
+                    overflow: hidden;
+                }
+                
+                .product-image {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: contain !important;
+                    max-width: 120px !important;
+                    max-height: 120px !important;
+                }
+                
+                /* Optimize product cards */
+                .product-card {
+                    background: white !important;
+                    background-image: none !important;
+                    box-shadow: none !important;
+                    border: 1px solid #ddd !important;
+                    border-radius: 4px !important;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                    margin-bottom: 15px !important;
+                    padding: 10px !important;
+                }
+                
+                .product-details {
+                    padding: 8px !important;
+                }
+                
+                /* Optimize backgrounds and remove shadows */
+                .budget-section,
+                .recommendation-section,
+                .budget-item,
+                .panel {
+                    background: white !important;
+                    background-image: none !important;
+                    box-shadow: none !important;
+                    border: 1px solid #ddd !important;
+                    border-radius: 4px !important;
+                }
+                
+                /* Expand all accordions for print */
+                .accordion.active + .panel,
+                .panel {
+                    display: block !important;
+                    padding: 10px !important;
+                }
+                
+                .accordion {
+                    background: #f5f5f5 !important;
+                    background-image: none !important;
+                    page-break-inside: avoid;
+                    padding: 8px !important;
+                    margin-bottom: 5px !important;
+                    border: 1px solid #ddd !important;
+                    font-size: 14px !important;
+                }
+                
+                /* Page breaks */
                 .room-section {
                     page-break-before: always;
                 }
@@ -1137,6 +1235,34 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
                 .client-info, .budget-summary {
                     page-break-inside: avoid;
+                    margin-bottom: 15px !important;
+                }
+                
+                .budget-section {
+                    page-break-inside: avoid;
+                    margin-bottom: 15px !important;
+                }
+                
+                .recommendation-item {
+                    page-break-inside: avoid;
+                    margin-bottom: 20px !important;
+                }
+                
+                /* Optimize text sizes for print */
+                h1 { font-size: 18px !important; }
+                h2 { font-size: 16px !important; }
+                h3 { font-size: 14px !important; }
+                h4 { font-size: 12px !important; }
+                
+                /* Remove gradients and fancy styling for print */
+                .header,
+                .budget-status,
+                .selection-label,
+                .bestseller-badge,
+                .recommended-badge {
+                    background: #f0f0f0 !important;
+                    background-image: none !important;
+                    color: #333 !important;
                 }
             }
             
@@ -1798,8 +1924,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                         description = product.get('description', 'No description available')
                         better_home_price = float(product.get('bh_price', 0.0))
-                        original_price = float(product.get('market_price_1', 0.0))
+                        # Use MRP as the original price (retail price) for display
+                        original_price = float(product.get('mrp_price', 0.0))
                         if original_price <= 0:
+                            # Fallback to market_price_1 if MRP is not available
+                            original_price = float(product.get('market_price_1', 0.0))
+                        if original_price <= 0:
+                            # Final fallback to 1.25x BH price
                             original_price = better_home_price * 1.25
                         discount = original_price - better_home_price
                         warranty = product.get('warranty', 'Standard warranty applies')
@@ -1824,8 +1955,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         # Prefer Top Benefits as the description if present (render as numbered list)
                         top_benefits = product.get('top_benefits', '')
                         benefits_html = render_benefits(top_benefits)
-                        concise_description = product.get('concise_description') or product.get('description', 'No description available')
-                        description_html = benefits_html if benefits_html else f'<div class="product-info-item">{concise_description}</div>'
+                        # Only use concise_description if we don't have top_benefits to avoid duplication
+                        if benefits_html:
+                            description_html = benefits_html
+                        else:
+                            concise_description = product.get('concise_description') or product.get('description', 'No description available')
+                            description_html = f'<div class="product-info-item">{concise_description}</div>'
                         # Debug print
                         if top_benefits:
                             print(f"DEBUG: Product {product.get('title', 'Unknown')} has top_benefits: {top_benefits[:100]}...")
@@ -1899,8 +2034,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                     description = product.get('description', 'No description available')
                     better_home_price = float(product.get('bh_price', 0.0))
-                    original_price = float(product.get('market_price_1', 0.0))
+                    # Use MRP as the original price (retail price) for display
+                    original_price = float(product.get('mrp_price', 0.0))
                     if original_price <= 0:
+                        # Fallback to market_price_1 if MRP is not available
+                        original_price = float(product.get('market_price_1', 0.0))
+                    if original_price <= 0:
+                        # Final fallback to 1.25x BH price
                         original_price = better_home_price * 1.25
                     discount = original_price - better_home_price
                     warranty = product.get('warranty', 'Standard warranty applies')
@@ -1925,8 +2065,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     # Prefer Top Benefits as the description if present (render as numbered list)
                     top_benefits = product.get('top_benefits', '')
                     benefits_html = render_benefits(top_benefits)
-                    concise_description = product.get('concise_description') or product.get('description', 'No description available')
-                    description_html = benefits_html if benefits_html else f'<div class="product-info-item">{concise_description}</div>'
+                    # Only use concise_description if we don't have top_benefits to avoid duplication
+                    if benefits_html:
+                        description_html = benefits_html
+                    else:
+                        concise_description = product.get('concise_description') or product.get('description', 'No description available')
+                        description_html = f'<div class="product-info-item">{concise_description}</div>'
                     # Debug print
                     if top_benefits:
                         print(f"DEBUG: Product {product.get('title', 'Unknown')} has top_benefits: {top_benefits[:100]}...")
@@ -2050,7 +2194,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <h2>Select Your Preferred Products</h2>
                     <p>Please select one product from each category above that best suits your needs.</p>
                     <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
-                        <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+                    <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
                         <button id="download-pdf" class="generate-button" onclick="downloadRecommendationsPdf();">Download PDF</button>
                     </div>
                 </div>
@@ -2235,10 +2379,22 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     accordions[j].classList.add('active'); 
                 }}
                 
-                // Wait for layout then print
+                // Add print-optimizing class to body for enhanced print styles
+                document.body.classList.add('printing');
+                
+                // Wait for layout recalculation then print
                 setTimeout(function() {{
+                    // Force layout recalculation
+                    document.body.offsetHeight;
+                    
+                    // Open print dialog
                     window.print();
-                }}, 500);
+                    
+                    // Remove print class after printing
+                    setTimeout(function() {{
+                        document.body.classList.remove('printing');
+                    }}, 1000);
+                }}, 750);
             }}
             
             // Make function globally available
@@ -2319,10 +2475,22 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 accordions[j].classList.add('active'); 
             }}
             
-            // Wait for layout then print
+            // Add print-optimizing class to body for enhanced print styles
+            document.body.classList.add('printing');
+            
+            // Wait for layout recalculation then print
             setTimeout(function() {{
+                // Force layout recalculation
+                document.body.offsetHeight;
+                
+                // Open print dialog
                 window.print();
-            }}, 500);
+                
+                // Remove print class after printing
+                setTimeout(function() {{
+                    document.body.classList.remove('printing');
+                }}, 1000);
+            }}, 750);
         }}
         
         // Make function globally available
@@ -2365,20 +2533,38 @@ def get_product_recommendation_reason(
 ) -> str:
     """
     Generate a personalized recommendation reason for a product, highlighting matching features.
-    If the product is from best-sellers.csv, use the 'top_benefits' field.
+    Uses description or features to avoid duplication with separately displayed top_benefits.
     """
-    # Prefer Top Benefits if present (for best-sellers)
-    if 'top_benefits' in product and product['top_benefits']:
-        return product['top_benefits']
-    # Fallback: use description or features
-    if 'description' in product and product['description']:
-        return product['description']
-    # Fallback: use features
+    # Don't use top_benefits here to avoid duplication - top_benefits are displayed separately
+    # Generate a brief, personalized reason based on product type and context
+    
+    # Get top_benefits to ensure we don't return duplicate content
+    top_benefits = product.get('top_benefits', '').strip()
+    
+    # Use concise_description if available and different from top_benefits
+    concise_desc = product.get('concise_description', '').strip()
+    if concise_desc and concise_desc != top_benefits:
+        return concise_desc
+    
+    # Use description if available and different from top_benefits
+    description = product.get('description', '').strip()
+    if description and description != top_benefits:
+        # Take only first sentence to keep it brief
+        first_sentence = description.split('.')[0].strip()
+        if first_sentence and first_sentence != top_benefits:
+            return first_sentence + "."
+    
+    # Use features for a brief reason
     if 'features' in product and isinstance(product['features'], dict):
         features = product['features']
         if 'parsed_features' in features and isinstance(features['parsed_features'], dict):
             return "; ".join([f"{k}: {v}" for k, v in features['parsed_features'].items()])
-    return "Recommended based on your requirements."
+    
+    # Generate generic reason based on appliance type and room
+    if appliance_type and room:
+        return f"Recommended {appliance_type.replace('_', ' ').lower()} for your {room.replace('_', ' ')}, matching your requirements and budget."
+    
+    return "Recommended based on your requirements and budget."
 
 
 def determine_ac_tonnage(square_feet: float, room_type: str = None) -> float:
@@ -2425,10 +2611,9 @@ def enrich_best_seller_product(best_seller, catalog_products):
     match = None
     if sku:
         match = next((p for p in catalog_products if p.get('sku', '').strip() == sku), None)
-    # Use Top Benefits as description if present
-    if best_seller.get('top_benefits'):
-        best_seller['description'] = best_seller['top_benefits']
-    elif match:
+    # Don't overwrite description with top_benefits to avoid duplication
+    # Keep top_benefits separate for formatted display
+    if match and not best_seller.get('description'):
         # Use only concise_description from catalog, never description
         best_seller['description'] = match.get('concise_description', '')
     # Prefer image_src from CSV, but fallback to catalog if missing
@@ -2568,6 +2753,8 @@ def generate_default_recommendations(
             'url': row.get('Product URL', '').strip() if 'Product URL' in row else '',
             'top_benefits': row.get('Top Benefits', '').strip(),
             'default_list_raw': row.get('Default List', '').strip(),
+            'mrp_price': parse_price(row.get('MRP Price', '')),
+            'market_price_1': parse_price(row.get('Market Price 1', '')),
         }
         # Parse Default List membership flags
         dl_raw_upper = product['default_list_raw'].upper()
