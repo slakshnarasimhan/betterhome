@@ -1,0 +1,1580 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BetterHome Product Recommendations</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <!-- Excel libraries with integrity checks and error handling -->
+        <script src="/static/xlsx.full.min.js"></script>
+        <script src="/static/FileSaver.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <style>
+            /* Modern typography and base styles */
+            body {
+                font-family: 'Poppins', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                line-height: 1.6;
+                color: #333;
+                background-color: #f9f9f9;
+            }
+            
+            .container {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 30px;
+            }
+            
+            header {
+                text-align: center;
+                margin-bottom: 40px;
+                border-bottom: 1px solid #eaeaea;
+                padding-bottom: 30px;
+                background: linear-gradient(to right, #f8f9fa, #e9ecef);
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            }
+            
+            .logo {
+                max-width: 200px;
+                margin-bottom: 15px;
+                transition: transform 0.3s ease;
+            }
+            
+            .logo:hover {
+                transform: scale(1.05);
+            }
+            
+            /* Client information styling */
+            .client-info {
+                margin: 30px 0;
+                padding: 20px;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                display: grid;
+                grid-template-columns: 1fr; /* Mobile-first: single column */
+                gap: 12px;
+            }
+            
+            @media (min-width: 600px) {
+                .client-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            }
+            @media (min-width: 900px) {
+                .client-info { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+            }
+            
+            .client-info-item { margin-bottom: 0; min-width: 0; }
+            
+            .client-info-label {
+                font-weight: 500;
+                color: #666;
+                margin-bottom: 4px;
+            }
+            
+            .client-info-value {
+                font-weight: 600;
+                color: #333;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                min-width: 0;
+            }
+
+            @media (max-width: 480px) {
+                .container { padding: 20px 16px; }
+            }
+            
+            /* Product card and grid styling */
+            .products-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 30px;
+                margin-top: 20px;
+            }
+            
+            @media (min-width: 768px) {
+                .products-grid {
+                       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                }
+            }
+            
+            .product-card {
+                background: #fff;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+                transition: transform 0.3s ease;
+                position: relative;
+            }
+
+            .product-card.best-product {
+                border: 2px solid #3498db;  // Emphasize the best product
+                transform: scale(1.05);  // Slightly enlarge the best product
+            }
+            
+            .product-selection {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                z-index: 10;
+            }
+            
+            .product-checkbox {
+                width: 20px;
+                height: 20px;
+                cursor: pointer;
+            }
+            
+            .product-checkbox:checked + label {
+                font-weight: bold;
+                color: #3498db;
+            }
+            
+            .selection-label {
+                background: #3498db;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                margin-left: 5px;
+                display: none;
+            }
+            
+            .product-checkbox:checked ~ .selection-label {
+                display: inline-block;
+            }
+            
+            .product-image-container {
+                position: relative;
+                height: 200px;
+                overflow: hidden;
+            }
+            
+            .product-image {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                transition: transform 0.3s ease;
+            }
+            
+            .product-card:hover .product-image {
+                transform: scale(1.05);
+            }
+            
+            /* Badge styling */
+            .bestseller-badge, .recommended-badge {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 12px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            
+            .bestseller-badge {
+                background-color: #ff6b00;
+            }
+            
+            .recommended-badge {
+                background-color: #27ae60;
+            }
+            
+            .bestseller-badge i, .recommended-badge i {
+                font-size: 14px;
+            }
+            
+            /* Product details styling */
+            .product-details {
+                padding: 20px;
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .product-type {
+                font-size: 12px;
+                text-transform: uppercase;
+                color: #666;
+                margin-bottom: 5px;
+                letter-spacing: 1px;
+            }
+            
+            .product-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin: 0 0 15px;
+                color: #333;
+            }
+            
+            .price-container {
+                margin-bottom: 15px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: baseline;
+            }
+            
+            .current-price {
+                font-size: 20px;
+                font-weight: 700;
+                color: #e74c3c;
+            }
+            
+            .retail-price {
+                font-size: 16px;
+                color: #7f8c8d;
+                text-decoration: line-through;
+            }
+            
+            .savings {
+                font-size: 14px;
+                color: #27ae60;
+                font-weight: 500;
+            }
+            
+            .product-info-item {
+                margin-bottom: 10px;
+                font-size: 14px;
+                color: #555;
+            }
+            
+            .product-info-label {
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .reasons-list {
+                list-style: none;
+                padding: 0;
+                margin: 0 0 20px;
+            }
+            
+            .reasons-list li {
+                margin-bottom: 8px;
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .reasons-list i {
+                color: #3498db;
+                margin-top: 3px;
+            }
+            
+            .benefits-list {
+                list-style: none;
+                margin: 8px 0 0 0;
+                padding: 0;
+                color: #444;
+            }
+            .benefits-list li {
+                padding: 8px 0;
+                border-top: 1px solid #eee;
+                line-height: 1.4;
+            }
+            .benefits-list li:first-child { border-top: none; }
+            
+            .buy-button {
+                display: inline-block;
+                background-color: #3498db;
+                color: white;
+                padding: 10px 20px;
+                margin-top: auto;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: 500;
+                transition: background-color 0.3s;
+            }
+            
+            .buy-button:hover {
+                background-color: #2980b9;
+            }
+            
+            /* Budget summary styling */
+            .budget-summary {
+                margin: 30px 0;
+                padding: 25px;
+                border-radius: 8px;
+                background-color: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            }
+            
+            .budget-summary h2 {
+                margin-top: 0;
+                margin-bottom: 20px;
+                color: #333;
+                font-weight: 600;
+            }
+            
+            .budget-info {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            
+            @media (min-width: 768px) {
+                .budget-info {
+                       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                }
+            }
+            
+            .budget-item {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-radius: 6px;
+            }
+            
+            .budget-item-label {
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 8px;
+            }
+            
+            .budget-item-value {
+                font-size: 18px;
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .budget-status {
+                padding: 12px 15px;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+            
+            .budget-status.good {
+                background-color: #d4edda;
+                color: #155724;
+            }
+            
+            .budget-status.warning {
+                background-color: #fff3cd;
+                color: #856404;
+            }
+            
+            /* Room styling */
+            .room-section {
+                margin: 40px 0;
+            }
+            
+            .room-section h2 {
+                font-size: 24px;
+                color: #2c3e50;
+                margin-bottom: 10px;
+                position: relative;
+                padding-bottom: 10px;
+            }
+            
+            .room-section h2:after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 50px;
+                height: 3px;
+                background-color: #3498db;
+            }
+            
+            .room-description {
+                font-size: 16px;
+                color: #555;
+                margin-bottom: 20px;
+                line-height: 1.5;
+            }
+            
+            /* Generate Recommendation Button */
+            .generate-container {
+                text-align: center;
+                margin: 40px 0;
+                padding: 20px;
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            
+            .generate-button {
+                display: inline-block;
+                background-color: #2ecc71;
+                color: white;
+                padding: 15px 30px;
+                border-radius: 6px;
+                font-size: 18px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: background-color 0.3s;
+                border: none;
+                cursor: pointer;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            
+            .generate-button:hover {
+                background-color: #27ae60;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+            }
+            
+            .generate-button:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            .download-button {
+                background-color: #3498db;
+                margin-left: 10px;
+            }
+            
+            .download-button:hover {
+                background-color: #2980b9;
+            }
+
+            /* Footer styling */
+            footer {
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 1px solid #eaeaea;
+                text-align: center;
+                color: #7f8c8d;
+                font-size: 14px;
+            }
+            
+            /* Print styles */
+            @media print {
+                body {
+                    background-color: white;
+                }
+                
+                .container {
+                    max-width: 100%;
+                    padding: 0;
+                    margin: 0;
+                }
+                
+                .generate-container,
+                .product-selection,
+                .buy-button {
+                    display: none !important;
+                }
+                
+                .product-card {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                    box-shadow: none;
+                    border: 1px solid #eaeaea;
+                }
+                
+                .room-section {
+                    page-break-before: always;
+                }
+                
+                .room-section:first-child {
+                    page-break-before: avoid;
+                }
+                
+                header {
+                    page-break-after: avoid;
+                }
+                
+                .client-info, .budget-summary {
+                    page-break-inside: avoid;
+                }
+            }
+            
+            /* Accordion styles */
+            .accordion {
+                background-color: #f1f1f1;
+                color: #333;
+                cursor: pointer;
+                padding: 18px;
+                width: 100%;
+                border: none;
+                text-align: left;
+                outline: none;
+                font-size: 18px;
+                transition: background-color 0.2s;
+                border-radius: 8px 8px 0 0;
+                margin-bottom: 0;
+            }
+            
+            .accordion.active, .accordion:hover {
+                background-color: #e2e6ea;
+            }
+            
+            .panel {
+                padding: 0 18px 18px 18px;
+                background-color: white;
+                display: none;
+                overflow: hidden;
+                border-radius: 0 0 8px 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            }
+            
+            .panel[style*='display: block'] {
+                display: block;
+            }
+
+            .features-toggle.open .arrow {
+                transform: rotate(90deg);
+            }
+        </style>
+        <script>
+            // Wait for the document to be fully loaded
+            window.addEventListener('load', function() {
+                console.log('Document fully loaded');
+                
+                // Debug helper to check if elements exist
+                function checkElement(id) {
+                    const element = document.getElementById(id);
+                    console.log(`Element ${id} exists: ${!!element}`);
+                    return element;
+                }
+                // Ensure only one product per category can be selected
+                const setupCategorySelections = () => {
+                    const categories = {};
+                    const processedProducts = new Set(); // To prevent duplicate handling of products
+                    
+                    // Group checkboxes by category
+                    document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+                        const category = checkbox.getAttribute('data-category');
+                        const room = checkbox.getAttribute('data-room');
+                        const productId = checkbox.getAttribute('data-product-id');
+                        const key = `${room}-${category}`;
+                        
+                        // Skip if already processed (for dupicate products)
+                        if (processedProducts.has(productId)) {
+                            return;
+                        }
+                        processedProducts.add(productId);
+                        
+                        if (!categories[key]) {
+                            categories[key] = [];
+                        }
+                        categories[key].push(checkbox);
+                        
+                        // Add change listener
+                        checkbox.addEventListener('change', function() {
+                            const isChecked = this.checked;
+                            
+                            // Update the 'selected' class for this product's card
+                            const productCard = this.closest('.product-card');
+                            if (isChecked) {
+                                productCard.classList.add('selected');
+                                
+                                // Uncheck other checkboxes in the same category (maintain single selection per category)
+                                categories[key].forEach(cb => {
+                                    if (cb !== this) {
+                                        cb.checked = false;
+                                        cb.closest('.product-card').classList.remove('selected');
+                                    }
+                                });
+                            } else {
+                                productCard.classList.remove('selected');
+                            }
+                        });
+                    });
+                };
+                
+                // Handle generate final recommendation
+                const setupGenerateButton = () => {
+                    console.log('Setting up generate button');
+                    const generateButton = checkElement('generate-final');
+                    if (!generateButton) {
+                        console.error('Generate button not found in the DOM');
+                        return;
+                    }
+                    
+                    // Automatically run initial selection for best products
+                    // This ensures initial visual state matches pre-selected products
+                    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                        const productCard = checkbox.closest('.product-card');
+                        if (productCard) {
+                            productCard.classList.add('selected');
+                        }
+                    });
+                    
+                    generateButton.addEventListener('click', function(e) {
+                        console.log('Generate button clicked');
+                        e.preventDefault();
+                        
+                        // Collect all selected products
+                        const selectedProducts = [];
+                        document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+                            const productId = checkbox.getAttribute('data-product-id');
+                            const room = checkbox.getAttribute('data-room');
+                            const category = checkbox.getAttribute('data-category');
+                            const brand = checkbox.getAttribute('data-brand');
+                            const model = checkbox.getAttribute('data-model');
+                            const price = checkbox.getAttribute('data-price');
+                            const image = checkbox.getAttribute('data-image');
+                            
+                            selectedProducts.push({
+                                id: productId,
+                                room: room,
+                                category: category,
+                                brand: brand,
+                                model: model,
+                                price: price,
+                                image: image
+                            });
+                        });
+                        
+                        if (selectedProducts.length === 0) {
+                            alert("Please select at least one product before generating the final recommendation.");
+                            return;
+                        }
+                        
+                        // Store selected products in local storage
+                        localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+                        
+                        // Calculate total price
+                        const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
+                        localStorage.setItem('totalPrice', totalPrice);
+                        
+                        // Hide recommendation page and show final page
+                        document.querySelector('.container').style.display = 'none';
+                        const finalPage = document.getElementById('final-recommendation-page');
+                        finalPage.style.display = 'block';
+                        
+                        // Populate selected products
+                        displayFinalRecommendation(selectedProducts, totalPrice);
+                    });
+                    
+                    // Function to display final recommendation
+                    function displayFinalRecommendation(products, totalPrice) {
+                        const container = document.getElementById('selected-products-container');
+                        container.innerHTML = '';
+                        
+                        // Group products by room
+                        const roomProducts = {};
+                        products.forEach(product => {
+                            if (!roomProducts[product.room]) {
+                                roomProducts[product.room] = [];
+                            }
+                            roomProducts[product.room].push(product);
+                        });
+                        
+                        // Create room sections
+                        for (const [room, roomItems] of Object.entries(roomProducts)) {
+                            const roomTitle = room.replace('_', ' ').toUpperCase();
+                            const roomSection = document.createElement('div');
+                            roomSection.className = 'room-section';
+                            roomSection.innerHTML = `<h2>${roomTitle}</h2>`;
+                            
+                            // Create product grid
+                            const productGrid = document.createElement('div');
+                            productGrid.className = 'products-grid';
+                            
+                            // Add products
+                            roomItems.forEach(product => {
+                                const productCard = document.createElement('div');
+                                productCard.className = 'product-card';
+                                
+                                const categoryTitle = product.category.replace('_', ' ').toUpperCase();
+                                const price = parseFloat(product.price).toLocaleString('en-IN', {
+                                    style: 'currency',
+                                    currency: 'INR',
+                                    maximumFractionDigits: 2
+                                });
+                                
+                                productCard.innerHTML = `
+                                    <div class="product-image-container">
+                                        <img class="product-image" src="${product.image || 'https://via.placeholder.com/300x300?text=No+Image+Available'}" alt="${product.brand} ${product.model}">
+                                    </div>
+                                    <div class="product-details">
+                                        <span class="product-type">${categoryTitle}</span>
+                                        <h3 class="product-title">${product.brand} ${product.model}</h3>
+                                        <div class="price-container">
+                                            <span class="current-price">${price}</span>
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                productGrid.appendChild(productCard);
+                            });
+                            
+                            roomSection.appendChild(productGrid);
+                            container.appendChild(roomSection);
+                        }
+                        
+                        // Update budget information
+                        const totalElement = document.getElementById('final-total-cost');
+                        totalElement.textContent = totalPrice.toLocaleString('en-IN', {
+                            style: 'currency',
+                            currency: 'INR',
+                            maximumFractionDigits: 2
+                        });
+                        
+                        // Calculate budget utilization
+                        const budget = parseFloat(totalElement.nextElementSibling.nextElementSibling.textContent.replace(/[^0-9.]/g, ''));
+                        const utilization = (totalPrice / budget) * 100;
+                        document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
+                        
+                        // Update budget status
+                        const budgetStatus = document.getElementById('final-budget-status');
+                        if (utilization > 100) {
+                            budgetStatus.className = 'budget-status warning';
+                            budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
+                        }
+                    }
+                };
+                
+                // Function to export to Excel
+                const setupExportButton = () => {
+                    console.log('Setting up export button');
+                    const exportButton = checkElement('export-excel');
+                    if (!exportButton) {
+                        console.error('Export button not found in the DOM');
+                        return;
+                    }
+                    
+                    exportButton.addEventListener('click', function() {
+                        console.log('Export button clicked');
+                        const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+                        if (selectedProducts.length === 0) {
+                            alert('Please select at least one product first');
+                            return;
+                        }
+                        
+                        // Prepare data for Excel
+                        const data = [
+                            ['Room', 'Category', 'Brand', 'Model', 'Price']
+                        ];
+                        
+                        selectedProducts.forEach(product => {
+                            data.push([
+                                product.room.replace('_', ' ').toUpperCase(),
+                                product.category.replace('_', ' ').toUpperCase(),
+                                product.brand,
+                                product.model,
+                                product.price
+                            ]);
+                        });
+                        
+                        // Add total row
+                        const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
+                        data.push(['', '', '', 'TOTAL', totalPrice.toFixed(2)]);
+                        
+                        try {
+                            console.log('Creating Excel file with data:', data);
+                            
+                            // Check if XLSX is available
+                            if (typeof XLSX === 'undefined') {
+                                console.error('XLSX library not loaded');
+                                alert('Excel export library not loaded. Please check your internet connection.');
+                                return;
+                            }
+                            
+                            // Create worksheet
+                            const ws = XLSX.utils.aoa_to_sheet(data);
+                            
+                            // Create workbook
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
+                            
+                            // Save file
+                            XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                            console.log('Excel file created successfully');
+                        } catch (error) {
+                            console.error('Error creating Excel file:', error);
+                            alert('Failed to create Excel file. Error: ' + error.message);
+                        }
+                    });
+                };
+                
+                // Setup the download button for final recommendation
+                const setupFinalDownloadButton = () => {
+                    console.log('Setting up final download button');
+                    const downloadButton = checkElement('download-final-excel');
+                    if (!downloadButton) {
+                        console.error('Final download button not found in the DOM');
+                        return;
+                    }
+                    
+                    downloadButton.addEventListener('click', function() {
+                        console.log('Download final button clicked');
+                        const selectedProducts = [];
+                        
+                        // Collect all products from the selected-products-container
+                        const roomSections = document.querySelectorAll('#selected-products-container .room-section');
+                        roomSections.forEach(section => {
+                            const roomName = section.querySelector('h2').textContent;
+                            const productCards = section.querySelectorAll('.product-card');
+                            
+                            productCards.forEach(card => {
+                                const category = card.querySelector('.product-type').textContent;
+                                const title = card.querySelector('.product-title').textContent;
+                                const price = card.querySelector('.current-price').textContent;
+                                
+                                // Split title into brand and model - assumes format "Brand Model"
+                                const titleParts = title.split(' ');
+                                const brand = titleParts[0];
+                                const model = titleParts.slice(1).join(' ');
+                                
+                                selectedProducts.push({
+                                    room: roomName,
+                                    category: category,
+                                    brand: brand,
+                                    model: model,
+                                    price: price.replace(/[^0-9.]/g, '') // Remove currency symbols
+                                });
+                            });
+                        });
+                        
+                        // Prepare data for Excel
+                        const data = [
+                            ['Room', 'Category', 'Brand', 'Model', 'Price']
+                        ];
+                        
+                        selectedProducts.forEach(product => {
+                            data.push([
+                                product.room,
+                                product.category,
+                                product.brand,
+                                product.model,
+                                product.price
+                            ]);
+                        });
+                        
+                        // Add total price
+                        const totalElement = document.getElementById('final-total-cost');
+                        const totalPrice = totalElement.textContent.replace(/[^0-9.]/g, '');
+                        data.push(['', '', '', 'TOTAL', totalPrice]);
+                        
+                        // Add client information
+                        data.push([]);
+                        data.push(['Client Information']);
+                        const clientInfoItems = document.querySelectorAll('.client-info .client-info-item');
+                        clientInfoItems.forEach(item => {
+                            const label = item.querySelector('.client-info-label').textContent;
+                            const value = item.querySelector('.client-info-value').textContent;
+                            data.push([label, value]);
+                        });
+                        
+                        // Create worksheet
+                        const ws = XLSX.utils.aoa_to_sheet(data);
+                        
+                        // Create workbook
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
+                        
+                        // Save file
+                        XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                    });
+                    
+                    // Setup print button
+                    console.log('Setting up print button');
+                    const printButton = checkElement('print-final');
+                    if (!printButton) {
+                        console.error('Print button not found in the DOM');
+                        return;
+                    }
+                    
+                    printButton.addEventListener('click', function() {
+                        console.log('Print button clicked');
+                        window.print();
+                    });
+                };
+                
+                // Setup accordion for room sections
+                // Use a dedicated function for the accordion that will be called when DOM is ready
+                function setupAccordion() {
+                    console.log('Setting up accordion functionality');
+                    const accordionButtons = document.querySelectorAll('.accordion');
+                    console.log('Found accordion buttons:', accordionButtons.length);
+                    
+                    accordionButtons.forEach((btn, idx) => {
+                        // Mark the first one as active
+                        if (idx === 0) btn.classList.add('active');
+                        
+                        btn.onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const prevY = window.scrollY;
+                            console.log('Accordion button clicked');
+                            const panel = this.nextElementSibling;
+                            console.log('Panel element:', panel);
+                            const isOpen = panel.style.display === 'block';
+                            console.log('Is panel open?', isOpen);
+                            
+                            // Close all panels and remove active class
+                            document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+                            document.querySelectorAll('.accordion').forEach(b => b.classList.remove('active'));
+                            
+                            // If it wasn't open before, open it now
+                            if (!isOpen) {
+                                panel.style.display = 'block';
+                                this.classList.add('active');
+                                console.log('Panel opened');
+                            }
+                            // Keep viewport position and remove focus to avoid jumps
+                            this.blur();
+                            // Use double RAF to ensure layout is settled before restoring scroll
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    window.scrollTo(0, prevY);
+                                });
+                            });
+                        };
+                    });
+                }
+                
+                // Add setupAccordion to window load and also call it directly
+                window.addEventListener('DOMContentLoaded', setupAccordion);
+                window.addEventListener('load', setupAccordion);
+
+                // Initialize all event handlers
+                function initializeEventHandlers() {
+                    console.log('Initializing all event handlers');
+                    
+                    // Add a small delay to ensure DOM is fully processed
+                    setTimeout(() => {
+                        try {
+                            setupCategorySelections();
+                            setupGenerateButton();
+                            setupExportButton();
+                            setupFinalDownloadButton();
+                            console.log('All event handlers initialized successfully');
+                        } catch (error) {
+                            console.error('Error initializing event handlers:', error);
+                        }
+                    }, 500);
+                }
+                
+                // Call initialization
+                initializeEventHandlers();
+            });
+        </script>
+    </head>
+    <body>
+        <div class="container">
+    
+            <div class="client-info">
+                <div class="client-info-item">
+                    <div class="client-info-label">Name</div>
+                    <div class="client-info-value">Lakshmi Narasimhan</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Mobile</div>
+                    <div class="client-info-value">2345678901</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Email</div>
+                    <div class="client-info-value">slakshnarasimhan@gmail.com</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Address</div>
+                    <div class="client-info-value">112, Prestige Silver Oak, ECC Rd, Whitefield</div>
+                </div>
+                
+                <div class="client-info-item">
+                    <div class="client-info-label">Total Budget</div>
+                    <div class="client-info-value" id="client-total-budget">₹301,100.00</div>
+                </div>
+            </div>
+    
+            <div class="room-section">
+                <button class='accordion' type='button'>Hall</button>
+                <div class='panel' style='display: block;'>
+        <h4 style="margin-top:20px;">Air Conditioner</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Daikin-1.5_Ton-3_Star-Inverter-Split_AC-_FTKC50UV16V_RKC50UV16V_Copper_Condenser_-Front_View.png?v=1734097761" alt="Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Air Conditioner</span>
+                            <h3 class="product-title">Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹39,000</span>
+                                <span class="retail-price">₹48,750</span>
+                                <span class="savings">Save ₹9,750</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ceiling Fan</span>
+                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹3,500</span>
+                                <span class="retail-price">₹4,375</span>
+                                <span class="savings">Save ₹875</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                        </div>
+                    </div><div class="product-card">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ceiling Fan</span>
+                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹3,500</span>
+                                <span class="retail-price">₹4,375</span>
+                                <span class="savings">Save ₹875</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Kitchen</button>
+                <div class='panel' style='display: none;'>
+        <h4 style="margin-top:20px;">Water Purifier</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/AO_Smith__Pro_Planet__P4__Pro__5L__RO_SCMT__Water__Purifier__Full_View.png?v=1740507225" alt="AO Smith AO Smith ProPlanet P4 Pro 5 Litres RO Water Purifier With 8-Stage RO plus SCMT and UV Purification">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Purifier</span>
+                            <h3 class="product-title">AO Smith AO Smith ProPlanet P4 Pro 5 Litres RO Water Purifier With 8-Stage RO plus SCMT and UV Purification</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹19,800</span>
+                                <span class="retail-price">₹24,750</span>
+                                <span class="savings">Save ₹4,950</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. 100% RO water since all the water is passed through the RO membrane unlike other brands.</li><li>2. Delivers "Baby-Safe" water with full-spectrum contaminant removal and UV freshness using 8-Stage RO + SCMT + UV purification.</li><li>3. SCMT (Silver Charged Membrane Technology) removes Virus, Bacteria, Cysts, Particulates, Endotoxins, Colloids, Chemicals and Phosphates.</li><li>4. All time fresh water with in-tank UV purification.</li><li>5. Adds essential minerals and copper for taste and health.</li><li>6. India's first 5 star rated water purifier which saves 2X water using ART™MAX Water Saving Technology. This is good for you and our Earth.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Exhaust Fan</span>
+                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹1,350</span>
+                                <span class="retail-price">₹1,687</span>
+                                <span class="savings">Save ₹337</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Dishwasher</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Bosch_Free-Standing_Dishwasher_14_PlaceSettings-Series_6-60_Cm-SMS6IKI01I-Brushed_steelanti-fingerprint-FullView.webp?v=1747739594" alt="Bosch Bosch Free-Standing Dishwasher 14 Place Settings - Series 6 - 60 Cm - SMS6IKI01I- Brushed steel anti-fingerprint">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Dishwasher</span>
+                            <h3 class="product-title">Bosch Bosch Free-Standing Dishwasher 14 Place Settings - Series 6 - 60 Cm - SMS6IKI01I- Brushed steel anti-fingerprint</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹53,500</span>
+                                <span class="retail-price">₹66,875</span>
+                                <span class="savings">Save ₹13,375</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. 14-place setting is designed to accommodate a large number of dishes, Typically the dishes used through out the day.</li><li>2. Silent (48 decibel), energy-saving cleaning with the EcoSilence Drive (motor).</li><li>3. Home Connect allows to start washes, check status, and get alerts via voice or app.</li><li>4. 10‑year inner tub warranty.</li><li>5. The premium brushed and fingerprint‑free stainless steel finish resists smudges and maintains sleek appeal.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Cooktop</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Faber_77cm_3Burner_Cooktop_Spark_3BBBK-Display_View.jpg?v=1753250572" alt="Faber Faber 3 Burner Cooktop Spark 3BB BK - 77 CM">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Cooktop</span>
+                            <h3 class="product-title">Faber Faber 3 Burner Cooktop Spark 3BB BK - 77 CM</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹4,600</span>
+                                <span class="retail-price">₹5,750</span>
+                                <span class="savings">Save ₹1,150</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Equipped with three brass burners (1 jumbo, 1 medium, and 1 small) for various cooking needs and uniform heat distribution.</li><li>2. 6 MM toughened black glass top for durability and scratch resistance. It looks sleek too.</li><li>3. Stainless steel drip trays simplify cleanup by catching spills.</li><li>4. The powder-coated round pan supports provide sturdy stability for different cookware sizes and resist chipping and rusting.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Chimney</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Faber_Hood_Sunny_IN_HC_SC_FL_LG_60_Auto_Clean_Filterless_Chimney-Full_View_3.webp?v=1746450177" alt="Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Chimney</span>
+                            <h3 class="product-title">Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹15,300</span>
+                                <span class="retail-price">₹19,125</span>
+                                <span class="savings">Save ₹3,825</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. 1200 m³/hr suction power</li><li>2. Filterless design.</li><li>3. Auto-Clean function self-cleans oil and grease; saves time and effort.</li><li>4. Gesture control offers hands-free convenience while cooking.</li></ul>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Dining</button>
+                <div class='panel' style='display: none;'>
+        <h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ceiling Fan</span>
+                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹3,500</span>
+                                <span class="retail-price">₹4,375</span>
+                                <span class="savings">Save ₹875</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                        </div>
+                    </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Master Bedroom</button>
+                <div class='panel' style='display: none;'>
+        <h4 style="margin-top:20px;">Air Conditioner</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Daikin-1.5_Ton-3_Star-Inverter-Split_AC-_FTKC50UV16V_RKC50UV16V_Copper_Condenser_-Front_View.png?v=1734097761" alt="Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Air Conditioner</span>
+                            <h3 class="product-title">Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹39,000</span>
+                                <span class="retail-price">₹48,750</span>
+                                <span class="savings">Save ₹9,750</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Exhaust Fan</span>
+                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹1,350</span>
+                                <span class="retail-price">₹1,687</span>
+                                <span class="savings">Save ₹337</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ceiling Fan</span>
+                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹3,500</span>
+                                <span class="retail-price">₹4,375</span>
+                                <span class="savings">Save ₹875</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Storage Water Heater</h4><div class="products-grid"><div class="product-card selected">
+                            
+                            <div class="product-image-container">
+                                <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr" target="_blank" rel="noopener noreferrer">
+                                    <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/AO_Smith_Elegance_Prime_Storage_WaterHeater4.png?v=1740223503" alt="AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres">
+                                </a>
+                                
+                            </div>
+                            <div class="product-details">
+                                <span class="product-type">Storage Water Heater</span>
+                                <h3 class="product-title">AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres</h3>
+                                <div class="price-container">
+                                    <span class="current-price">₹8,500</span>
+                                    <span class="retail-price">₹10,625</span>
+                                    <span class="savings">Save ₹2,125</span>
+                                </div>
+                                <div class="product-info-item"><span class="product-info-label">Warranty:</span> Standard warranty applies</div>
+                                <div class="product-info-item"><span class="product-info-label">Delivery:</span> Contact store for details</div>
+                                <ul class="reasons-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.
+2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.
+3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.
+4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.
+5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.
+6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced. 
+7. Suitable for high-rise buildings by handling water pressure of 8 bars.
+8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.
+9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
+                                <ul class="benefits-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li><li>4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>7. Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
+                                
+                            </div>
+                        </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Bedroom 2</button>
+                <div class='panel' style='display: none;'>
+        <h4 style="margin-top:20px;">Air Conditioner</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Daikin-1.5_Ton-3_Star-Inverter-Split_AC-_FTKC50UV16V_RKC50UV16V_Copper_Condenser_-Front_View.png?v=1734097761" alt="Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Air Conditioner</span>
+                            <h3 class="product-title">Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹39,000</span>
+                                <span class="retail-price">₹48,750</span>
+                                <span class="savings">Save ₹9,750</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Exhaust Fan</span>
+                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹1,350</span>
+                                <span class="retail-price">₹1,687</span>
+                                <span class="savings">Save ₹337</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ceiling Fan</span>
+                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹3,500</span>
+                                <span class="retail-price">₹4,375</span>
+                                <span class="savings">Save ₹875</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Storage Water Heater</h4><div class="products-grid"><div class="product-card selected">
+                            
+                            <div class="product-image-container">
+                                <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr" target="_blank" rel="noopener noreferrer">
+                                    <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/AO_Smith_Elegance_Prime_Storage_WaterHeater4.png?v=1740223503" alt="AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres">
+                                </a>
+                                
+                            </div>
+                            <div class="product-details">
+                                <span class="product-type">Storage Water Heater</span>
+                                <h3 class="product-title">AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres</h3>
+                                <div class="price-container">
+                                    <span class="current-price">₹8,500</span>
+                                    <span class="retail-price">₹10,625</span>
+                                    <span class="savings">Save ₹2,125</span>
+                                </div>
+                                <div class="product-info-item"><span class="product-info-label">Warranty:</span> Standard warranty applies</div>
+                                <div class="product-info-item"><span class="product-info-label">Delivery:</span> Contact store for details</div>
+                                <ul class="reasons-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.
+2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.
+3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.
+4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.
+5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.
+6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced. 
+7. Suitable for high-rise buildings by handling water pressure of 8 bars.
+8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.
+9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
+                                <ul class="benefits-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li><li>4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>7. Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
+                                
+                            </div>
+                        </div></div></div></div>
+            <div class="room-section">
+                <button class='accordion' type='button'>Bedroom 3</button>
+                <div class='panel' style='display: none;'>
+        <h4 style="margin-top:20px;">Air Conditioner</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Daikin-1.5_Ton-3_Star-Inverter-Split_AC-_FTKC50UV16V_RKC50UV16V_Copper_Condenser_-Front_View.png?v=1734097761" alt="Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Air Conditioner</span>
+                            <h3 class="product-title">Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹39,000</span>
+                                <span class="retail-price">₹48,750</span>
+                                <span class="savings">Save ₹9,750</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Exhaust Fan</span>
+                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹1,350</span>
+                                <span class="retail-price">₹1,687</span>
+                                <span class="savings">Save ₹337</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Ceiling Fan</span>
+                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹3,500</span>
+                                <span class="retail-price">₹4,375</span>
+                                <span class="savings">Save ₹875</span>
+                            </div>
+                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Storage Water Heater</h4><div class="products-grid"><div class="product-card selected">
+                            
+                            <div class="product-image-container">
+                                <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr" target="_blank" rel="noopener noreferrer">
+                                    <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/AO_Smith_Elegance_Prime_Storage_WaterHeater4.png?v=1740223503" alt="AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres">
+                                </a>
+                                
+                            </div>
+                            <div class="product-details">
+                                <span class="product-type">Storage Water Heater</span>
+                                <h3 class="product-title">AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres</h3>
+                                <div class="price-container">
+                                    <span class="current-price">₹8,500</span>
+                                    <span class="retail-price">₹10,625</span>
+                                    <span class="savings">Save ₹2,125</span>
+                                </div>
+                                <div class="product-info-item"><span class="product-info-label">Warranty:</span> Standard warranty applies</div>
+                                <div class="product-info-item"><span class="product-info-label">Delivery:</span> Contact store for details</div>
+                                <ul class="reasons-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.
+2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.
+3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.
+4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.
+5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.
+6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced. 
+7. Suitable for high-rise buildings by handling water pressure of 8 bars.
+8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.
+9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
+                                <ul class="benefits-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li><li>4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>7. Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
+                                
+                            </div>
+                        </div></div></div></div>
+                <style>
+                    .products-grid { grid-template-columns: 1fr !important; }
+                    @media (min-width: 768px) { .products-grid { grid-template-columns: 1fr !important; } }
+                </style>
+            
+                <div class="generate-container">
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                        <button id="download-pdf" class="generate-button" onclick="alert('Button clicked!'); downloadRecommendationsPdf();">Download PDF</button>
+                    </div>
+                </div>
+                <a href="/" class="customize-fab" id="customizeFab">Customize</a>
+                <style>
+                    .customize-fab {
+                        position: fixed;
+                        right: 16px;
+                        bottom: 16px;
+                        background: #0d6efd;
+                        color: #fff;
+                        padding: 12px 16px;
+                        border-radius: 999px;
+                        text-decoration: none;
+                        font-weight: 600;
+                        box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+                        z-index: 1000;
+                    }
+                    .customize-fab:hover { background: #0b5ed7; color: #fff; }
+                </style>
+                <script>
+                    (function() {
+                        var fab = document.getElementById('customizeFab');
+                        if (fab) {
+                            var q = 'name=Lakshmi+Narasimhan&mobile=2345678901&email=slakshnarasimhan%40gmail.com&address=112%2C+Prestige+Silver+Oak%2C+ECC+Rd%2C+Whitefield&bedrooms=2&bathrooms=2';
+                            // Only append if at least one value exists
+                            if (q.replace(/(name=|mobile=|email=|address=)/g,'').replace(/&/g,'').trim() !== '') {
+                                fab.href = '/?' + q;
+                            }
+                        }
+                    })();
+                </script>
+        
+                <footer>
+                    <p>This product recommendation brochure was created on 2025-08-22</p>
+                    <p> © 2025 BetterHome.</p>
+                </footer>
+            </div>
+            
+            <script>
+            window.addEventListener('load', function() {
+                var buttons = document.querySelectorAll('.accordion');
+                for (var i = 0; i < buttons.length; i++) {
+                    (function(btn){
+                        btn.addEventListener('click', function(e){
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var prevY = window.scrollY;
+                            var panel = this.nextElementSibling;
+                            var isOpen = panel && panel.style.display === 'block';
+                            var panels = document.querySelectorAll('.panel');
+                            for (var j = 0; j < panels.length; j++) { panels[j].style.display = 'none'; }
+                            var accs = document.querySelectorAll('.accordion');
+                            for (var k = 0; k < accs.length; k++) { accs[k].classList.remove('active'); }
+                            if (!isOpen && panel) { panel.style.display = 'block'; this.classList.add('active'); }
+                            this.blur();
+                            requestAnimationFrame(function(){ window.scrollTo(0, prevY); });
+                        });
+                    })(buttons[i]);
+                }
+            });
+            </script>
+    
+        <script>
+        function toggleFeatures(btn) {{
+            var content = btn.nextElementSibling;
+            if (content.style.display === "none" || content.style.display === "") {{
+                content.style.display = "block";
+                btn.querySelector('.arrow').innerHTML = "&#9660;"; // Down arrow
+                btn.classList.add('open');
+            }} else {{
+                content.style.display = "none";
+                btn.querySelector('.arrow').innerHTML = "&#9654;"; // Right arrow
+                btn.classList.remove('open');
+            }}
+        }}
+        
+        function downloadRecommendationsPdf() {{
+            alert('PDF download started. Please wait...');
+            console.log('PDF download button clicked');
+            
+            // Expand all panels first
+            const panels = document.querySelectorAll('.panel');
+            const accordions = document.querySelectorAll('.accordion');
+            console.log('Found panels:', panels.length, 'accordions:', accordions.length);
+            
+            for (let i = 0; i < panels.length; i++) {{ 
+                panels[i].style.display = 'block'; 
+            }}
+            for (let j = 0; j < accordions.length; j++) {{ 
+                accordions[j].classList.add('active'); 
+            }}
+            
+            // Wait a moment for layout to settle
+            setTimeout(function() {{
+                try {{
+                    // Check if html2pdf is available
+                    if (typeof html2pdf === 'undefined') {{
+                        console.error('html2pdf library not loaded, using print dialog');
+                        window.print();
+                        return;
+                    }}
+                    
+                    console.log('Starting PDF generation with html2pdf...');
+                    const element = document.querySelector('.container') || document.body;
+                    const opt = {{
+                        margin: [10, 10, 10, 10],
+                        filename: 'BetterHome-Recommendations.pdf',
+                        image: {{ type: 'jpeg', quality: 0.8 }},
+                        html2canvas: {{ 
+                            scale: 1.5, 
+                            useCORS: true,
+                            allowTaint: true,
+                            backgroundColor: '#ffffff'
+                        }},
+                        jsPDF: {{ 
+                            unit: 'mm', 
+                            format: 'a4', 
+                            orientation: 'portrait',
+                            compress: true
+                        }}
+                    }};
+                    
+                    html2pdf().set(opt).from(element).save().then(function() {{
+                        console.log('PDF generated successfully');
+                        alert('PDF downloaded successfully!');
+                    }}).catch(function(error) {{
+                        console.error('PDF generation error:', error);
+                        alert('PDF generation failed. Opening print dialog...');
+                        window.print();
+                    }});
+                    
+                }} catch (e) {{
+                    console.error('PDF generation failed', e);
+                    alert('PDF generation failed. Opening print dialog...');
+                    window.print();
+                }}
+            }}, 500);
+        }}
+        </script>
+      
+    </body>
+    </html>
+    

@@ -658,6 +658,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <!-- Excel libraries with integrity checks and error handling -->
         <script src="/static/xlsx.full.min.js"></script>
         <script src="/static/FileSaver.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <style>
             /* Modern typography and base styles */
             body {
@@ -1821,9 +1822,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         if not default_mode:
                             html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                         # Prefer Top Benefits as the description if present (render as numbered list)
-                        benefits_html = render_benefits(product.get('top_benefits'))
+                        top_benefits = product.get('top_benefits', '')
+                        benefits_html = render_benefits(top_benefits)
                         concise_description = product.get('concise_description') or product.get('description', 'No description available')
                         description_html = benefits_html if benefits_html else f'<div class="product-info-item">{concise_description}</div>'
+                        # Debug print
+                        if top_benefits:
+                            print(f"DEBUG: Product {product.get('title', 'Unknown')} has top_benefits: {top_benefits[:100]}...")
                         # Badges
                         badges = ""
                         if product.get('is_bestseller', False):
@@ -1918,9 +1923,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     if not default_mode:
                         html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                     # Prefer Top Benefits as the description if present (render as numbered list)
-                    benefits_html = render_benefits(product.get('top_benefits'))
+                    top_benefits = product.get('top_benefits', '')
+                    benefits_html = render_benefits(top_benefits)
                     concise_description = product.get('concise_description') or product.get('description', 'No description available')
                     description_html = benefits_html if benefits_html else f'<div class="product-info-item">{concise_description}</div>'
+                    # Debug print
+                    if top_benefits:
+                        print(f"DEBUG: Product {product.get('title', 'Unknown')} has top_benefits: {top_benefits[:100]}...")
                     badges = ""
                     if product.get('is_bestseller', False):
                         badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
@@ -1993,6 +2002,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         # Pass bedrooms/bathrooms guess based on num_bedrooms/num_bathrooms when present
         customize_query = f"name={quote_plus(str(user_data.get('name','')))}&mobile={quote_plus(str(user_data.get('mobile','')))}&email={quote_plus(str(user_data.get('email','')))}&address={quote_plus(str(user_data.get('address','')))}&bedrooms={quote_plus(str(user_data.get('num_bedrooms','')))}&bathrooms={quote_plus(str(user_data.get('num_bathrooms','')))}"
         html_content += f"""
+                <div class="generate-container">
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                        <button id="download-pdf" class="generate-button" onclick="alert('Button clicked!'); downloadRecommendationsPdf();">Download PDF</button>
+                    </div>
+                </div>
                 <a href="/" class="customize-fab" id="customizeFab">Customize</a>
                 <style>
                     .customize-fab {{
@@ -2035,7 +2049,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <div class="generate-container">
                     <h2>Select Your Preferred Products</h2>
                     <p>Please select one product from each category above that best suits your needs.</p>
-                    <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                        <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+                        <button id="download-pdf" class="generate-button" onclick="alert('Button clicked!'); downloadRecommendationsPdf();">Download PDF</button>
+                    </div>
                 </div>
         """
 
@@ -2072,7 +2089,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
                 <p>Please select one product from each category above that best suits your needs.</p>
-                <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+                <div style=\"display:flex; gap:12px; flex-wrap:wrap; justify-content:center;\">
+                    <button id=\"generate-final\" class=\"generate-button\" onclick=\"generateFinalRecommendation()\">Generate Final Recommendations</button>
+                    <button id=\"download-pdf\" class=\"generate-button\" onclick=\"alert('Button clicked!'); downloadRecommendationsPdf();\">Download PDF</button>
+                </div>
             </div>
             
             <footer>
@@ -2082,23 +2102,23 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         </div>
         
         <!-- Create the final recommendation page -->
-        <div id="final-recommendation-page" style="display: none;">
-         <div id="final-recommendation-content"></div>
-            <div class="container">
+        <div id=\"final-recommendation-page\" style=\"display: none;\">
+         <div id=\"final-recommendation-content\"></div>
+            <div class=\"container\">
                 <header>
                     {logo_html}
                     <h1>Your Final Product Selections</h1>
                     <p>Specially curated for {user_data['name']}</p>
                 </header>
-                <div id="selected-products-container"></div>
-                <div class="budget-summary">
+                <div id=\"selected-products-container\"></div>
+                <div class=\"budget-summary\">
                     <h2>Budget Summary</h2>
-                    <p>Total Cost: <span id="total-cost">{total_cost}</span></p>
-                    <p>Total Savings: <span id="total-savings">{total_savings}</span></p>
-                    <p id="budget-utilization"></p>
+                    <p>Total Cost: <span id=\"total-cost\">{total_cost}</span></p>
+                    <p>Total Savings: <span id=\"total-savings\">{total_savings}</span></p>
+                    <p id=\"budget-utilization\"></p>
                 </div>
-                <div style="display: flex; justify-content: center; margin-top: 24px;">
-                    <button onclick="backToSelection()" class="generate-button">Back to Selection</button>
+                <div style=\"display: flex; justify-content: center; margin-top: 24px;\">
+                    <button onclick=\"backToSelection()\" class=\"generate-button\">Back to Selection</button>
                 </div>
             </div>
         </div>
@@ -2203,6 +2223,32 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 }}
             }}
 
+            function downloadRecommendationsPdf() {{
+                console.log('PDF function called successfully!');
+                alert('Expanding all sections and opening print dialog...');
+                
+                // Expand all panels
+                const panels = document.querySelectorAll('.panel');
+                const accordions = document.querySelectorAll('.accordion');
+                console.log('Found', panels.length, 'panels and', accordions.length, 'accordions');
+                
+                for (let i = 0; i < panels.length; i++) {{ 
+                    panels[i].style.display = 'block'; 
+                }}
+                for (let j = 0; j < accordions.length; j++) {{ 
+                    accordions[j].classList.add('active'); 
+                }}
+                
+                // Wait for layout then print
+                setTimeout(function() {{
+                    console.log('Opening print dialog...');
+                    window.print();
+                }}, 1000);
+            }}
+            
+            // Make function globally available
+            window.downloadRecommendationsPdf = downloadRecommendationsPdf;
+
             // Set up accordion functionality
             (function() {{
                 const accordionButtons = document.querySelectorAll('.accordion');
@@ -2265,6 +2311,32 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 btn.classList.remove('open');
             }}
         }}
+        
+        function downloadRecommendationsPdf() {{
+            console.log('PDF function called successfully!');
+            alert('Expanding all sections and opening print dialog...');
+            
+            // Expand all panels
+            const panels = document.querySelectorAll('.panel');
+            const accordions = document.querySelectorAll('.accordion');
+            console.log('Found', panels.length, 'panels and', accordions.length, 'accordions');
+            
+            for (let i = 0; i < panels.length; i++) {{ 
+                panels[i].style.display = 'block'; 
+            }}
+            for (let j = 0; j < accordions.length; j++) {{ 
+                accordions[j].classList.add('active'); 
+            }}
+            
+            // Wait for layout then print
+            setTimeout(function() {{
+                console.log('Opening print dialog...');
+                window.print();
+            }}, 1000);
+        }}
+        
+        // Make function globally available
+        window.downloadRecommendationsPdf = downloadRecommendationsPdf;
         </script>
       
     </body>
