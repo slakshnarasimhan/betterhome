@@ -2004,7 +2004,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         html_content += f"""
                 <div class="generate-container">
                     <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
-                        <button id="download-pdf" class="generate-button" onclick="alert('Button clicked!'); downloadRecommendationsPdf();">Download PDF</button>
+                        <button id="download-pdf" class="generate-button" onclick="downloadRecommendationsPdf();">Download PDF</button>
                     </div>
                 </div>
                 <a href="/" class="customize-fab" id="customizeFab">Customize</a>
@@ -2051,7 +2051,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <p>Please select one product from each category above that best suits your needs.</p>
                     <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
                         <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
-                        <button id="download-pdf" class="generate-button" onclick="alert('Button clicked!'); downloadRecommendationsPdf();">Download PDF</button>
+                        <button id="download-pdf" class="generate-button" onclick="downloadRecommendationsPdf();">Download PDF</button>
                     </div>
                 </div>
         """
@@ -2091,7 +2091,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <p>Please select one product from each category above that best suits your needs.</p>
                 <div style=\"display:flex; gap:12px; flex-wrap:wrap; justify-content:center;\">
                     <button id=\"generate-final\" class=\"generate-button\" onclick=\"generateFinalRecommendation()\">Generate Final Recommendations</button>
-                    <button id=\"download-pdf\" class=\"generate-button\" onclick=\"alert('Button clicked!'); downloadRecommendationsPdf();\">Download PDF</button>
+                    <button id=\"download-pdf\" class=\"generate-button\" onclick=\"downloadRecommendationsPdf();\">Download PDF</button>
                 </div>
             </div>
             
@@ -2224,13 +2224,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             }}
 
             function downloadRecommendationsPdf() {{
-                console.log('PDF function called successfully!');
-                alert('Expanding all sections and opening print dialog...');
-                
                 // Expand all panels
                 const panels = document.querySelectorAll('.panel');
                 const accordions = document.querySelectorAll('.accordion');
-                console.log('Found', panels.length, 'panels and', accordions.length, 'accordions');
                 
                 for (let i = 0; i < panels.length; i++) {{ 
                     panels[i].style.display = 'block'; 
@@ -2241,9 +2237,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
                 // Wait for layout then print
                 setTimeout(function() {{
-                    console.log('Opening print dialog...');
                     window.print();
-                }}, 1000);
+                }}, 500);
             }}
             
             // Make function globally available
@@ -2313,13 +2308,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         }}
         
         function downloadRecommendationsPdf() {{
-            console.log('PDF function called successfully!');
-            alert('Expanding all sections and opening print dialog...');
-            
             // Expand all panels
             const panels = document.querySelectorAll('.panel');
             const accordions = document.querySelectorAll('.accordion');
-            console.log('Found', panels.length, 'panels and', accordions.length, 'accordions');
             
             for (let i = 0; i < panels.length; i++) {{ 
                 panels[i].style.display = 'block'; 
@@ -2330,9 +2321,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             // Wait for layout then print
             setTimeout(function() {{
-                console.log('Opening print dialog...');
                 window.print();
-            }}, 1000);
+            }}, 500);
         }}
         
         // Make function globally available
