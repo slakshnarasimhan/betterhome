@@ -381,6 +381,7 @@ def view_html(filename):
             return "Error: HTML file not found", 404
             
         # Read the HTML content
+        
         with open(file_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
             

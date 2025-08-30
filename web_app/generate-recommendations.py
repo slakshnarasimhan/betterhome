@@ -1950,7 +1950,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             user_data
                         )
                         # For default mode, avoid an external reasons block before the card
-                        if not default_mode:
+                        # Skip external reason block when we have top_benefits to avoid redundancy
+                        if not default_mode and not product.get('top_benefits', '').strip():
                             html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                         # Prefer Top Benefits as the description if present (render as numbered list)
                         top_benefits = product.get('top_benefits', '')
@@ -1958,12 +1959,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         # Only use concise_description if we don't have top_benefits to avoid duplication
                         if benefits_html:
                             description_html = benefits_html
+                            # Skip recommendation reason when we have top_benefits to avoid redundancy
+                            reason_section = ""
                         else:
                             concise_description = product.get('concise_description') or product.get('description', 'No description available')
                             description_html = f'<div class="product-info-item">{concise_description}</div>'
-                        # Debug print
-                        if top_benefits:
-                            print(f"DEBUG: Product {product.get('title', 'Unknown')} has top_benefits: {top_benefits[:100]}...")
+                            # Show recommendation reason when we don't have top_benefits
+                            reason_section = f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
+
                         # Badges
                         badges = ""
                         if product.get('is_bestseller', False):
@@ -2013,7 +2016,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 </div>
                                 <div class="product-info-item"><span class="product-info-label">Warranty:</span> {warranty}</div>
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
-                                <ul class="reasons-list"><li>{reason_text}</li></ul>
+                                {reason_section}
                                 {description_html}
                                 
                             </div>
@@ -2060,7 +2063,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         user_data
                     )
                     # For default mode, avoid an external reasons block before the card
-                    if not default_mode:
+                    # Skip external reason block when we have top_benefits to avoid redundancy
+                    if not default_mode and not product.get('top_benefits', '').strip():
                         html_content += f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
                     # Prefer Top Benefits as the description if present (render as numbered list)
                     top_benefits = product.get('top_benefits', '')
@@ -2068,12 +2072,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     # Only use concise_description if we don't have top_benefits to avoid duplication
                     if benefits_html:
                         description_html = benefits_html
+                        # Skip recommendation reason when we have top_benefits to avoid redundancy
+                        reason_section = ""
                     else:
                         concise_description = product.get('concise_description') or product.get('description', 'No description available')
                         description_html = f'<div class="product-info-item">{concise_description}</div>'
-                    # Debug print
-                    if top_benefits:
-                        print(f"DEBUG: Product {product.get('title', 'Unknown')} has top_benefits: {top_benefits[:100]}...")
+                        # Show recommendation reason when we don't have top_benefits
+                        reason_section = f'<ul class="reasons-list"><li>{reason_text}</li></ul>'
+
                     badges = ""
                     if product.get('is_bestseller', False):
                         badges += '<div class="bestseller-badge"><i class="fas fa-star"></i> BESTSELLER</div>'
@@ -2129,7 +2135,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             {description_html}
                         </div>
                     </div>'''
-                html_content += '</div>'
+                    html_content += '</div>'
         html_content += '</div></div>'
         room_idx += 1
 

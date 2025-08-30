@@ -1,54 +1,60 @@
 import pandas as pd
 import json
 import yaml
-from typing import Dict, Any, List
+from typing import Dict, Any, Lis
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
+
 import sys
-from reportlab.pdfgen import canvas
-import requests
+
+
 import os
-from urllib.parse import urlparse
+
 import re # Add import for regex
-from reportlab.platypus import Image
-from reportlab.lib.colors import HexColor
+
+
 from reportlab.platypus.flowables import HRFlowable
 from datetime import datetime
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
-import pprint
+
+
 from s3_config import S3Handler
+
+def get_display_title(brand, model):
+    if model.lower().startswith(brand.lower()):
+        return model
+    return f"{brand} {model}"
+
 
 def get_user_data_value(user_data: Dict[str, Any], key: str, default: Any = None) -> Any:
     """
     Helper function to safely access user_data with either lowercase or capitalized keys.
     This helps handle both form_data (direct from web forms) and processed user_data.
-    
+
     Args:
         user_data: Dictionary containing user information
         key: The key to look for (will try both lowercase and capitalized versions)
         default: The default value to return if the key is not found
-        
+
     Returns:
-        The value from user_data if found, otherwise the default
+        The value from user_data if found, otherwise the defaul
     """
     # Try lowercase first (processed data format)
     if key in user_data:
         return user_data[key]
-    
+
     # Try capitalized (form data format)
     capitalized_key = key.capitalize()
     if capitalized_key in user_data:
         return user_data[capitalized_key]
-    
+
     # Try all uppercase (form data might use all caps for some fields)
     uppercase_key = key.upper()
     if uppercase_key in user_data:
         return user_data[uppercase_key]
-    
-    # Return default if not found in any format
-    return default
+
+    # Return default if not found in any forma
+    return defaul
 
 # Function to format currency
 def format_currency(amount: float) -> str:
@@ -85,23 +91,23 @@ def analyze_user_requirements(excel_file: str):
         # Read the Excel file
         print(f"Reading Excel file: {excel_file}")
         df = pd.read_excel(excel_file)
-        
+
         print(f"Excel file loaded, columns: {df.columns.tolist()}")
-        
+
         # Clean up column names by removing newlines and extra spaces
         df.columns = [col.split('\n')[0].strip() for col in df.columns]
-        
+
         print(f"Cleaned column names: {df.columns.tolist()}")
-        
+
         if df.empty:
             print("ERROR: Excel file has no data rows")
             return None
-            
+
         # Check for required columns
         required_columns = [
-            'Name', 
-            'Mobile Number (Preferably on WhatsApp)', 
-            'E-mail', 
+            'Name',
+            'Mobile Number (Preferably on WhatsApp)',
+            'E-mail',
             'Apartment Address',
             'What is your overall budget for home appliances?',
             'Number of bedrooms',
@@ -110,16 +116,16 @@ def analyze_user_requirements(excel_file: str):
             'Elders (above the age 60)',
             'Kids (below the age 18)'
         ]
-        
+
         # Check which required columns are missing
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             print(f"ERROR: Missing required columns: {missing_columns}")
             return None
-        
+
         row = df.iloc[0]
         print(f"First row: {row.head()}")
-        
+
         # Use safer data access with error handling
         try:
             # Handle potentially empty or non-numeric fields
@@ -131,7 +137,7 @@ def analyze_user_requirements(excel_file: str):
                 except (ValueError, TypeError):
                     print(f"Warning: Could not convert {val} to int, using 0")
                     return 0
-                    
+
             def safe_float(val):
                 try:
                     if pd.isna(val):
@@ -140,12 +146,12 @@ def analyze_user_requirements(excel_file: str):
                 except (ValueError, TypeError):
                     print(f"Warning: Could not convert {val} to float, using 0.0")
                     return 0.0
-                    
+
             def safe_str(val):
                 if pd.isna(val):
                     return ""
                 return str(val).replace('\n', ' ')
-            
+
             # Convert DataFrame to dictionary with safer access
             user_data = {
                 'name': safe_str(df.iloc[0]['Name']),
@@ -161,13 +167,13 @@ def analyze_user_requirements(excel_file: str):
                     'kids': safe_int(df.iloc[0]['Kids (below the age 18)'])
                 }
             }
-        
+
         except Exception as e:
             print(f"Error reading user information: {str(e)}")
             import traceback
             traceback.print_exc()
             return None
-        
+
         # Clean up NaN values
         def clean_dict(d):
             for k, v in d.items():
@@ -177,9 +183,9 @@ def analyze_user_requirements(excel_file: str):
                     d[k] = None
                 elif isinstance(v, str) and v.lower() == 'nan':
                     d[k] = None
-        
+
         clean_dict(user_data)
-        
+
         # Extract room requirements
         requirements = {
             'hall': {
@@ -252,14 +258,14 @@ def analyze_user_requirements(excel_file: str):
                 'fans': safe_int(df.iloc[0].get('Dining: Fan(s)?', 1)),  # Use safe_int to handle non-numeric values
                 'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
                 'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
-                'size_sqft': safe_float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Use safe_float
+                'size_sqft': safe_float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Use safe_floa
                 'is_for_kids': df.iloc[0].get('Dining: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
             }
         }
-        
+
         # Merge requirements into user_data
         user_data.update(requirements)
-        
+
         # Debug: Log the first few rows of the DataFrame
         print("First few rows of the DataFrame:")
         print(df.head())
@@ -269,7 +275,7 @@ def analyze_user_requirements(excel_file: str):
 
         # Debug: Log the extracted requirements
         print("Extracted requirements:", requirements)
-        
+
         return user_data
     except Exception as e:
         print(f"Error reading user information: {str(e)}")
@@ -279,38 +285,38 @@ def analyze_user_requirements(excel_file: str):
 
 def calculate_total_cost(recommendations):
     """Calculate total cost of recommendations
-    
+
     This estimates what the customer would pay if they selected the best product (highest score/recommended)
     from each product category.
     """
     total_cost = 0
     processed_keys = set()  # Track room-product_type combinations we've already counted
-    
+
     for room, products in recommendations.items():
         if not isinstance(products, dict):
             continue
-        
+
         for product_type, options in products.items():
             # For nested structures like bathroom
             if isinstance(options, dict):
                 for nested_type, nested_options in options.items():
                     if not nested_options or not isinstance(nested_options, list):
                         continue
-                    
+
                     key = f"{room}-{product_type}-{nested_type}"
                     if key not in processed_keys:
                         try:
                             # Use better_home_price (what customers pay) when available
                             if nested_options and isinstance(nested_options[0], dict):
                                 best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0))
-                                price = float(best_product.get('better_home_price', 
-                                             best_product.get('price', 
+                                price = float(best_product.get('better_home_price',
+                                             best_product.get('price',
                                              best_product.get('retail_price', 0))))
                                 total_cost += price
                             processed_keys.add(key)
                         except (ValueError, TypeError):
                             continue
-            
+
             # For regular product lists
             elif isinstance(options, list) and options:
                 key = f"{room}-{product_type}"
@@ -319,15 +325,15 @@ def calculate_total_cost(recommendations):
                         # Use better_home_price (what customers pay) when available
                         if options and isinstance(options[0], dict):
                             best_product = max(options, key=lambda x: x.get('feature_match_score', 0))
-                            price = float(best_product.get('better_home_price', 
-                                         best_product.get('price', 
+                            price = float(best_product.get('better_home_price',
+                                         best_product.get('price',
                                          best_product.get('retail_price', 0))))
                             total_cost += price
                         processed_keys.add(key)
                     except (ValueError, TypeError):
                         continue
-    
-    return total_cost
+
+    return total_cos
 
 # Function to get budget category
 def get_budget_category(total_budget: float, appliance_type: str, quantity: int = 1) -> str:
@@ -354,16 +360,16 @@ def get_budget_category(total_budget: float, appliance_type: str, quantity: int 
     priority = appliance_info['priority']
 
     # Calculate allocated budget, adjusted for quantity
-    # For multiple units, we increase the allocation proportionally but with a slight discount
+    # For multiple units, we increase the allocation proportionally but with a slight discoun
     # to account for bulk purchases
     quantity_factor = 1 + (quantity - 1) * 0.8  # 20% discount for additional units
     allocated_budget = total_budget * allocation * quantity_factor
 
     # For high priority appliances (AC, refrigerator, washing machine)
     if priority == 1:
-        if total_budget >= 500000:  # High total budget
+        if total_budget >= 500000:  # High total budge
             return "premium"
-        elif total_budget >= 300000:  # Medium total budget
+        elif total_budget >= 300000:  # Medium total budge
             if allocated_budget >= 40000 * quantity_factor:
                 return "premium"
             else:
@@ -376,14 +382,14 @@ def get_budget_category(total_budget: float, appliance_type: str, quantity: int 
 
     # For medium priority appliances (chimney, ceiling fan, gas stove)
     elif priority == 2:
-        if total_budget >= 400000:  # High total budget
+        if total_budget >= 400000:  # High total budge
             return "premium"
-        elif total_budget >= 200000:  # Medium total budget
+        elif total_budget >= 200000:  # Medium total budge
             if allocated_budget >= 30000 * quantity_factor:
                 return "premium"
             else:
                 return "mid"
-        else:  # Lower total budget
+        else:  # Lower total budge
             if allocated_budget >= 15000 * quantity_factor:  # More conservative threshold
                 return "mid"
             else:
@@ -391,18 +397,18 @@ def get_budget_category(total_budget: float, appliance_type: str, quantity: int 
 
     # For lower priority appliances
     else:
-        if total_budget >= 300000:  # High total budget
+        if total_budget >= 300000:  # High total budge
             if allocated_budget >= 20000 * quantity_factor:
                 return "premium"
             else:
                 return "mid"
-        else:  # Lower total budget
+        else:  # Lower total budge
             if allocated_budget >= 10000 * quantity_factor:  # More conservative threshold
                 return "mid"
             else:
                 return "budget"
 
-# Function to get budget category for a product
+# Function to get budget category for a produc
 def get_budget_category_for_product(price: float, appliance_type: str) -> str:
     """Determine budget category based on product price and appliance type"""
     categories = {
@@ -420,11 +426,11 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
         'hob_top': {'budget': 20000, 'mid': 40000},   # Add hob top
         'glass_partition': {'budget': 15000, 'mid': 25000}  # Add glass partition
     }
-    
+
     # Default ranges if appliance type is not in the categories
     default_ranges = {'budget': 20000, 'mid': 40000}
     ranges = categories.get(appliance_type, default_ranges)
-    
+
     if price <= ranges['budget']:
         return 'budget'
     elif price <= ranges['mid']:
@@ -436,11 +442,11 @@ def get_budget_category_for_product(price: float, appliance_type: str) -> str:
 def parse_product_feature(feature_str: str) -> Dict[str, str]:
     """Parses a feature string like 'Key: Value Unit' into a dict."""
     if not isinstance(feature_str, str) or ':' not in feature_str:
-        return {} 
+        return {}
     key, value_part = feature_str.split(':', 1)
     key = key.strip().lower()
     value_part = value_part.strip()
-    # Try to extract numeric value and unit
+    # Try to extract numeric value and uni
     match = re.match(r"([\d.]+)\s*(\w*)", value_part, re.IGNORECASE)
     if match:
         return {'key': key, 'value': match.group(1), 'unit': match.group(2).lower() if match.group(2) else None, 'raw_value': value_part}
@@ -453,7 +459,7 @@ def compare_features(req_value_str: str, prod_feature: Dict[str, str]) -> bool:
     """Compares a required feature value string with a parsed product feature."""
     if not isinstance(req_value_str, str) or not prod_feature:
         return False
-        
+
     # Attempt numerical comparison if possible
     req_match = re.match(r"([\d.]+)\s*(\w*)", req_value_str, re.IGNORECASE)
     prod_value_num = None
@@ -466,18 +472,20 @@ def compare_features(req_value_str: str, prod_feature: Dict[str, str]) -> bool:
         req_val = float(req_match.group(1))
         req_unit = req_match.group(2).lower() if req_match.group(2) else None
         prod_unit = prod_feature.get('unit')
-        
+
         # Compare numbers, ignore units if only one is present or if they mismatch slightly (cm vs cms)
-        unit_match = (req_unit == prod_unit) or \
-                     (req_unit and prod_unit and req_unit.startswith(prod_unit)) or \
-                     (req_unit and prod_unit and prod_unit.startswith(req_unit)) or \
-                     (req_unit is None or prod_unit is None) # Allow comparison if one lacks unit
+        unit_match = (
+            (req_unit == prod_unit) or
+            (req_unit and prod_unit and req_unit.startswith(prod_unit)) or
+            (req_unit and prod_unit and prod_unit.startswith(req_unit)) or
+            (req_unit is None or prod_unit is None)
+        )  # Allow comparison if one lacks unit
 
         # Use a small tolerance for float comparison
         TOLERANCE = 1e-6
         if unit_match and abs(req_val - prod_value_num) < TOLERANCE:
-             return True
-             
+            return True
+
     # Fallback to case-insensitive raw string comparison (handles non-numeric values)
     match = req_value_str.strip().lower() == prod_feature.get('raw_value', '').lower()
     return match
@@ -486,13 +494,13 @@ def is_horizontal_water_heater(product: Dict[str, Any]) -> bool:
     """Check if a water heater is horizontal based on title and features."""
     title = product.get('title', '').lower()
     features = [f.lower() for f in product.get('features', [])]
-    
+
     # Check title for horizontal keywords
     title_is_horizontal = any(keyword in title for keyword in ['horizontal', 'slim', 'rhs', 'flat'])
-    
+
     # Check features for horizontal keywords
     features_is_horizontal = any('horizontal' in f for f in features)
-    
+
     # Check dimensions in features for horizontal orientation
     dimensions_is_horizontal = False
     for feature in features:
@@ -511,28 +519,28 @@ def is_horizontal_water_heater(product: Dict[str, Any]) -> bool:
                             dimensions_is_horizontal = True
                 except (ValueError, IndexError):
                     pass
-    
+
     is_horizontal = title_is_horizontal or features_is_horizontal or dimensions_is_horizontal
 
     return is_horizontal
 
 # Function to get specific product recommendations
 def get_specific_product_recommendations(
-    appliance_type: str, 
-    target_budget_category: str, 
-    demographics: Dict[str, int], 
-    room_color_theme: str = None, 
+    appliance_type: str,
+    target_budget_category: str,
+    demographics: Dict[str, int],
+    room_color_theme: str = None,
     user_data: Dict[str, Any] = None,
     required_features: Dict[str, str] = None,  # Added parameter
     room: str = None  # Add room parameter
 ) -> List[Dict[str, Any]]:
     """Get specific product recommendations based on appliance type, budget category, demographics, color theme, and specific features."""
-    
-    required_features = required_features or {} # Ensure it's a dict
+
+    required_features = required_features or {} # Ensure it's a dic
     catalog = load_product_catalog()
     recommendations = []
     product_groups = {}  # Dictionary to group products by model
-    
+
     # Define budget ranges for each appliance type
     ranges = {
         'refrigerator': {'budget': 40000, 'mid': 80000},  # Above 80000 is premium
@@ -548,10 +556,10 @@ def get_specific_product_recommendations(
         'gas_stove': {'budget': 15000, 'mid': 25000}, # Add gas stove
         'hob_top': {'budget': 20000, 'mid': 40000}    # Add hob top
     }
-    
+
     # Get the ranges for this appliance type, or use default ranges
     ranges = ranges.get(appliance_type, {'budget': 20000, 'mid': 40000})
-    
+
     # Process available products
     if catalog and "products" in catalog:
         if appliance_type == 'geyser':
@@ -588,7 +596,7 @@ def get_specific_product_recommendations(
                     matches = 'cloth dryer' in product_type_norm or 'dryer' == product_type_norm
                 # Special case: glass_partition can be labeled as 'glass partition'
                 elif norm_type == 'glass partition':
-                    matches = ('glass partition' in product_type_norm or 
+                    matches = ('glass partition' in product_type_norm or
                                'glass' in product_type_norm and 'partition' in product_type_norm or
                                'glass' in product_type_norm and 'shower' in product_type_norm)
                 # Special case: dishwasher - default to Free-standing unless user requests Built-in
@@ -597,7 +605,7 @@ def get_specific_product_recommendations(
                     # Default: only include Free-standing unless user requests Built-in
                     # Check for feature in product['features'] or product['features']['parsed_features']
                     is_freestanding = False
-                    # Check in features list
+                    # Check in features lis
                     features_list = p.get('features', [])
                     for feat in features_list:
                         if isinstance(feat, str) and ('free-standing' in feat.lower() or 'freestanding' in feat.lower()):
@@ -629,7 +637,7 @@ def get_specific_product_recommendations(
             if user_requested_wm_type_str: # Ensure it's not empty
                 # Normalize user's preference: 'Front-Load' -> 'front load'
                 normalized_user_type = user_requested_wm_type_str.replace('-', ' ').lower()
-                
+
                 temp_filtered_products = []
                 for product in filtered_products:
                     # Get catalog product type: product['features']['parsed_features']['Type']
@@ -637,7 +645,7 @@ def get_specific_product_recommendations(
                     catalog_wm_type_str = product.get('features', {}).get('parsed_features', {}).get('Type', '').strip()
                     if catalog_wm_type_str:
                         # Normalize catalog type: "Front Load" -> "front load"
-                        normalized_catalog_type = catalog_wm_type_str.lower() 
+                        normalized_catalog_type = catalog_wm_type_str.lower()
                         # Also handle if catalog might have hyphens, though less likely for 'Front Load'
                         normalized_catalog_type = normalized_catalog_type.replace('-', ' ')
 
@@ -660,10 +668,10 @@ def get_specific_product_recommendations(
                 def has_burner_count(p):
                     title = p.get('title', '').lower().replace('-', ' ')
                     return f'{num_burners} burner' in title
-                
+
                 # Apply the filter
                 filtered_products = [p for p in filtered_products if has_burner_count(p)]
-                
+
                 # print(f"[DEBUG HOB] Titles after burner filter:")
                 # for p in filtered_products:
                 #     print(f"  - {p.get('title', 'No title')}")
@@ -672,22 +680,22 @@ def get_specific_product_recommendations(
         if appliance_type == 'refrigerator':
             # print(f"[DEBUG] Filtered products count immediately after filtering for '{appliance_type}': {len(filtered_products)}")
             if not filtered_products:
-                 all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
-                 # print(f"[DEBUG] All product types found: {all_product_types}")
-        elif appliance_type == 'ac': 
+                all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
+                # print(f"[DEBUG] All product types found: {all_product_types}")
+        elif appliance_type == 'ac':
             # print(f"[DEBUG AC FILTERING] Required features: {required_features}")
             # print(f"[DEBUG AC FILTERING] Filtered products count immediately after filtering for '{appliance_type}': {len(filtered_products)}")
             if not filtered_products:
-                 all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
-                 # print(f"[DEBUG AC FILTERING] All product types found (checking for AC): {all_product_types}")
+                all_product_types = [p.get('product_type', 'No type') for p in catalog.get('products', [])]
+                # print(f"[DEBUG AC FILTERING] All product types found (checking for AC): {all_product_types}")
         elif appliance_type == 'hob_top':
             # print(f"[DEBUG HOB] Filtered products count for 'hob_top': {len(filtered_products)}")
             if not filtered_products:
-                 all_product_types = sorted(set([p.get('product_type', 'No type') for p in catalog.get('products', [])]))
-                 # print(f"[DEBUG HOB] All product types found: {all_product_types}")
+                all_product_types = sorted(set([p.get('product_type', 'No type') for p in catalog.get('products', [])]))
+                # print(f"[DEBUG HOB] All product types found: {all_product_types}")
 
         matching_products_data = [] # Store product data along with scores
-        
+
         # DEBUG: Print initial list of ACs after type filter
         if appliance_type == 'ac':
             # print("[DEBUG AC DETAILS] Initial AC candidates before budget/feature check:")
@@ -714,10 +722,10 @@ def get_specific_product_recommendations(
                                     p_tonnage = float(match.group(1))
                                 except ValueError:
                                     p_tonnage = "Unknown" # Handle potential conversion error
-                                    
+
                     # print(f"  {idx+1}. {p.get('brand', 'N/A')} - {p.get('title', 'N/A')} - Tonnage: {p_tonnage} - Price: {p.get('retail_price', p.get('price', p.get('better_home_price', 0)))}")
                 except Exception as e:
-                     print(f"  Error printing details for product index {idx}: {e}")
+                    print(f"  Error printing details for product index {idx}: {e}")
 
         for product in filtered_products:
             # Use retail_price as primary, fallback to price or better_home_price
@@ -725,7 +733,7 @@ def get_specific_product_recommendations(
                 price = float(product.get('retail_price', product.get('price', product.get('better_home_price', 0))))
             except (ValueError, TypeError):
                 price = 0.0
-            
+
             # Determine if product matches budget category and type requirements
             product_matches_budget = False
             if target_budget_category == 'premium':
@@ -734,7 +742,7 @@ def get_specific_product_recommendations(
                 product_matches_budget = (price <= ranges.get('mid', float('inf')))
             else:  # budget category
                 product_matches_budget = (price <= ranges.get('budget', float('inf')))
-            
+
             # Add matching products to list if budget matches
             if not product_matches_budget:
                 continue
@@ -742,7 +750,7 @@ def get_specific_product_recommendations(
             # --- Determine Actual Product Tonnage (checking features and title) ---
             actual_product_tonnage = None
             if appliance_type == 'ac':
-                # Try features first
+                # Try features firs
                 for feat in product.get('features', []):
                     match = re.search(r'(\d+\.?\d*)\s*ton', feat.lower())
                     if match:
@@ -750,7 +758,7 @@ def get_specific_product_recommendations(
                             actual_product_tonnage = float(match.group(1))
                             break
                         except ValueError:
-                            pass # Ignore conversion errors in features list
+                            pass # Ignore conversion errors in features lis
                 # Try title if not found in features
                 if actual_product_tonnage is None:
                     title = product.get('title', '')
@@ -765,7 +773,7 @@ def get_specific_product_recommendations(
             # Calculate feature match score
             feature_match_score = 0
             product_features_list = product.get('features', []) # Already a list from json
-            
+
             # DEBUG: Specific check for tonnage feature match
             tonnage_feature_score = 0
             product_tonnage_value_for_debug = "N/A" # Keep this for the debug print only
@@ -796,16 +804,16 @@ def get_specific_product_recommendations(
                                     pass # Ignore conversion errors for required value
                             # Update debug value
                             product_tonnage_value_for_debug = f"{actual_product_tonnage} Ton"
-                        
-                        # Penalize if tonnage requirement was present but not met
+
+                        # Penalize if tonnage requirement was present but not me
                         if not tonnage_requirement_met:
                             penalty = -100 # Define explicit penalty value
                             feature_match_score += penalty # Apply penalty
                             tonnage_feature_score = penalty # Set tonnage score to penalty
-                            # --- Temporary Debug Print --- 
+                            # --- Temporary Debug Print ---
                             # print(f"[TEMP DEBUG] Tonnage Mismatch! Product: {product.get('title', 'N/A')[:30]}... Penalty Applied. New FeatScore: {feature_match_score}, New TonnageScore: {tonnage_feature_score}")
                             # --- End Temporary Debug Print ---
-                            
+
                         # Even if no match, we handled the tonnage requirement check
                         continue # Move to the next required feature
 
@@ -834,61 +842,61 @@ def get_specific_product_recommendations(
             product_data = product.copy() # Work on a copy
             product_data['color_match'] = False # Initialize color match flag
             product_data['matched_color'] = None # Initialize matched_color
-            
+
             # Check for Smart Control feature for rooms used by kids
-            if room and room not in ['kitchen', 'dining', 'laundry']:  # Skip rooms where is_for_kids is not relevant
+            if room and room not in ['kitchen', 'dining', 'laundry']:  # Skip rooms where is_for_kids is not relevan
                 # Get room-specific is_for_kids value if available from user_data
                 is_room_for_kids = False
                 if user_data and room in user_data:
                     is_room_for_kids = user_data[room].get('is_for_kids', False)
-                
+
                 # If room is for kids, check for smart features and boost score
                 if is_room_for_kids:
                     # Check if product has Smart Control
                     has_smart_control = False
-                    
+
                     # Check in parsed_features (preferred method)
                     if 'features' in product_data:
                         features = product_data.get('features', {})
                         parsed_features = features.get('parsed_features', {}) if isinstance(features, dict) else {}
                         if parsed_features.get('Smart Control') == 'Yes':
                             has_smart_control = True
-                    
+
                     # Also check in title for keywords indicating smart features
                     title = product_data.get('title', '').lower()
                     smart_keywords = ['iot', 'smart', 'voice control', 'voice-control', 'alexa', 'google home', 'wifi']
                     if any(keyword in title for keyword in smart_keywords):
                         has_smart_control = True
-                    
+
                     # Check in features list for smart keywords
                     feature_str_list = product_data.get('features', [])
                     features_str_combined = '|'.join(feature_str_list) if isinstance(feature_str_list, list) else ''
                     if any(keyword in features_str_combined.lower() for keyword in smart_keywords):
                         has_smart_control = True
-                    
+
                     # Apply relevance boost if smart control is available
                     if has_smart_control:
                         relevance_score += 5  # Significant boost for smart features in kids' rooms
-            
+
             if product_data.get('color_options'):
                 product_data['color_options'] = list(set(product_data.get('color_options', [])))
                 if room_color_theme:
                     room_colors = room_color_theme.lower().split()
                     product_colors_original_case = product_data.get('color_options', []) # Keep original case for storing
                     product_colors_lower = [c.lower() for c in product_colors_original_case]
-                    
+
                     for room_color in room_colors: # User's theme color
                         for i, pc_lower in enumerate(product_colors_lower): # Product's available colors (lowercase)
                             if room_color in pc_lower: # If user's theme color is found in a product color
                                 product_data['color_match'] = True
                                 product_data['matched_color'] = product_colors_original_case[i] # Store the original case product color
-                                relevance_score += 2 # Or some other score adjustment
+                                relevance_score += 2 # Or some other score adjustmen
                                 break # Found a match for this room_color, move to next room_color or exit outer loop
                         if product_data['color_match']:
                             break # Match found for one of the room_colors, no need to check other room_colors
             else:
                 product_data['color_options'] = []
-            
+
             features_str_list = product_data.get('features', [])
             features_str_combined = '|'.join(features_str_list)
             if 'BLDC' in features_str_combined.upper():
@@ -934,10 +942,10 @@ def get_specific_product_recommendations(
             # Store per-product savings
             savings = float(product_data['retail_price']) - float(product_data['better_home_price'])
             product_data['savings'] = max(0, savings)
-            
+
             # Normalize best seller field
             product_data['is_bestseller'] = str(product.get('best_seller', '')).strip().lower() == 'yes'
-            
+
             matching_products_data.append(product_data)
         if appliance_type == 'geyser':
             # print(f"[DEBUG][Geyser] Products after budget filter: {len(matching_products_data)}")
@@ -948,9 +956,9 @@ def get_specific_product_recommendations(
 
         # Sort by feature match score, then is_bestseller flag, then relevance score, then price
         matching_products_data.sort(key=lambda x: (
-            -x.get('feature_match_score', 0), 
+            -x.get('feature_match_score', 0),
             -x.get('is_bestseller', False),  # Prioritize bestsellers after feature match
-            -x.get('relevance_score', 0), 
+            -x.get('relevance_score', 0),
             -float(x.get('price', 0))
         ))
 
@@ -966,17 +974,17 @@ def get_specific_product_recommendations(
         final_recommendations = []
         seen_models = set()
         limit = 3 # Number of unique models to recommend
-        
+
         # Select the top 'limit' unique models based on the primary sort order
         for product_data in matching_products_data:
             # Ensure product_data is a dictionary before proceeding
             if not isinstance(product_data, dict):
                 continue
-                
+
             # Create a unique key based on brand and title to avoid duplicates of the *same* model
             model_key = f"{product_data.get('brand', 'UnknownBrand')}_{product_data.get('title', 'UnknownModel')}"
-            
-            # Only add if we haven't seen this exact model key yet
+
+            # Only add if we haven't seen this exact model key ye
             if model_key not in seen_models:
                 # Format the recommendation dict (ensure all keys are accessed safely)
                 recommendation = {
@@ -1003,18 +1011,18 @@ def get_specific_product_recommendations(
                     'image_src': product_data.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available'),
                     'is_bestseller': product_data.get('is_bestseller', False), # Preserve bestseller flag
                 }
-                
+
                 final_recommendations.append(recommendation)
                 seen_models.add(model_key)
-                
+
                 # Stop once we have enough recommendations
                 if len(final_recommendations) >= limit:
                     break
-                    
 
-        # If no products match the budget or feature requirements, select the best available product
+
+        # If no products match the budget or feature requirements, select the best available produc
         if not final_recommendations:
-            # Sort by price (ascending) and feature match score (descending) to find the best available product
+            # Sort by price (ascending) and feature match score (descending) to find the best available produc
             matching_products_data.sort(key=lambda x: (
                 float(x.get('price', float('inf'))),  # Sort by price ascending
                 -x.get('feature_match_score', 0)  # Sort by feature match score descending
@@ -1064,10 +1072,10 @@ def get_specific_product_recommendations(
                 def has_burner_count(p):
                     title = p.get('title', '').lower().replace('-', ' ')
                     return f'{num_burners} burner' in title
-                
+
                 # Apply the filter
                 filtered_products = [p for p in filtered_products if has_burner_count(p)]
-                
+
                 # print(f"[DEBUG HOB] Titles after burner filter:")
                 # for p in filtered_products:
                 #     print(f"  - {p.get('title', 'No title')}")
@@ -1075,7 +1083,7 @@ def get_specific_product_recommendations(
         # After initial filtering for type, add this for bathroom_exhaust:
         if appliance_type == 'bathroom_exhaust' and required_features:
 
-            
+
             # --- Size Matching (blade length in cm or mm) ---
             size_val = str(required_features.get('dimensions', '') or '').strip().lower()
             size_num = None
@@ -1086,7 +1094,7 @@ def get_specific_product_recommendations(
                     size_num = float(match.group(1))
                     size_unit = match.group(2) or 'cm'  # Default to cm if not specified
             print(f"Parsed size: {size_num} {size_unit}")
-            
+
             def blade_length_matches(product):
                 features = product.get('features', {})
                 numeric = features.get('numeric_features', {}) if isinstance(features, dict) else {}
@@ -1096,7 +1104,7 @@ def get_specific_product_recommendations(
                     val = blade.get('value')
                     unit = (blade.get('unit') or '').lower()
                     if val is not None:
-                        # Convert to input unit
+                        # Convert to input uni
                         if size_unit == 'mm' and unit == 'cm':
                             val = val * 10
                         elif size_unit == 'cm' and unit == 'mm':
@@ -1105,31 +1113,31 @@ def get_specific_product_recommendations(
                         tolerance = 2 if size_unit == 'mm' else 0.2
                         return abs(val - size_num) <= tolerance
                 return False
-            
+
             if size_num is not None:
                 filtered_products = [p for p in filtered_products if blade_length_matches(p)]
                 print(f"Products after size filtering: {len(filtered_products)}")
-            
+
             # --- Color Matching ---
             color_val = str(required_features.get('color', '') or '').strip().lower()
             print(f"Required color: {color_val}")
-            
+
             def color_matches(product):
                 # Check color field, then search description and features
                 product_color = str(product.get('color', '') or '').lower()
                 if color_val and product_color:
                     return color_val in product_color
                 return True  # If no color specified, don't filter
-            
+
             if color_val:
                 filtered_products = [p for p in filtered_products if color_matches(p)]
-            
+
 
         # For ceiling fans, filter by blade_length if fan_size_cm is specified
         if appliance_type == 'ceiling_fan' and 'fan_size_cm' in required_features and required_features['fan_size_cm']:
             fan_size_cm = required_features['fan_size_cm']
             def matches_blade_length(product):
-                # First, try numeric_features dict
+                # First, try numeric_features dic
                 features = product.get('features', {})
                 if isinstance(features, dict):
                     numeric = features.get('numeric_features', {})
@@ -1213,7 +1221,7 @@ def get_specific_product_recommendations(
             # Prefer parsed_features if available
             room_type_val = parsed.get('room type')
             if room_type_val:
-                # Normalize and check if required room type is present
+                # Normalize and check if required room type is presen
                 room_types = [r.strip().lower() for r in room_type_val.split(',')]
                 return required_room_type.lower() in room_types
             # Fallback: search in raw_features or feature strings
@@ -1257,15 +1265,12 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
             ac_info = f"an AC ({recommended_tonnage} Ton recommended)"
         else:
             ac_info = "no AC"
-        return f"A welcoming space of approximately {room_size} sq ft with {user_data['hall'].get('fans', 'no')} fan(s) and {ac_info}, " \
-               f"complemented by a {user_data['hall'].get('color_theme', 'neutral')} color theme."
-    
+        return f"A welcoming space of approximately {room_size} sq ft with {user_data['hall'].get('fans', 'no')} fan(s) and {ac_info}, complemented by a {user_data['hall'].get('color_theme', 'neutral')} color theme."
+
     elif room == 'kitchen':
         room_size = user_data['kitchen'].get('size_sqft', 100.0)
-        return f"A functional kitchen of {room_size} sq ft with a {user_data['kitchen'].get('chimney_width', 'standard')} chimney, " \
-               f"{user_data['kitchen'].get('stove_type', 'standard')} with {user_data['kitchen'].get('num_burners', '4')} burners, " \
-               f"and {'a small fan' if user_data['kitchen'].get('small_fan', False) else 'no fan'}."
-    
+        return f"A functional kitchen of {room_size} sq ft with a {user_data['kitchen'].get('chimney_width', 'standard')} chimney, {user_data['kitchen'].get('stove_type', 'standard')} with {user_data['kitchen'].get('num_burners', '4')} burners, and {'a small fan' if user_data['kitchen'].get('small_fan', False) else 'no fan'}."
+
     elif room == 'master_bedroom':
         room_data = user_data['master_bedroom']
         label = get_special_label(room_data)
@@ -1279,10 +1284,8 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
         prefix = "Master bedroom"
         if label:
             prefix += f" - {label}"
-        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, " \
-               f"{ac_info}, " \
-               f"and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
-    
+        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, {ac_info}, and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+
     elif room == 'bedroom_2':
         room_data = user_data['bedroom_2']
         label = get_special_label(room_data)
@@ -1296,9 +1299,7 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
         prefix = "Second bedroom"
         if label:
             prefix += f" - {label}"
-        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, " \
-               f"{ac_info}, " \
-               f"and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, {ac_info}, and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
 
     elif room == 'bedroom_3':
         room_data = user_data['bedroom_3']
@@ -1313,15 +1314,12 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
         prefix = "Third bedroom"
         if label:
             prefix += f" - {label}"
-        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, " \
-               f"{ac_info}, " \
-               f"and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
-    
+        return f"{prefix} of {room_size} sq ft with {room_data.get('color_theme', 'neutral')} theme, {ac_info}, and a bathroom equipped with {room_data.get('bathroom', {}).get('water_heater_type', 'standard')} water heating."
+
     elif room == 'laundry':
         room_size = user_data['laundry'].get('size_sqft', 50.0)
-        return f"Laundry area of {room_size} sq ft equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine" \
-               f"{' and a dryer' if user_data['laundry'].get('dryer_type', '').lower() == 'yes' else ''}."
-    
+        return f"Laundry area of {room_size} sq ft equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine{' and a dryer' if user_data['laundry'].get('dryer_type', '').lower() == 'yes' else ''}."
+
     return ""
 
 def get_user_information(excel_filename: str) -> Dict[str, Any]:
@@ -1329,11 +1327,11 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
     try:
         # Read the Excel file
         df = pd.read_excel(excel_filename)
-        
+
         # Clean up column names by removing newlines and extra spaces
         df.columns = [col.split('\n')[0].strip() for col in df.columns]
         row = df.iloc[0]
-        
+
         # Convert DataFrame to dictionary
         user_data = {
             'name': df.iloc[0]['Name'],
@@ -1349,7 +1347,7 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
                 'kids': int(df.iloc[0]['Kids (below the age 18)'])
             }
         }
-        
+
         # Clean up NaN values
         def clean_dict(d):
             for k, v in d.items():
@@ -1359,9 +1357,9 @@ def get_user_information(excel_filename: str) -> Dict[str, Any]:
                     d[k] = None
                 elif isinstance(v, str) and v.lower() == 'nan':
                     d[k] = None
-        
+
         clean_dict(user_data)
-        
+
         return user_data
     except Exception as e:
         print(f"Error reading user information: {str(e)}")
@@ -1374,11 +1372,11 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
     """Generate a personalized recommendation reason for a product, highlighting matching features. Only use actual product features."""
     reasons = []
     required_features = required_features or {}
-    
+
     # Check if product is a bestseller
     if product.get('is_bestseller', False):
         reasons.append("Top-rated bestseller with excellent customer reviews")
-    
+
     # Budget consideration
     budget_saved = product.get('retail_price', 0) - product.get('price', 0)
     if budget_saved > 0:
@@ -1386,39 +1384,39 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
 
     # Color matching
     if product.get('color_match', False):
-            reasons.append(f"Stylish color options ({', '.join(product.get('color_options', []))}) perfectly match your room's theme")
+        reasons.append(f"Stylish color options ({', '.join(product.get('color_options', []))}) perfectly match your room's theme")
 
     # Energy efficiency
     if product.get('energy_rating') in ['5 Star', '4 Star']:
         reasons.append(f"Premium {product['energy_rating']} energy rating - significantly reduces your electricity bills")
-    
+
     # Check for Smart Control features in rooms used by kids
-    if room and room not in ['kitchen', 'dining', 'laundry']:  # Skip rooms where is_for_kids is not relevant
+    if room and room not in ['kitchen', 'dining', 'laundry']:  # Skip rooms where is_for_kids is not relevan
         is_room_for_kids = False
         if user_data and room in user_data:
             is_room_for_kids = user_data[room].get('is_for_kids', False)
-            
+
         if is_room_for_kids:
             # Check if product has Smart Control
             has_smart_control = False
-            
+
             # Check in parsed_features
             features = product.get('features', {})
             parsed_features = features.get('parsed_features', {}) if isinstance(features, dict) else {}
             if parsed_features.get('Smart Control') == 'Yes':
                 has_smart_control = True
-                
+
             # Check in title for smart keywords
             title = product.get('title', '').lower()
             if any(keyword in title for keyword in ['iot', 'smart', 'voice control', 'voice-control', 'alexa', 'google home', 'wifi']):
                 has_smart_control = True
-                
-            # Check in features list
+
+            # Check in features lis
             feature_list = product.get('features', [])
             features_combined = '|'.join(feature_list) if isinstance(feature_list, list) else ''
             if any(keyword in features_combined.lower() for keyword in ['iot', 'smart', 'voice', 'alexa', 'google home', 'wifi', 'app control']):
                 has_smart_control = True
-                
+
             if has_smart_control:
                 reasons.append("Smart controls are perfect for kids - allows easy control via smartphone, voice commands, or automation")
 
@@ -1440,7 +1438,7 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
             reasons.append("Advanced BLDC motor technology - 50% more energy efficient than conventional fans")
         if room == 'hall':
             reasons.append("Perfect for your hall - provides powerful air circulation for large spaces")
-    
+
     elif appliance_type == 'ac':
         # Only mention tonnage if present in product features
         product_tonnage = None
@@ -1459,12 +1457,12 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
         energy_rating = product.get('energy_rating')
         if energy_rating:
             reasons.append(f"Premium {energy_rating} rating - maximum energy savings")
-    
+
     elif appliance_type == 'bathroom_exhaust':
         if demographics.get('elders', 0) > 0 and any('humidity sensor' in f.lower() for f in product.get('features', [])):
             reasons.append("Smart humidity sensing - automatically maintains ideal bathroom conditions")
         reasons.append("Essential for Chennai's climate - prevents mold and maintains freshness")
-    
+
     elif appliance_type == 'geyser':
         if demographics.get('elders', 0) > 0:
             if any('temperature control' in f.lower() for f in product.get('features', [])):
@@ -1474,7 +1472,7 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
             family_size = sum(demographics.values())
             if capacity >= family_size * 5:
                 reasons.append(f"Large {product['capacity']} capacity - perfect for your family of {family_size}")
-    
+
     elif appliance_type == 'refrigerator':
         # Robust handling for capacity
         capacity_str = str(product.get('capacity', '')).strip().lower()
@@ -1509,7 +1507,7 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
             reasons.append(f"Large {product['capacity']} capacity - perfect for family laundry")
         if any('anti-allergen' in f.lower() for f in product.get('features', [])):
             reasons.append("Anti-allergen technology - gentle on sensitive skin")
-    
+
     elif appliance_type == 'chimney':
         if 'auto-clean' in product.get('type', '').lower():
             reasons.append("Smart auto-clean technology - minimal maintenance required")
@@ -1517,7 +1515,7 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
             power = int(product.get('suction_power', '0 m³/hr').split()[0])
             if power >= 1200:
                 reasons.append(f"Powerful {power} m³/hr suction - effectively removes cooking fumes")
-                
+
     elif appliance_type == 'gas_stove':
         if any('burner' in feature.lower() for feature in product.get('features', [])):
             burner_count = [int(s) for s in re.findall(r'\d+\s*burner', ' '.join(product.get('features', [])).lower())]
@@ -1531,10 +1529,10 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
             preferred_type = required_features.get('type').lower()
             if preferred_type in ' '.join(product.get('features', [])).lower():
                 reasons.append(f"Premium {preferred_type} design - matches your cooking style")
-                
+
     elif appliance_type == 'hob_top':
         reasons.append("Sleek modern design - enhances your kitchen's aesthetics")
-        
+
         burner_count = [int(s) for s in re.findall(r'\d+\s*burner', ' '.join(product.get('features', [])).lower())]
         if burner_count:
             family_size = sum(demographics.values())
@@ -1542,17 +1540,17 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
                 reasons.append(f"Premium {burner_count[0]}-burner configuration - perfect for family meals")
             else:
                 reasons.append(f"Versatile {burner_count[0]}-burner setup - ideal for everyday cooking")
-                
+
         if any('glass' in feature.lower() for feature in product.get('features', [])):
             reasons.append("Premium glass top - easy to clean and maintain")
         elif any('stainless steel' in feature.lower() for feature in product.get('features', [])):
             reasons.append("Durable stainless steel - long-lasting performance")
-            
+
         if required_features and required_features.get('type'):
             preferred_type = required_features.get('type').lower()
             if preferred_type in ' '.join(product.get('features', [])).lower():
                 reasons.append(f"Premium {preferred_type} style - matches your kitchen design")
-                
+
         if any('auto' in feature.lower() and 'ignition' in feature.lower() for feature in product.get('features', [])):
             reasons.append("Advanced auto-ignition - safe and convenient operation")
 
@@ -1562,31 +1560,31 @@ def get_product_recommendation_reason(product: Dict[str, Any], appliance_type: s
 def create_styled_pdf(filename, user_data, recommendations, required_features: Dict[str, str] = None):
     doc = SimpleDocTemplate(filename, pagesize=letter)
     from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import Image
-    from reportlab.lib.colors import HexColor
+    from reportlab.pdfbase.ttfonts import TTFon
     
+    
+
     # First check if the script is being run through Flask
     is_web_app = os.environ.get('BETTERHOME_WEB_APP') == 'true'
-    
+
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
         os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
         os.path.join(os.path.dirname(__file__), '/static', 'better_home_logo.png'),
         'better_home_logo.png'
     ]
-    
+
     logo_path = None
     for path in possible_logo_paths:
         if os.path.exists(path):
             logo_path = path
             break
-    
+
     logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
-    
+
     if not logo_path:
         print("Logo not found in any of the expected locations")
-    
+
     # Try to register DejaVuSans font if available, otherwise use default fonts
     try:
         pdfmetrics.registerFont(TTFont('DejaVuSans', './DejaVuSans.ttf'))
@@ -1594,11 +1592,11 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     except:
         print("Using default fonts - DejaVuSans.ttf not found")
         default_font = 'Helvetica'
-    
+
     styles = getSampleStyleSheet()
     for style_name in styles.byName:
-        styles[style_name].fontName = default_font
-    
+        styles[style_name].fontName = default_fon
+
     # Create custom styles for a more professional look
     title_style = ParagraphStyle(
         'Title',
@@ -1607,9 +1605,9 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         leading=28,
         textColor=HexColor('#2c3e50'),
         spaceAfter=12,
-        fontName=default_font
+        fontName=default_fon
     )
-    
+
     heading1_style = ParagraphStyle(
         'Heading1',
         parent=styles['Heading1'],
@@ -1618,9 +1616,9 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         textColor=HexColor('#2980b9'),
         spaceAfter=10,
         spaceBefore=15,
-        fontName=default_font
+        fontName=default_fon
     )
-    
+
     heading2_style = ParagraphStyle(
         'Heading2',
         parent=styles['Heading2'],
@@ -1629,9 +1627,9 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         textColor=HexColor('#3498db'),
         spaceAfter=8,
         spaceBefore=12,
-        fontName=default_font
+        fontName=default_fon
     )
-    
+
     normal_style = ParagraphStyle(
         'Normal',
         parent=styles['Normal'],
@@ -1640,16 +1638,16 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         textColor=HexColor('#333333'),
         spaceAfter=8
     )
-    
+
     info_label_style = ParagraphStyle(
         'InfoLabel',
         parent=styles['Normal'],
         fontSize=10,
         leading=14,
         textColor=HexColor('#7f8c8d'),
-        fontName=default_font
+        fontName=default_fon
     )
-    
+
     info_value_style = ParagraphStyle(
         'InfoValue',
         parent=styles['Normal'],
@@ -1657,25 +1655,25 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         leading=16,
         textColor=HexColor('#2c3e50')
     )
-    
+
     price_style = ParagraphStyle(
         'Price',
         parent=styles['Normal'],
         fontSize=14,
         leading=18,
         textColor=HexColor('#e74c3c'),
-        fontName=default_font
+        fontName=default_fon
     )
-    
+
     savings_style = ParagraphStyle(
         'Savings',
         parent=styles['Normal'],
         fontSize=11,
         leading=15,
         textColor=HexColor('#27ae60'),
-        fontName=default_font
+        fontName=default_fon
     )
-    
+
     bestseller_style = ParagraphStyle(
         'Bestseller',
         parent=styles['Normal'],
@@ -1685,7 +1683,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         fontName=default_font,
         backColor=HexColor('#ff6b00')
     )
-    
+
     story = []
 
     # Add logo if it exists
@@ -1711,24 +1709,24 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
 
     # Client Information Section
     story.append(Paragraph("Client Information", heading1_style))
-    
+
     # Create a table for client info
     data = []
-    data.append([Paragraph("<b>Name:</b>", info_label_style), 
+    data.append([Paragraph("<b>Name:</b>", info_label_style),
                  Paragraph(user_data.get('name', 'Not provided'), info_value_style)])
-    data.append([Paragraph("<b>Email:</b>", info_label_style), 
+    data.append([Paragraph("<b>Email:</b>", info_label_style),
                  Paragraph(user_data.get('email', 'Not provided'), info_value_style)])
-    data.append([Paragraph("<b>Phone:</b>", info_label_style), 
+    data.append([Paragraph("<b>Phone:</b>", info_label_style),
                  Paragraph(user_data.get('phone', 'Not provided'), info_value_style)])
-    data.append([Paragraph("<b>Address:</b>", info_label_style), 
+    data.append([Paragraph("<b>Address:</b>", info_label_style),
                  Paragraph(user_data.get('address', 'Not provided'), info_value_style)])
-    
+
     if 'demographics' in user_data:
-        data.append([Paragraph("<b>Number of Bedrooms:</b>", info_label_style), 
+        data.append([Paragraph("<b>Number of Bedrooms:</b>", info_label_style),
                      Paragraph(str(user_data['demographics'].get('bedrooms', 'Not provided')), info_value_style)])
-        data.append([Paragraph("<b>Number of People:</b>", info_label_style), 
+        data.append([Paragraph("<b>Number of People:</b>", info_label_style),
                      Paragraph(str(user_data['demographics'].get('num_people', 'Not provided')), info_value_style)])
-    
+
     client_table = Table(data, colWidths=[150, 350])
     client_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f8f9fa')),
@@ -1737,25 +1735,25 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         ('PADDING', (0, 0), (-1, -1), 8),
         ('ROWBACKGROUNDS', (0, 0), (-1, -1), [HexColor('#ffffff'), HexColor('#f4f6f9')])
     ]))
-    
+
     story.append(client_table)
     story.append(Spacer(1, 15))
-    
+
     # Budget Information
     story.append(Paragraph("Budget Information", heading1_style))
-    
+
     # Create a table for budget info
     budget_data = []
-    budget_data.append([Paragraph("<b>Total Budget:</b>", info_label_style), 
+    budget_data.append([Paragraph("<b>Total Budget:</b>", info_label_style),
                        Paragraph(f"₹{user_data.get('total_budget', 0):,.2f}", price_style)])
-    
+
     if 'used_budget' in user_data:
-        budget_data.append([Paragraph("<b>Used Budget:</b>", info_label_style), 
+        budget_data.append([Paragraph("<b>Used Budget:</b>", info_label_style),
                            Paragraph(f"₹{user_data.get('used_budget', 0):,.2f}", info_value_style)])
-        budget_data.append([Paragraph("<b>Remaining Budget:</b>", info_label_style), 
-                           Paragraph(f"₹{user_data.get('total_budget', 0) - user_data.get('used_budget', 0):,.2f}", 
+        budget_data.append([Paragraph("<b>Remaining Budget:</b>", info_label_style),
+                           Paragraph(f"₹{user_data.get('total_budget', 0) - user_data.get('used_budget', 0):,.2f}",
                                     savings_style if user_data.get('total_budget', 0) >= user_data.get('used_budget', 0) else price_style)])
-    
+
     budget_table = Table(budget_data, colWidths=[150, 350])
     budget_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f1f9ff')),
@@ -1764,7 +1762,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         ('PADDING', (0, 0), (-1, -1), 8),
         ('ROWBACKGROUNDS', (0, 0), (-1, -1), [HexColor('#e6f7ff'), HexColor('#f1f9ff')])
     ]))
-    
+
     story.append(budget_table)
     story.append(Spacer(1, 15))
 
@@ -1834,9 +1832,9 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
                     reason = ""
                     try:
                         reason = get_product_recommendation_reason(
-                            item, 
-                            appliance_type, 
-                            room, 
+                            item,
+                            appliance_type,
+                            room,
                             user_data.get('demographics', {}),
                             user_data.get('total_budget', 0),
                             {}  # required_features
@@ -1861,16 +1859,16 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     story.append(Spacer(1, 10))
     footer_text = "Thank you for choosing BetterHome! For any questions, please contact support@betterhome.com"
     story.append(Paragraph(footer_text, normal_style))
-    
+
     # Build the PDF
     doc.build(story)
-    
+
     # After generating the PDF file, upload it to S3
     files = {
         'pdf': filename
     }
     s3_urls = upload_recommendation_files_to_s3(user_data, files)
-    
+
     # Add S3 URLs to user_data for later use
     if 's3_urls' not in user_data:
         user_data['s3_urls'] = {}
@@ -1886,12 +1884,12 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         f.write(f"Mobile: {user_data['mobile']}\n")
         f.write(f"Email: {user_data['email']}\n")
         f.write(f"Address: {user_data['address']}\n\n")
-        
+
         f.write("BUDGET AND FAMILY SIZE\n")
         f.write("=====================\n")
         f.write(f"Total Budget: INR{user_data['total_budget']:,.2f}\n")
         f.write(f"Family Size: {sum(user_data['demographics'].values())} members\n\n")
-        
+
         # Write room-wise recommendations
         f.write("ROOM-WISE RECOMMENDATIONS\n")
         f.write("========================\n\n")
@@ -1995,20 +1993,20 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             required_features = {'dimensions': user_data['kitchen'].get('chimney_width')}
             recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
             final_list['kitchen']['chimney'] = recommendations
-        
+
         if user_data['kitchen'].get('refrigerator_capacity'):
             budget_category = get_budget_category(user_data['total_budget'], 'refrigerator')
             required_features = {'capacity': user_data['kitchen'].get('refrigerator_capacity')}
             recommendations = get_specific_product_recommendations('refrigerator', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
             final_list['kitchen']['refrigerator'] = recommendations
-        
+
         if user_data['kitchen'].get('gas_stove_type'):
             # Debug: Print the gas stove type from user data
             print(f"[DEBUG GAS STOVE TYPE] User data gas stove type: {user_data['kitchen'].get('gas_stove_type')}")
             # Check for specific gas stove type
             gas_stove_type = user_data['kitchen'].get('gas_stove_type', '').strip()
             print(f"[DEBUG GAS STOVE] Processing gas stove type: '{gas_stove_type}'")
-            
+
             # Case 1: If gas stove type is "Hob (built-in)", recommend a Hob Top
             if "hob (built-in)" in gas_stove_type.lower():
                 print(f"[DEBUG GAS STOVE] Recommending Hob Top for built-in requirement: '{gas_stove_type}'")
@@ -2018,7 +2016,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                 # Debug: Print user data and required features before calling recommendation function
                 print(f"[DEBUG HOB TOP INPUT] User data: {user_data}")
                 print(f"[DEBUG HOB TOP INPUT] Required features: {required_features}")
-                recommendations = get_specific_product_recommendations('hob_top', budget_category, user_data['demographics'], 
+                recommendations = get_specific_product_recommendations('hob_top', budget_category, user_data['demographics'],
                                                                      user_data['kitchen'].get('color_theme'), user_data, required_features)
                 print(f"[DEBUG GAS STOVE] Got {len(recommendations)} hob_top recommendations")
                 #final_list['kitchen']['hob_top'] = recommendations
@@ -2033,16 +2031,16 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                 print(f"[DEBUG GAS STOVE] Recommending regular gas stove for: '{gas_stove_type}'")
                 budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
                 required_features = {'type': gas_stove_type, 'burners': user_data['kitchen'].get('num_burners', 4)}
-                recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'], 
+                recommendations = get_specific_product_recommendations('gas_stove', budget_category, user_data['demographics'],
                                                                      user_data['kitchen'].get('color_theme'), user_data, required_features)
                 print(f"[DEBUG GAS STOVE] Got {len(recommendations)} gas_stove recommendations")
                 final_list['kitchen']['gas_stove'] = recommendations
-        
+
         if user_data['kitchen'].get('small_fan', False):
             budget_category = get_budget_category(user_data['total_budget'], 'small_fan')
             recommendations = get_specific_product_recommendations('small_fan', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
             final_list['kitchen']['small_fan'] = recommendations
-        
+
         # Process laundry requirements
         user_selected_wm_type = str(user_data['laundry'].get('washing_machine_type', '')).strip()
 
@@ -2050,18 +2048,18 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
         # The values from HTML form/Excel are expected to be "Front-Load", "Top-Load", "Semi-Automatic"
         if user_selected_wm_type and user_selected_wm_type.lower() not in ['yes', 'no', 'none', '', 'not applicable', 'na']:
             budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
-            
+
             required_features = {
                 'capacity': estimate_washing_machine_capacity(user_data['demographics']),
                 'type': user_selected_wm_type  # Pass the user's selection
             }
-            
+
             recommendations = get_specific_product_recommendations(
-                'washing_machine', 
-                budget_category, 
-                user_data['demographics'], 
-                user_data['laundry'].get('color_theme'), 
-                user_data, 
+                'washing_machine',
+                budget_category,
+                user_data['demographics'],
+                user_data['laundry'].get('color_theme'),
+                user_data,
                 required_features
             )
             final_list['laundry']['washing_machine'] = recommendations
@@ -2072,22 +2070,22 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             final_list['laundry']['washing_machine'] = recommendations
         else: # User selected "No", "None", or it's empty, so no washing machine
             final_list['laundry']['washing_machine'] = []
-        
-        
+
+
         if user_data['laundry'].get('dryer_type', '').lower() == 'yes':
             #print(f"[DEBUG- inside dryer] User data: {user_data}")
             budget_category = get_budget_category(user_data['total_budget'], 'dryer')
             # Consistently use 'dryer' as appliance type
             recommendations = get_specific_product_recommendations(
-                'dryer', 
-                budget_category, 
-                user_data['demographics'], 
-                user_data['laundry'].get('color_theme'), 
+                'dryer',
+                budget_category,
+                user_data['demographics'],
+                user_data['laundry'].get('color_theme'),
                 user_data
             )
             # Apply deduplication
             final_list['laundry']['dryer'] = deduplicate_recommendations(recommendations)
-        
+
         # Add budget summary
         f.write("\nBUDGET SUMMARY\n")
         f.write("=============\n")
@@ -2099,13 +2097,13 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write("Your selected products fit within your budget!\n")
         else:
             f.write("Note: The total cost exceeds your budget. You may want to consider alternative options.\n")
-    
+
     # After generating the text file, upload it to S3
     files = {
         'text': txt_filename
     }
     s3_urls = upload_recommendation_files_to_s3(user_data, files)
-    
+
     # Add S3 URLs to user_data for later use
     if 's3_urls' not in user_data:
         user_data['s3_urls'] = {}
@@ -2115,7 +2113,7 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
 def download_image(image_url: str, save_dir: str) -> str:
     """Download an image from a URL and save it to the specified directory."""
 
-# Function to generate final product list
+# Function to generate final product lis
 def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     """Generate a final list of preferred products with specific recommendations"""
     # Debug: Print the entire user data to verify gas stove type
@@ -2126,30 +2124,30 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         'hall': {'fans': [], 'ac': []},
         'kitchen': {'chimney': [], 'refrigerator': [], 'gas_stove': [], 'hob_top': [], 'small_fan': [], 'dishwasher': []},
         'master_bedroom': {
-            'ac': [], 
-            'fans': [], 
+            'ac': [],
+            'fans': [],
             'bathroom': {
                 'water_heater': [],
                 'exhaust_fan': [],
-                'led_mirror': []  # Add LED mirror list
+                'led_mirror': []  # Add LED mirror lis
             }
         },
         'bedroom_2': {
-            'ac': [], 
-            'fans': [], 
+            'ac': [],
+            'fans': [],
             'bathroom': {
                 'water_heater': [],
                 'exhaust_fan': [],
-                'led_mirror': []  # Add LED mirror list
+                'led_mirror': []  # Add LED mirror lis
             }
         },
         'bedroom_3': {
-            'ac': [], 
-            'fans': [], 
+            'ac': [],
+            'fans': [],
             'bathroom': {
                 'water_heater': [],
                 'exhaust_fan': [],
-                'led_mirror': []  # Add LED mirror list
+                'led_mirror': []  # Add LED mirror lis
             }
         },
         'laundry': {'washing_machine': [], 'dryer': []},
@@ -2162,25 +2160,25 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         # print(f"[DEBUG] Hall AC requirement: {user_data['hall'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         # Override the hall size to 200 sq ft for proper AC sizing, regardless of what was entered
-        hall_size = 200.0  # Force hall size to 200 sq ft
+        hall_size = 200.0  # Force hall size to 200 sq f
         recommended_tonnage = determine_ac_tonnage(hall_size, 'hall')  # Pass 'hall' as room type for special handling
         # print(f"[DEBUG] Hall AC tonnage recommendation: {recommended_tonnage} Ton for {hall_size} sq ft (always using 2 Ton for hall)")
         required_features = {'tonnage': f"{recommended_tonnage} Ton"}
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data, required_features)
         final_list['hall']['ac'] = recommendations
-    
+
     if user_data['hall'].get('fans', 0) > 0:
         budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan', quantity=user_data['hall']['fans'])
         recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data)
         final_list['hall']['fans'] = recommendations
-    
+
     # Process kitchen requirements
     if user_data['kitchen'].get('chimney_width'):
         budget_category = get_budget_category(user_data['total_budget'], 'chimney')
         required_features = {'dimensions': user_data['kitchen'].get('chimney_width')}
         recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
         final_list['kitchen']['chimney'] = recommendations
-    
+
     if user_data['kitchen'].get('refrigerator_capacity'):
         print("\n=== Refrigerator Debug ===")
         print(f"Required capacity: {user_data['kitchen'].get('refrigerator_capacity')}")
@@ -2192,7 +2190,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['kitchen']['refrigerator'] = refrigerators[:3]
         print(f"Added {len(final_list['kitchen']['refrigerator'])} refrigerators to recommendations")
         print("=== End Debug ===\n")
-    
+
     if user_data['kitchen'].get('gas_stove_type'):
         gas_stove_type = user_data['kitchen'].get('gas_stove_type', '').strip()
         if "hob (built-in)" in gas_stove_type.lower():
@@ -2224,7 +2222,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             )
             final_list['kitchen']['gas_stove'] = recommendations
             final_list['kitchen']['hob_top'] = []
-    
+
     if user_data['kitchen'].get('small_fan', False):
         # Recommend ceiling fans with blade_length of 60 cm or 90 cm
         def is_small_fan(product):
@@ -2257,7 +2255,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             return False
         small_fan_recommendations = [p for p in load_product_catalog().get('products', []) if is_small_fan(p)]
         final_list['kitchen']['small_fan'] = small_fan_recommendations[:3]  # Top 3 matches
-    
+
     # Process master bedroom requirements
     if user_data['master_bedroom'].get('ac', False):
         # print(f"[DEBUG] Master Bedroom AC requirement: {user_data['master_bedroom'].get('ac', False)}") # DEBUG
@@ -2269,11 +2267,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         required_features = {'tonnage': f"{recommended_tonnage} Ton"}
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
         final_list['master_bedroom']['ac'] = recommendations
-    
+
     budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
     recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
     final_list['master_bedroom']['fans'] = recommendations
-    
+
     # Process master bedroom bathroom requirements
     master_bath = user_data['master_bedroom'].get('bathroom', {})
     master_bath_type = master_bath.get('water_heater_type', '')
@@ -2317,11 +2315,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         required_features = {'tonnage': f"{recommended_tonnage} Ton"}
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
         final_list['bedroom_2']['ac'] = recommendations
-    
+
     budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
     recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
     final_list['bedroom_2']['fans'] = recommendations
-    
+
     # Process bedroom 2 bathroom requirements
     bedroom2_bath = user_data['bedroom_2'].get('bathroom', {})
     bedroom2_bath_type = bedroom2_bath.get('water_heater_type', '')
@@ -2371,11 +2369,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             required_features = {'tonnage': f"{recommended_tonnage} Ton"}
             recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data, required_features)
             final_list['bedroom_3']['ac'] = recommendations
-    
+
         budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
         recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
         final_list['bedroom_3']['fans'] = recommendations
-        
+
         # Process bedroom 3 bathroom requirements
         bedroom3_bath = user_data['bedroom_3'].get('bathroom', {})
         bedroom3_bath_type = bedroom3_bath.get('water_heater_type', '')
@@ -2386,13 +2384,13 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             budget_category = get_budget_category(user_data['total_budget'], 'geyser')
             # Only recommend horizontal water heaters if ceiling is explicitly "Yes"
             ceiling_condition = str(bedroom3_bath_ceiling).strip().lower()
-            
+
             if ceiling_condition == 'yes':
                 # First, try to get only horizontal water heaters
                 all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
-                
+
                 horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
-                
+
                 if horizontal_geysers:
                     geyser_recommendations_3 = horizontal_geysers
                 else:
@@ -2402,9 +2400,9 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 # For non-ceiling installations, get all water heaters and filter out horizontal ones
                 all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
-                
+
                 geyser_recommendations_3 = [g for g in all_geysers if not is_horizontal_water_heater(g)]
-            
+
             final_list['bedroom_3']['bathroom']['water_heater'] = geyser_recommendations_3
 
         # Process exhaust fan for bedroom 3 (updated to use color)
@@ -2430,18 +2428,18 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     # The values from HTML form/Excel are expected to be "Front-Load", "Top-Load", "Semi-Automatic"
     if user_selected_wm_type and user_selected_wm_type.lower() not in ['yes', 'no', 'none', '', 'not applicable', 'na']:
         budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
-        
+
         required_features = {
             'capacity': estimate_washing_machine_capacity(user_data['demographics']),
             'type': user_selected_wm_type  # Pass the user's selection
         }
-        
+
         recommendations = get_specific_product_recommendations(
-            'washing_machine', 
-            budget_category, 
-            user_data['demographics'], 
-            user_data['laundry'].get('color_theme'), 
-            user_data, 
+            'washing_machine',
+            budget_category,
+            user_data['demographics'],
+            user_data['laundry'].get('color_theme'),
+            user_data,
             required_features
         )
         final_list['laundry']['washing_machine'] = recommendations
@@ -2455,7 +2453,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     # DEBUG print statement left for troubleshooting - Dryer recommendations are now handled in one place below
     # print(f"[DEBUG DRYER_TYPE] Current dryer_type value: '{user_data['laundry'].get('dryer_type')}', Lowercased check value: '{str(user_data['laundry'].get('dryer_type', '')).strip().lower()}'")
     # Dryer recommendations will be processed in a single location further below
-  
+
     # Process dining room requirements
     if user_data['dining'].get('fan_size'):
         fan_size_str = str(user_data['dining'].get('fan_size', '')).strip().upper()
@@ -2523,18 +2521,18 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['laundry'].get('dryer_type', '').lower() == 'yes': # Standardized to use dryer_type
         print("\n=== Dryer Debug ===")
         print(f"Looking for dryer products. Dryer type value: '{user_data['laundry'].get('dryer_type')}'")
-        
+
         budget_category = get_budget_category(user_data['total_budget'], 'dryer')
         # Standardized to use 'dryer' appliance type
         recommendations = get_specific_product_recommendations(
-            'dryer', 
-            budget_category, 
-            user_data['demographics'], 
-            user_data['laundry'].get('color_theme'), 
+            'dryer',
+            budget_category,
+            user_data['demographics'],
+            user_data['laundry'].get('color_theme'),
             user_data
         )
         print(f"Found {len(recommendations)} dryers before deduplication")
-        
+
         # Check for identical products in recommendations
         dryer_ids = {}
         for dryer in recommendations:
@@ -2544,22 +2542,22 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                 dryer_ids[dryer_id] += 1
             else:
                 dryer_ids[dryer_id] = 1
-        
+
         # Create a debug list of dryer products before deduplication
         for i, dryer in enumerate(recommendations):
             print(f"  Dryer {i+1}: {dryer.get('brand', 'Unknown')} - {dryer.get('title', 'Unknown')}")
-        
+
         # Use standard deduplicate_recommendations function
         final_list['laundry']['dryer'] = deduplicate_recommendations(recommendations)
         print(f"Added {len(final_list['laundry']['dryer'])} unique dryers to recommendations")
-        
-        # Debug the final deduped list
+
+        # Debug the final deduped lis
         for i, dryer in enumerate(final_list['laundry']['dryer']):
             print(f"  Final Dryer {i+1}: {dryer.get('brand', 'Unknown')} - {dryer.get('title', 'Unknown')}")
-            
+
         print("=== End Dryer Debug ===\n")
 
- 
+
 
     # Master Bedroom Bathroom
     if user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type'):
@@ -2599,7 +2597,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['master_bedroom']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['master_bedroom']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
-        
+
     # Add Glass Partition recommendations for master bedroom bathroom if requested
     if user_data['master_bedroom'].get('bathroom', {}).get('glass_partition', False):
         print("\n=== Glass Partition Debug ===")
@@ -2618,8 +2616,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type'):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         bedroom2_bath_ceiling = str(user_data['bedroom_2']['bathroom'].get('water_heater_ceiling', '')).strip().lower()
-        
-        # Get all geysers first
+
+        # Get all geysers firs
         all_geysers = get_specific_product_recommendations(
             'geyser', budget_category, user_data['demographics'],
             user_data['bedroom_2'].get('color_theme'), user_data,
@@ -2638,7 +2636,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                 # For non-ceiling installations, filter out horizontal water heaters
                 vertical_geysers = [g for g in all_geysers if not is_horizontal_water_heater(g)]
                 recommendations = vertical_geysers if vertical_geysers else all_geysers
-        
+
         final_list['bedroom_2']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
 
     # Add LED mirror recommendations for bedroom 2 bathroom
@@ -2673,8 +2671,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     if user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type'):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         bedroom3_bath_ceiling = str(user_data['bedroom_3']['bathroom'].get('water_heater_ceiling', '')).strip().lower()
-        
-        # Get all geysers first
+
+        # Get all geysers firs
         all_geysers = get_specific_product_recommendations(
             'geyser', budget_category, user_data['demographics'],
             user_data['bedroom_3'].get('color_theme'), user_data,
@@ -2693,7 +2691,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                 # For non-ceiling installations, filter out horizontal water heaters
                 vertical_geysers = [g for g in all_geysers if not is_horizontal_water_heater(g)]
                 recommendations = vertical_geysers if vertical_geysers else all_geysers
-        
+
         final_list['bedroom_3']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
 
     # Add LED mirror recommendations for bedroom 3 bathroom
@@ -2709,7 +2707,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_3']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['bedroom_3']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
-        
+
     # Add Glass Partition recommendations for bedroom 3 bathroom if requested
     if user_data['bedroom_3'].get('bathroom', {}).get('glass_partition', False):
         print("\n=== Glass Partition Debug ===")
@@ -2727,25 +2725,25 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 #####
     if num_bedrooms == 2:
         del final_list['bedroom_3']
-    return final_list
+    return final_lis
 
 
 # Function to generate an HTML file with recommendations
 def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
-    #import pprint
+    #
     #pprint.pprint(final_list)
     # print("[DEBUG HTML] final_list keys:", list(final_list.keys()))
-    
+
     # Get current date for the footer
     current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
-    
+
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
         os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
         os.path.join(os.path.dirname(__file__), 'static', 'better_home_logo.png'),
         'better_home_logo.png'
     ]
-    
+
     logo_path = None
     logo_exists = False
     for path in possible_logo_paths:
@@ -2754,15 +2752,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             logo_exists = True
             print(f"Found logo at: {path}")
             break
-    
+
     if not logo_exists:
         print("Logo not found in any of the expected locations")
-    
+
     # Always use a relative URL path that will be handled by Flask
     logo_html = ""
     if logo_exists:
         logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
-    
+
     # Create HTML header (CSS part)
     html_content = """
     <!DOCTYPE html>
@@ -2788,13 +2786,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 color: #333;
                 background-color: #f9f9f9;
             }
-            
+
             .container {
                 max-width: 1100px;
                 margin: 0 auto;
                 padding: 30px;
             }
-            
+
             header {
                 text-align: center;
                 margin-bottom: 40px;
@@ -2804,17 +2802,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border-radius: 8px;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             }
-            
+
             .logo {
                 max-width: 200px;
                 margin-bottom: 15px;
                 transition: transform 0.3s ease;
             }
-            
+
             .logo:hover {
                 transform: scale(1.05);
             }
-            
+
             /* Client information styling */
             .client-info {
                 margin: 30px 0;
@@ -2826,28 +2824,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 grid-template-columns: repeat(2, 1fr);
                 gap: 15px;
             }
-            
+
             @media (min-width: 768px) {
                 .client-info {
                     grid-template-columns: repeat(3, 1fr);
                 }
             }
-            
+
             .client-info-item {
                 margin-bottom: 0;
             }
-            
+
             .client-info-label {
                 font-weight: 500;
                 color: #666;
                 margin-bottom: 4px;
             }
-            
+
             .client-info-value {
                 font-weight: 600;
                 color: #333;
             }
-            
+
             /* Product card and grid styling */
             .products-grid {
                 display: grid;
@@ -2855,13 +2853,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 gap: 30px;
                 margin-top: 20px;
             }
-            
+
             @media (min-width: 768px) {
                 .products-grid {
                     grid-template-columns: repeat(3, 1fr);  // Change to 3 columns
                 }
             }
-            
+
             .product-card {
                 background: #fff;
                 border-radius: 8px;
@@ -2874,28 +2872,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             }
 
             .product-card.best-product {
-                border: 2px solid #3498db;  // Emphasize the best product
-                transform: scale(1.05);  // Slightly enlarge the best product
+                border: 2px solid #3498db;  // Emphasize the best produc
+                transform: scale(1.05);  // Slightly enlarge the best produc
             }
-            
+
             .product-selection {
                 position: absolute;
                 top: 10px;
                 left: 10px;
                 z-index: 10;
             }
-            
+
             .product-checkbox {
                 width: 20px;
                 height: 20px;
                 cursor: pointer;
             }
-            
+
             .product-checkbox:checked + label {
                 font-weight: bold;
                 color: #3498db;
             }
-            
+
             .selection-label {
                 background: #3498db;
                 color: white;
@@ -2905,28 +2903,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 margin-left: 5px;
                 display: none;
             }
-            
+
             .product-checkbox:checked ~ .selection-label {
                 display: inline-block;
             }
-            
+
             .product-image-container {
                 position: relative;
                 height: 200px;
                 overflow: hidden;
             }
-            
+
             .product-image {
                 width: 100%;
                 height: 100%;
                 object-fit: contain;
                 transition: transform 0.3s ease;
             }
-            
+
             .product-card:hover .product-image {
                 transform: scale(1.05);
             }
-            
+
             /* Badge styling */
             .bestseller-badge, .recommended-badge {
                 position: absolute;
@@ -2942,19 +2940,19 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 align-items: center;
                 gap: 5px;
             }
-            
+
             .bestseller-badge {
                 background-color: #ff6b00;
             }
-            
+
             .recommended-badge {
                 background-color: #27ae60;
             }
-            
+
             .bestseller-badge i, .recommended-badge i {
                 font-size: 14px;
             }
-            
+
             /* Product details styling */
             .product-details {
                 padding: 20px;
@@ -2962,7 +2960,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 display: flex;
                 flex-direction: column;
             }
-            
+
             .product-type {
                 font-size: 12px;
                 text-transform: uppercase;
@@ -2970,14 +2968,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 margin-bottom: 5px;
                 letter-spacing: 1px;
             }
-            
+
             .product-title {
                 font-size: 18px;
                 font-weight: 600;
                 margin: 0 0 15px;
                 color: #333;
             }
-            
+
             .price-container {
                 margin-bottom: 15px;
                 display: flex;
@@ -2985,54 +2983,54 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 gap: 10px;
                 align-items: baseline;
             }
-            
+
             .current-price {
                 font-size: 20px;
                 font-weight: 700;
                 color: #e74c3c;
             }
-            
+
             .retail-price {
                 font-size: 16px;
                 color: #7f8c8d;
                 text-decoration: line-through;
             }
-            
+
             .savings {
                 font-size: 14px;
                 color: #27ae60;
                 font-weight: 500;
             }
-            
+
             .product-info-item {
                 margin-bottom: 10px;
                 font-size: 14px;
                 color: #555;
             }
-            
+
             .product-info-label {
                 font-weight: 600;
                 color: #333;
             }
-            
+
             .reasons-list {
                 list-style: none;
                 padding: 0;
                 margin: 0 0 20px;
             }
-            
+
             .reasons-list li {
                 margin-bottom: 8px;
                 display: flex;
                 align-items: flex-start;
                 gap: 8px;
             }
-            
+
             .reasons-list i {
                 color: #3498db;
                 margin-top: 3px;
             }
-            
+
             .buy-button {
                 display: inline-block;
                 background-color: #3498db;
@@ -3045,11 +3043,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 font-weight: 500;
                 transition: background-color 0.3s;
             }
-            
+
             .buy-button:hover {
                 background-color: #2980b9;
             }
-            
+
             /* Budget summary styling */
             .budget-summary {
                 margin: 30px 0;
@@ -3058,66 +3056,66 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 background-color: #fff;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             }
-            
+
             .budget-summary h2 {
                 margin-top: 0;
                 margin-bottom: 20px;
                 color: #333;
                 font-weight: 600;
             }
-            
+
             .budget-info {
                 display: grid;
                 grid-template-columns: 1fr;
                 gap: 15px;
                 margin-bottom: 20px;
             }
-            
+
             @media (min-width: 768px) {
                 .budget-info {
                     grid-template-columns: repeat(3, 1fr);
                 }
             }
-            
+
             .budget-item {
                 background-color: #f8f9fa;
                 padding: 15px;
                 border-radius: 6px;
             }
-            
+
             .budget-item-label {
                 font-size: 14px;
                 color: #666;
                 margin-bottom: 8px;
             }
-            
+
             .budget-item-value {
                 font-size: 18px;
                 font-weight: 600;
                 color: #333;
             }
-            
+
             .budget-status {
                 padding: 12px 15px;
                 border-radius: 6px;
                 font-weight: 500;
             }
-            
+
             .budget-status.good {
                 background-color: #d4edda;
                 color: #155724;
             }
-            
+
             .budget-status.warning {
                 background-color: #fff3cd;
                 color: #856404;
             }
-            
+
             /* Room styling */
             .room-section {
                 margin: 40px 0;
             }
-            
+
             .room-section h2 {
                 font-size: 24px;
                 color: #2c3e50;
@@ -3125,7 +3123,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 position: relative;
                 padding-bottom: 10px;
             }
-            
+
             .room-section h2:after {
                 content: '';
                 position: absolute;
@@ -3135,14 +3133,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 height: 3px;
                 background-color: #3498db;
             }
-            
+
             .room-description {
                 font-size: 16px;
                 color: #555;
                 margin-bottom: 20px;
                 line-height: 1.5;
             }
-            
+
             /* Generate Recommendation Button */
             .generate-container {
                 text-align: center;
@@ -3152,7 +3150,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border-radius: 8px;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             }
-            
+
             .generate-button {
                 display: inline-block;
                 background-color: #2ecc71;
@@ -3167,23 +3165,23 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 cursor: pointer;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
-            
+
             .generate-button:hover {
                 background-color: #27ae60;
                 transform: translateY(-2px);
                 box-shadow: 0 6px 8px rgba(0,0,0,0.15);
             }
-            
+
             .generate-button:active {
                 transform: translateY(0);
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
-            
+
             .download-button {
                 background-color: #3498db;
                 margin-left: 10px;
             }
-            
+
             .download-button:hover {
                 background-color: #2980b9;
             }
@@ -3197,49 +3195,49 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 color: #7f8c8d;
                 font-size: 14px;
             }
-            
+
             /* Print styles */
             @media print {
                 body {
                     background-color: white;
                 }
-                
+
                 .container {
                     max-width: 100%;
                     padding: 0;
                     margin: 0;
                 }
-                
+
                 .generate-container,
                 .product-selection,
                 .buy-button {
                     display: none !important;
                 }
-                
+
                 .product-card {
                     break-inside: avoid;
                     page-break-inside: avoid;
                     box-shadow: none;
                     border: 1px solid #eaeaea;
                 }
-                
+
                 .room-section {
                     page-break-before: always;
                 }
-                
+
                 .room-section:first-child {
                     page-break-before: avoid;
                 }
-                
+
                 header {
                     page-break-after: avoid;
                 }
-                
+
                 .client-info, .budget-summary {
                     page-break-inside: avoid;
                 }
             }
-            
+
             /* Accordion styles */
             .accordion {
                 background-color: #f1f1f1;
@@ -3255,11 +3253,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border-radius: 8px 8px 0 0;
                 margin-bottom: 0;
             }
-            
+
             .accordion.active, .accordion:hover {
                 background-color: #e2e6ea;
             }
-            
+
             .panel {
                 padding: 0 18px 18px 18px;
                 background-color: white;
@@ -3268,7 +3266,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border-radius: 0 0 8px 8px;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.04);
             }
-            
+
             .panel[style*='display: block'] {
                 display: block;
             }
@@ -3281,8 +3279,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             // Wait for the document to be fully loaded
             window.addEventListener('load', function() {
                 console.log('Document fully loaded');
-                
-                // Debug helper to check if elements exist
+
+                // Debug helper to check if elements exis
                 function checkElement(id) {
                     const element = document.getElementById(id);
                     console.log(`Element ${id} exists: ${!!element}`);
@@ -3292,34 +3290,34 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 const setupCategorySelections = () => {
                     const categories = {};
                     const processedProducts = new Set(); // To prevent duplicate handling of products
-                    
+
                     // Group checkboxes by category
                     document.querySelectorAll('.product-checkbox').forEach(checkbox => {
                         const category = checkbox.getAttribute('data-category');
                         const room = checkbox.getAttribute('data-room');
                         const productId = checkbox.getAttribute('data-product-id');
                         const key = `${room}-${category}`;
-                        
+
                         // Skip if already processed (for dupicate products)
                         if (processedProducts.has(productId)) {
                             return;
                         }
                         processedProducts.add(productId);
-                        
+
                         if (!categories[key]) {
                             categories[key] = [];
                         }
                         categories[key].push(checkbox);
-                        
+
                         // Add change listener
                         checkbox.addEventListener('change', function() {
                             const isChecked = this.checked;
-                            
+
                             // Update the 'selected' class for this product's card
                             const productCard = this.closest('.product-card');
                             if (isChecked) {
                                 productCard.classList.add('selected');
-                                
+
                                 // Uncheck other checkboxes in the same category (maintain single selection per category)
                                 categories[key].forEach(cb => {
                                     if (cb !== this) {
@@ -3333,7 +3331,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         });
                     });
                 };
-                
+
                 // Handle generate final recommendation
                 const setupGenerateButton = () => {
                     console.log('Setting up generate button');
@@ -3342,7 +3340,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         console.error('Generate button not found in the DOM');
                         return;
                     }
-                    
+
                     // Automatically run initial selection for best products
                     // This ensures initial visual state matches pre-selected products
                     document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
@@ -3351,11 +3349,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             productCard.classList.add('selected');
                         }
                     });
-                    
+
                     generateButton.addEventListener('click', function(e) {
                         console.log('Generate button clicked');
                         e.preventDefault();
-                        
+
                         // Collect all selected products
                         const selectedProducts = [];
                         document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
@@ -3366,7 +3364,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             const model = checkbox.getAttribute('data-model');
                             const price = checkbox.getAttribute('data-price');
                             const image = checkbox.getAttribute('data-image');
-                            
+
                             selectedProducts.push({
                                 id: productId,
                                 room: room,
@@ -3377,33 +3375,33 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 image: image
                             });
                         });
-                        
+
                         if (selectedProducts.length === 0) {
                             alert("Please select at least one product before generating the final recommendation.");
                             return;
                         }
-                        
+
                         // Store selected products in local storage
                         localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
-                        
+
                         // Calculate total price
                         const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
                         localStorage.setItem('totalPrice', totalPrice);
-                        
+
                         // Hide recommendation page and show final page
                         document.querySelector('.container').style.display = 'none';
                         const finalPage = document.getElementById('final-recommendation-page');
                         finalPage.style.display = 'block';
-                        
+
                         // Populate selected products
                         displayFinalRecommendation(selectedProducts, totalPrice);
                     });
-                    
+
                     // Function to display final recommendation
                     function displayFinalRecommendation(products, totalPrice) {
                         const container = document.getElementById('selected-products-container');
                         container.innerHTML = '';
-                        
+
                         // Group products by room
                         const roomProducts = {};
                         products.forEach(product => {
@@ -3412,30 +3410,30 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             }
                             roomProducts[product.room].push(product);
                         });
-                        
+
                         // Create room sections
                         for (const [room, roomItems] of Object.entries(roomProducts)) {
                             const roomTitle = room.replace('_', ' ').toUpperCase();
                             const roomSection = document.createElement('div');
                             roomSection.className = 'room-section';
                             roomSection.innerHTML = `<h2>${roomTitle}</h2>`;
-                            
+
                             // Create product grid
                             const productGrid = document.createElement('div');
                             productGrid.className = 'products-grid';
-                            
+
                             // Add products
                             roomItems.forEach(product => {
                                 const productCard = document.createElement('div');
                                 productCard.className = 'product-card';
-                                
+
                                 const categoryTitle = product.category.replace('_', ' ').toUpperCase();
                                 const price = parseFloat(product.price).toLocaleString('en-IN', {
                                     style: 'currency',
                                     currency: 'INR',
                                     maximumFractionDigits: 2
                                 });
-                                
+
                                 productCard.innerHTML = `
                                     <div class="product-image-container">
                                         <img class="product-image" src="${product.image || 'https://via.placeholder.com/300x300?text=No+Image+Available'}" alt="${product.brand} ${product.model}">
@@ -3448,14 +3446,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                         </div>
                                     </div>
                                 `;
-                                
+
                                 productGrid.appendChild(productCard);
                             });
-                            
+
                             roomSection.appendChild(productGrid);
                             container.appendChild(roomSection);
                         }
-                        
+
                         // Update budget information
                         const totalElement = document.getElementById('final-total-cost');
                         totalElement.textContent = totalPrice.toLocaleString('en-IN', {
@@ -3463,12 +3461,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             currency: 'INR',
                             maximumFractionDigits: 2
                         });
-                        
+
                         // Calculate budget utilization
                         const budget = parseFloat(totalElement.nextElementSibling.nextElementSibling.textContent.replace(/[^0-9.]/g, ''));
                         const utilization = (totalPrice / budget) * 100;
                         document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
-                        
+
                         // Update budget status
                         const budgetStatus = document.getElementById('final-budget-status');
                         if (utilization > 100) {
@@ -3477,7 +3475,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         }
                     }
                 };
-                
+
                 // Function to export to Excel
                 const setupExportButton = () => {
                     console.log('Setting up export button');
@@ -3486,7 +3484,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         console.error('Export button not found in the DOM');
                         return;
                     }
-                    
+
                     exportButton.addEventListener('click', function() {
                         console.log('Export button clicked');
                         const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
@@ -3494,12 +3492,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             alert('Please select at least one product first');
                             return;
                         }
-                        
+
                         // Prepare data for Excel
                         const data = [
                             ['Room', 'Category', 'Brand', 'Model', 'Price']
                         ];
-                        
+
                         selectedProducts.forEach(product => {
                             data.push([
                                 product.room.replace('_', ' ').toUpperCase(),
@@ -3509,28 +3507,28 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 product.price
                             ]);
                         });
-                        
+
                         // Add total row
                         const totalPrice = selectedProducts.reduce((sum, product) => sum + parseFloat(product.price), 0);
                         data.push(['', '', '', 'TOTAL', totalPrice.toFixed(2)]);
-                        
+
                         try {
                             console.log('Creating Excel file with data:', data);
-                            
+
                             // Check if XLSX is available
                             if (typeof XLSX === 'undefined') {
                                 console.error('XLSX library not loaded');
                                 alert('Excel export library not loaded. Please check your internet connection.');
                                 return;
                             }
-                            
-                            // Create worksheet
+
+                            // Create workshee
                             const ws = XLSX.utils.aoa_to_sheet(data);
-                            
+
                             // Create workbook
                             const wb = XLSX.utils.book_new();
                             XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
-                            
+
                             // Save file
                             XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
                             console.log('Excel file created successfully');
@@ -3540,7 +3538,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         }
                     });
                 };
-                
+
                 // Setup the download button for final recommendation
                 const setupFinalDownloadButton = () => {
                     console.log('Setting up final download button');
@@ -3549,27 +3547,27 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         console.error('Final download button not found in the DOM');
                         return;
                     }
-                    
+
                     downloadButton.addEventListener('click', function() {
                         console.log('Download final button clicked');
                         const selectedProducts = [];
-                        
+
                         // Collect all products from the selected-products-container
                         const roomSections = document.querySelectorAll('#selected-products-container .room-section');
                         roomSections.forEach(section => {
                             const roomName = section.querySelector('h2').textContent;
                             const productCards = section.querySelectorAll('.product-card');
-                            
+
                             productCards.forEach(card => {
                                 const category = card.querySelector('.product-type').textContent;
                                 const title = card.querySelector('.product-title').textContent;
                                 const price = card.querySelector('.current-price').textContent;
-                                
+
                                 // Split title into brand and model - assumes format "Brand Model"
                                 const titleParts = title.split(' ');
                                 const brand = titleParts[0];
                                 const model = titleParts.slice(1).join(' ');
-                                
+
                                 selectedProducts.push({
                                     room: roomName,
                                     category: category,
@@ -3579,12 +3577,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 });
                             });
                         });
-                        
+
                         // Prepare data for Excel
                         const data = [
                             ['Room', 'Category', 'Brand', 'Model', 'Price']
                         ];
-                        
+
                         selectedProducts.forEach(product => {
                             data.push([
                                 product.room,
@@ -3594,12 +3592,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 product.price
                             ]);
                         });
-                        
+
                         // Add total price
                         const totalElement = document.getElementById('final-total-cost');
                         const totalPrice = totalElement.textContent.replace(/[^0-9.]/g, '');
                         data.push(['', '', '', 'TOTAL', totalPrice]);
-                        
+
                         // Add client information
                         data.push([]);
                         data.push(['Client Information']);
@@ -3609,18 +3607,18 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             const value = item.querySelector('.client-info-value').textContent;
                             data.push([label, value]);
                         });
-                        
-                        // Create worksheet
+
+                        // Create workshee
                         const ws = XLSX.utils.aoa_to_sheet(data);
-                        
+
                         // Create workbook
                         const wb = XLSX.utils.book_new();
                         XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
-                        
+
                         // Save file
                         XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
                     });
-                    
+
                     // Setup print button
                     console.log('Setting up print button');
                     const printButton = checkElement('print-final');
@@ -3628,24 +3626,24 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         console.error('Print button not found in the DOM');
                         return;
                     }
-                    
+
                     printButton.addEventListener('click', function() {
                         console.log('Print button clicked');
                         window.print();
                     });
                 };
-                
+
                 // Setup accordion for room sections
                 // Use a dedicated function for the accordion that will be called when DOM is ready
                 function setupAccordion() {
                     console.log('Setting up accordion functionality');
                     const accordionButtons = document.querySelectorAll('.accordion');
                     console.log('Found accordion buttons:', accordionButtons.length);
-                    
+
                     accordionButtons.forEach((btn, idx) => {
                         // Mark the first one as active
                         if (idx === 0) btn.classList.add('active');
-                        
+
                         btn.onclick = function(e) {
                             e.preventDefault();
                             e.stopPropagation();
@@ -3655,11 +3653,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             console.log('Panel element:', panel);
                             const isOpen = panel.style.display === 'block';
                             console.log('Is panel open?', isOpen);
-                            
+
                             // Close all panels and remove active class
                             document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
                             document.querySelectorAll('.accordion').forEach(b => b.classList.remove('active'));
-                            
+
                             // If it wasn't open before, open it now
                             if (!isOpen) {
                                 panel.style.display = 'block';
@@ -3671,7 +3669,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         };
                     });
                 }
-                
+
                 // Add setupAccordion to window load and also call it directly
                 window.addEventListener('DOMContentLoaded', setupAccordion);
                 window.addEventListener('load', setupAccordion);
@@ -3679,7 +3677,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 // Initialize all event handlers
                 function initializeEventHandlers() {
                     console.log('Initializing all event handlers');
-                    
+
                     // Add a small delay to ensure DOM is fully processed
                     setTimeout(() => {
                         try {
@@ -3693,7 +3691,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         }
                     }, 500);
                 }
-                
+
                 // Call initialization
                 initializeEventHandlers();
             });
@@ -3702,7 +3700,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     <body>
         <div class="container">
     """
-    
+
     # Add header section with explicit f-string
     header_section = f"""
             <header>
@@ -3711,7 +3709,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <p>Specially curated for {user_data['name']}</p>
             </header>
     """
-            
+
     # Add client info section with explicit f-string
     client_info_section = f"""
             <div class="client-info">
@@ -3719,27 +3717,27 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <div class="client-info-label">Name</div>
                     <div class="client-info-value">{user_data['name']}</div>
                 </div>
-                
+
                 <div class="client-info-item">
                     <div class="client-info-label">Mobile</div>
                     <div class="client-info-value">{user_data['mobile']}</div>
                 </div>
-                
+
                 <div class="client-info-item">
                     <div class="client-info-label">Email</div>
                     <div class="client-info-value">{user_data['email']}</div>
                 </div>
-                
+
                 <div class="client-info-item">
                     <div class="client-info-label">Address</div>
                     <div class="client-info-value">{user_data['address']}</div>
                 </div>
-                
+
                 <div class="client-info-item">
                     <div class="client-info-label">Total Budget</div>
                     <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
                 </div>
-                
+
                 <div class="client-info-item">
                     <div class="client-info-label">Family Size</div>
                     <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
@@ -3751,7 +3749,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Add budget summary
     total_cost = calculate_total_cost(final_list)
     budget_utilization = (total_cost / user_data['total_budget']) * 100
-    # Calculate total_savings for the default recommended set
+    # Calculate total_savings for the default recommended se
     total_savings = 0
     for room, products in final_list.items():
         if not isinstance(products, dict):
@@ -3793,7 +3791,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 </div>
     """
     html_content += budget_summary_section
-    
+
     if budget_utilization <= 100:
         html_content += """
                 <div class="budget-status good">
@@ -3806,7 +3804,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     ⚠ The total cost slightly exceeds your budget. Consider reviewing options if needed.
                 </div>
         """
-    
+
     html_content += """
             </div>
     """
@@ -3818,26 +3816,26 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     def ensure_three_recommendations(products, allow_duplicates=False):
         """
         Ensure that there are at least three product recommendations.
-        
-        If allow_duplicates is True and there are fewer than 3 products, 
+
+        If allow_duplicates is True and there are fewer than 3 products,
         duplicate existing products to reach 3 total.
         Otherwise, return the original list without duplication.
         """
         if allow_duplicates and len(products) < 3 and len(products) > 0:
-            # Only duplicate if explicitly allowed and there's at least one product
+            # Only duplicate if explicitly allowed and there's at least one produc
             products = products.copy()  # Work on a copy to avoid modifying the original
             products.extend(products[:3 - len(products)])  # Duplicate some products if less than 3
         return products
 
     # Process each room in specified order
     room_idx = 0
-    
+
     # Define the room order
     room_order = ['hall', 'kitchen', 'dining', 'laundry', 'master_bedroom', 'bedroom_2', 'bedroom_3']
-    
+
     # Process rooms in the specified order
     for room in room_order:
-        # Skip if room doesn't exist in final_list
+        # Skip if room doesn't exist in final_lis
         if room not in final_list:
             continue
         appliances = final_list[room]
@@ -3904,9 +3902,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         purchase_url = product.get('url', '#')
                         product_type_title = sub_appliance_type.replace('_', ' ').title()
                         reason_text = get_product_recommendation_reason(
-                            product, 
-                            sub_appliance_type, 
-                            room, 
+                            product,
+                            sub_appliance_type,
+                            room,
                             user_data['demographics'],
                             user_data['total_budget'],
                             {},
@@ -3922,7 +3920,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         product_id = f"{room}-{sub_appliance_type}-{idx}"
                         # Use a unique key for the product (brand+model)
                         product_key = f"{brand}::{model}"
-                        # Only check the first occurrence of a product
+                        # Only check the first occurrence of a produc
                         if product_key not in checked_product_keys and product == best_product:
                             checked = 'checked'
                             checked_product_keys.add(product_key)
@@ -3954,7 +3952,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             </div>
                             <div class="product-details">
                                 <span class="product-type">{product_type_title}</span>
-                                <h3 class="product-title">{brand} {model}</h3>
+                                <h3 class="product-title">{get_display_title(brand, model)}</h3>
                                 <div class="price-container">
                                     <span class="current-price">₹{int(better_home_price):,}</span>
                                     <span class="retail-price">₹{int(retail_price):,}</span>
@@ -3995,9 +3993,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     purchase_url = product.get('url', '#')
                     product_type_title = appliance_type.replace('_', ' ').title()
                     reason_text = get_product_recommendation_reason(
-                        product, 
-                        appliance_type, 
-                        room, 
+                        product,
+                        appliance_type,
+                        room,
                         user_data['demographics'],
                         user_data['total_budget'],
                         {},
@@ -4050,7 +4048,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         </div>
                         <div class="product-details">
                             <span class="product-type">{product_type_title}</span>
-                            <h3 class="product-title">{brand} {model}</h3>
+                            <h3 class="product-title">{get_display_title(brand, model)}</h3>
                             <div class="price-container">
                                 <span class="current-price">₹{int(better_home_price):,}</span>
                                 <span class="retail-price">₹{int(retail_price):,}</span>
@@ -4072,20 +4070,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         html_content += '</div></div>'
         room_idx += 1
 
-    # Add the generate final recommendation button and JavaScript
+    # Add the generate final recommendation button and JavaScrip
     html_content += f"""
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
                 <p>Please select one product from each category above that best suits your needs.</p>
                 <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
             </div>
-            
+
             <footer>
                 <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
                 <p> © {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
             </footer>
         </div>
-        
+
         <!-- Create the final recommendation page -->
         <div id="final-recommendation-page" style="display: none;">
          <div id="final-recommendation-content"></div>
@@ -4107,7 +4105,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 </div>
             </div>
         </div>
-        
+
         <script>
             function backToSelection() {{
                 window.location.reload();
@@ -4205,15 +4203,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             (function() {{
                 const accordionButtons = document.querySelectorAll('.accordion');
                 console.log('DIRECT: Found accordion buttons:', accordionButtons.length);
-                
+
                 for (let i = 0; i < accordionButtons.length; i++) {{
                     const btn = accordionButtons[i];
-                    
+
                     // Set active class on first button
                     if (i === 0) {{
                         btn.classList.add('active');
                     }}
-                    
+
                     // Direct event binding
                     btn.addEventListener('click', function(e) {{
                         e.preventDefault();
@@ -4221,18 +4219,18 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         const prevY = window.scrollY;
                         const panel = this.nextElementSibling;
                         const isOpen = panel.style.display === 'block';
-                        
+
                         // Close all panels and remove active class
                         const allPanels = document.querySelectorAll('.panel');
                         for (let j = 0; j < allPanels.length; j++) {{
                             allPanels[j].style.display = 'none';
                         }}
-                        
+
                         const allButtons = document.querySelectorAll('.accordion');
                         for (let j = 0; j < allButtons.length; j++) {{
                             allButtons[j].classList.remove('active');
                         }}
-                        
+
                         // If it wasn't open before, open it now
                         if (!isOpen) {{
                             panel.style.display = 'block';
@@ -4245,7 +4243,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     }});
                     console.log('DIRECT: Setup click handler for:', btn.textContent);
                 }}
-                
+
                 console.log('DIRECT: Setting up accordion - complete');
             }})();
         </script>
@@ -4265,7 +4263,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             }}
         }}
         </script>
-      
+
     </body>
     </html>
     """
@@ -4273,8 +4271,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Write the HTML content to a file
     with open(html_filename, 'w', encoding='utf-8') as f:
         f.write(html_content)
-    
-    # Debug: Check if any unprocessed variables remain in the HTML content
+
+    # Debug: Check if any unprocessed variables remain in the HTML conten
     if '{logo_html}' in html_content or "{user_data['name']}" in html_content:
         print("WARNING: Some template variables were not properly substituted!")
         print("Sample of unprocessed content:")
@@ -4282,15 +4280,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         if sample_start >= 0:
             sample_end = min(sample_start + 200, len(html_content))
             print(html_content[sample_start:sample_end])
-    
+
     print(f"Generated professional HTML brochure: {html_filename}")
-    
+
     # After generating the HTML file, upload it to S3
     files = {
         'html': html_filename
     }
     s3_urls = upload_recommendation_files_to_s3(user_data, files)
-    
+
     # Add S3 URLs to user_data for later use
     if 's3_urls' not in user_data:
         user_data['s3_urls'] = {}
@@ -4342,7 +4340,7 @@ def estimate_washing_machine_capacity(demographics: Dict[str, int]) -> float:
 # Function to determine AC tonnage with special handling for hall
 def determine_ac_tonnage(square_feet: float, room_type: str = None) -> float:
     """Determine the appropriate AC tonnage based on room size in square feet.
-    
+
     Tonnage guidelines:
     - 0.75 Ton: Ideal for rooms up to 90 sq ft.
     - 1 Ton: Suitable for rooms of 91-130 sq ft.
@@ -4375,11 +4373,11 @@ def deduplicate_recommendations(recommendations: List[Dict[str, Any]], max_recom
 def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str, str]) -> Dict[str, str]:
     """
     Upload recommendation files to S3 and return their URLs
-    
+
     Args:
         user_data: Dictionary containing user information
         files: Dictionary mapping file types to their local paths
-        
+
     Returns:
         Dictionary mapping file types to their S3 URLs
     """
@@ -4392,25 +4390,25 @@ def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str
     try:
         s3_handler = S3Handler()
         s3_urls = {}
-        
+
         # Create a unique folder for this user's recommendations
-        # Use our helper function for consistent access regardless of key format
+        # Use our helper function for consistent access regardless of key forma
         user_name = get_user_data_value(user_data, 'name', 'unknown')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         user_folder = f"recommendations/{user_name}_{timestamp}"
-        
+
         for file_type, file_path in files.items():
             if os.path.exists(file_path):
                 # Create S3 key with user folder
                 s3_key = f"{user_folder}/{os.path.basename(file_path)}"
-                
+
                 # Upload file to S3
                 if s3_handler.upload_file(file_path, s3_key):
                     # Get presigned URL
                     url = s3_handler.get_file_url(s3_key)
                     if url:
                         s3_urls[file_type] = url
-        
+
         return s3_urls
     except Exception as e:
         print(f"Error in upload_recommendation_files_to_s3: {str(e)}")
@@ -4418,7 +4416,7 @@ def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str
 
 # Main function
 if __name__ == "__main__":
-    # Check if the Excel filename is provided as an argument
+    # Check if the Excel filename is provided as an argumen
     if len(sys.argv) < 2:
         print("Error: Excel filename must be provided as an argument.")
         sys.exit(1)
@@ -4428,17 +4426,17 @@ if __name__ == "__main__":
 
     # Get user information
     user_data = analyze_user_requirements(excel_filename)
-    
+
     # Generate initial recommendations
     final_list = generate_final_product_list(user_data)
-    
+
     # Generate output files with the correct suffixes
     output_base_path = excel_filename.replace('.xlsx', '')
     # Get the directory of the Excel file
     output_dir = os.path.dirname(output_base_path)
     # Get just the filename without path
     base_filename = os.path.basename(output_base_path)
-    
+
     pdf_filename = f"{output_dir}/{base_filename}.pdf"
     txt_filename = f"{output_dir}/{base_filename}.txt"
     html_filename = f"{output_dir}/{base_filename}.html"
@@ -4446,6 +4444,6 @@ if __name__ == "__main__":
     # create_styled_pdf(pdf_filename, user_data, final_list, required_features)
     #generate_text_file(user_data, final_list, txt_filename)
     generate_html_file(user_data, final_list, html_filename)
-    
+
     print("\nProduct recommendations have been generated!")
     print(f"Check {pdf_filename}, {txt_filename}, and {html_filename} for details.")
