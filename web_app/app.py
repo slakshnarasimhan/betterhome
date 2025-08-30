@@ -44,11 +44,11 @@ if not os.path.exists(STATIC_FOLDER):
 
 # Copy the logo to the static directory if it doesn't exist there
 logo_source_paths = [
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'better_home_logo.png'),
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'better_home_logo.png'),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web_app', 'better_home_logo.png'),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'AB-Logo.jpg'),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'AB-Logo.jpg'),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web_app', 'AB-Logo.jpg'),
 ]
-logo_dest_path = os.path.join(STATIC_FOLDER, 'better_home_logo.png')
+logo_dest_path = os.path.join(STATIC_FOLDER, 'AB-Logo.jpg')
 
 if not os.path.exists(logo_dest_path):
     for source_path in logo_source_paths:
@@ -82,9 +82,11 @@ def index():
     mobile = request.args.get('mobile', '')
     email = request.args.get('email', '')
     address = request.args.get('address', '')
+    city = request.args.get('city', '')
+    budget = request.args.get('budget', '')
     pref_bedrooms = request.args.get('bedrooms', '')
     pref_bathrooms = request.args.get('bathrooms', '')
-    response = make_response(render_template('index.html', name=name, mobile=mobile, email=email, address=address, pref_bedrooms=pref_bedrooms, pref_bathrooms=pref_bathrooms))
+    response = make_response(render_template('index.html', name=name, mobile=mobile, email=email, address=address, city=city, budget=budget, pref_bedrooms=pref_bedrooms, pref_bathrooms=pref_bathrooms))
     # Add cache control headers to prevent caching
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
@@ -150,6 +152,7 @@ def submit():
             'mobile': 'Mobile Number (Preferably on WhatsApp)',
             'email': 'E-mail',
             'address': 'Apartment Address',
+            'city': 'City',
             'budget': 'What is your overall budget for home appliances?',
             'bedrooms': 'Number of bedrooms',
             'bathrooms': 'Number of bathrooms',
@@ -204,6 +207,7 @@ def submit():
             'Mobile Number (Preferably on WhatsApp)', 
             'E-mail', 
             'Apartment Address',
+            'City',
             'What is your overall budget for home appliances?',
             'Number of bedrooms',
             'Number of bathrooms',
@@ -218,6 +222,7 @@ def submit():
             'E-mail': 'customer@example.com',
             'Mobile Number (Preferably on WhatsApp)': '0000000000',
             'Apartment Address': 'Address',
+            'City': 'Bengaluru',
             'What is your overall budget for home appliances?': '100000',
             'Number of bedrooms': '2',
             'Number of bathrooms': '2',
@@ -289,9 +294,10 @@ def submit():
                 csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best-seller-4.csv')
                 catalog_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'product_catalog.json')
                 bhk_choice = '2BHK' if bhk == '2' else '3BHK'
-                # Pass email through to default recommendations so it appears on the page
+                # Pass email and city through to default recommendations so they appear on the page
                 email = form_data.get('email', '') or form_data.get('E-mail', '')
-                generate_default_recommendations(csv_path, catalog_path, bhk_choice, name, address, mobile, email, user_budget)
+                city = form_data.get('city', '') or form_data.get('City', '')
+                generate_default_recommendations(csv_path, catalog_path, bhk_choice, name, address, mobile, email, user_budget, city)
                 # Redirect to the appropriate tiered file (premium/standard). The route will resolve the right file.
                 redirect_url = url_for('default_recommendations', bhk=bhk)
                 return render_template('progress.html', redirect_url=redirect_url)

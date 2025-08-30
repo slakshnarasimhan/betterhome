@@ -1,7 +1,7 @@
 import pandas as pd
 import json
 import yaml
-from typing import Dict, Any, Lis
+from typing import Dict, Any, List
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -2739,9 +2739,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
 
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
-        os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
-        os.path.join(os.path.dirname(__file__), 'static', 'better_home_logo.png'),
-        'better_home_logo.png'
+        os.path.join(os.path.dirname(__file__), 'AB-Logo.jpg'),
+        os.path.join(os.path.dirname(__file__), 'static', 'AB-Logo.jpg'),
+        'AB-Logo.jpg'
     ]
 
     logo_path = None

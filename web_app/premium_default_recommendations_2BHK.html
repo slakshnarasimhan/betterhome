@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>BetterHome Product Recommendations</title>
+        <title>AppliancesBazaar Product Recommendations</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -287,6 +287,33 @@
             }
             .benefits-list li:first-child { border-top: none; }
             
+            .hidden-benefits {
+                margin-top: 0 !important;
+            }
+            
+            .know-more-link {
+                display: inline-block;
+                color: #3498db;
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                margin-top: 8px;
+                padding: 4px 0;
+                border-bottom: 1px solid transparent;
+                transition: all 0.2s ease;
+            }
+            .know-more-link:hover {
+                color: #2980b9;
+                border-bottom: 1px solid #3498db;
+                text-decoration: none;
+            }
+            
+            .product-actions {
+                margin-top: 12px;
+                padding-top: 12px;
+                border-top: 1px solid #eee;
+            }
+            
             .buy-button {
                 display: inline-block;
                 background-color: #3498db;
@@ -297,11 +324,20 @@
                 text-decoration: none;
                 border-radius: 4px;
                 font-weight: 500;
+                font-size: 14px;
                 transition: background-color 0.3s;
+                border: none;
+                cursor: pointer;
             }
             
             .buy-button:hover {
                 background-color: #2980b9;
+                color: white;
+                text-decoration: none;
+            }
+            
+            .buy-button i {
+                margin-right: 6px;
             }
             
             /* Budget summary styling */
@@ -477,12 +513,24 @@
                 /* Hide unnecessary visual elements for PDF */
                 .generate-container,
                 .product-selection,
-                .buy-button,
                 .customize-fab,
                 .download-button,
                 #download-pdf,
                 .print-hide {
                     display: none !important;
+                }
+                
+                /* Style buy buttons for PDF */
+                .buy-button {
+                    background-color: #3498db !important;
+                    color: white !important;
+                    text-decoration: none !important;
+                    padding: 8px 16px !important;
+                    border-radius: 4px !important;
+                    font-size: 12px !important;
+                    font-weight: 600 !important;
+                    display: inline-block !important;
+                    margin-top: 8px !important;
                 }
                 
                 .print-only {
@@ -903,7 +951,7 @@
                             XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
                             
                             // Save file
-                            XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                            XLSX.writeFile(wb, 'AppliancesBazaar_Recommendations.xlsx');
                             console.log('Excel file created successfully');
                         } catch (error) {
                             console.error('Error creating Excel file:', error);
@@ -989,7 +1037,7 @@
                         XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
                         
                         // Save file
-                        XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                        XLSX.writeFile(wb, 'AppliancesBazaar_Final_Recommendations.xlsx');
                     });
                     
                     // Setup print button
@@ -1082,27 +1130,27 @@
             <div class="client-info">
                 <div class="client-info-item">
                     <div class="client-info-label">Name</div>
-                    <div class="client-info-value">Lakshmi Narasimhan</div>
+                    <div class="client-info-value">Test User</div>
                 </div>
                 
                 <div class="client-info-item">
                     <div class="client-info-label">Mobile</div>
-                    <div class="client-info-value">9845731544</div>
+                    <div class="client-info-value">9876543210</div>
                 </div>
                 
                 <div class="client-info-item">
                     <div class="client-info-label">Email</div>
-                    <div class="client-info-value">slakshnarasimhan@gmail.com</div>
+                    <div class="client-info-value">test@example.com</div>
                 </div>
                 
                 <div class="client-info-item">
                     <div class="client-info-label">Address</div>
-                    <div class="client-info-value">112, Prestige Silver Oak, ECC Rd, Whitefield</div>
+                    <div class="client-info-value">Test Address</div>
                 </div>
                 
                 <div class="client-info-item">
                     <div class="client-info-label">Total Budget</div>
-                    <div class="client-info-value" id="client-total-budget">₹301,100.00</div>
+                    <div class="client-info-value" id="client-total-budget">₹245,250.00</div>
                 </div>
             </div>
     
@@ -1125,7 +1173,26 @@
                                 <span class="retail-price">₹58,200</span>
                                 <span class="savings">Save ₹19,200</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
+                            
+            <ul class="benefits-list">
+                <li>Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>Coanda airflow gives even cooling across every corner.</li><li>Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li>
+                <ul id="benefits_e84a6052_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>Cools even at 54°C</li><li>Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_e84a6052_toggle"
+               onclick="toggleBenefits('benefits_e84a6052')">
+                <span class="show-text">Know More (7 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
                     </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
                         
@@ -1143,83 +1210,67 @@
                                 <span class="retail-price">₹6,100</span>
                                 <span class="savings">Save ₹2,600</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
-                        </div>
-                    </div><div class="product-card">
-                        
-                        <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
-                            </a>
                             
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Ceiling Fan</span>
-                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹3,500</span>
-                                <span class="retail-price">₹6,100</span>
-                                <span class="savings">Save ₹2,600</span>
+            <ul class="benefits-list">
+                <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
+                <ul id="benefits_40065ece_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_40065ece_toggle"
+               onclick="toggleBenefits('benefits_40065ece')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
                             </div>
-                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
                         </div>
                     </div></div></div></div>
             <div class="room-section">
                 <button class='accordion' type='button'>Kitchen</button>
                 <div class='panel' style='display: none;'>
-        <h4 style="margin-top:20px;">Water Purifier</h4><div class="products-grid"><div class="product-card selected">
+        <h4 style="margin-top:20px;">Chimney</h4><div class="products-grid"><div class="product-card selected">
                         
                         <div class="product-image-container">
-                            <a href="" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/AO_Smith__Pro_Planet__P4__Pro__5L__RO_SCMT__Water__Purifier__Full_View.png?v=1740507225" alt="AO Smith AO Smith ProPlanet P4 Pro 5 Litres RO Water Purifier With 8-Stage RO plus SCMT and UV Purification">
+                            <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Faber_Hood_Sunny_IN_HC_SC_FL_LG_60_Auto_Clean_Filterless_Chimney-Full_View_3.webp?v=1746450177" alt="Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney">
                             </a>
                             
                         </div>
                         <div class="product-details">
-                            <span class="product-type">Water Purifier</span>
-                            <h3 class="product-title">AO Smith AO Smith ProPlanet P4 Pro 5 Litres RO Water Purifier With 8-Stage RO plus SCMT and UV Purification</h3>
+                            <span class="product-type">Chimney</span>
+                            <h3 class="product-title">Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney</h3>
                             <div class="price-container">
-                                <span class="current-price">₹19,800</span>
-                                <span class="retail-price">₹24,400</span>
-                                <span class="savings">Save ₹4,600</span>
-                            </div>
-                            <ul class="benefits-list"><li>1. 100% RO water since all the water is passed through the RO membrane unlike other brands.</li><li>2. Delivers "Baby-Safe" water with full-spectrum contaminant removal and UV freshness using 8-Stage RO + SCMT + UV purification.</li><li>3. SCMT (Silver Charged Membrane Technology) removes Virus, Bacteria, Cysts, Particulates, Endotoxins, Colloids, Chemicals and Phosphates.</li><li>4. All time fresh water with in-tank UV purification.</li><li>5. Adds essential minerals and copper for taste and health.</li><li>6. India's first 5 star rated water purifier which saves 2X water using ART™MAX Water Saving Technology. This is good for you and our Earth.</li></ul>
-                        </div>
-                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
-                        
-                        <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
-                            </a>
-                            
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Exhaust Fan</span>
-                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹1,350</span>
-                                <span class="retail-price">₹3,350</span>
-                                <span class="savings">Save ₹2,000</span>
-                            </div>
-                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
-                        </div>
-                    </div></div><h4 style="margin-top:20px;">Dishwasher</h4><div class="products-grid"><div class="product-card selected">
-                        
-                        <div class="product-image-container">
-                            <a href="" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Bosch_Free-Standing_Dishwasher_14_PlaceSettings-Series_6-60_Cm-SMS6IKI01I-Brushed_steelanti-fingerprint-FullView.webp?v=1747739594" alt="Bosch Bosch Free-Standing Dishwasher 14 Place Settings - Series 6 - 60 Cm - SMS6IKI01I- Brushed steel anti-fingerprint">
-                            </a>
-                            
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Dishwasher</span>
-                            <h3 class="product-title">Bosch Bosch Free-Standing Dishwasher 14 Place Settings - Series 6 - 60 Cm - SMS6IKI01I- Brushed steel anti-fingerprint</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹53,500</span>
-                                <span class="retail-price">₹65,190</span>
+                                <span class="current-price">₹15,300</span>
+                                <span class="retail-price">₹26,990</span>
                                 <span class="savings">Save ₹11,690</span>
                             </div>
-                            <ul class="benefits-list"><li>1. 14-place setting is designed to accommodate a large number of dishes, Typically the dishes used through out the day.</li><li>2. Silent (48 decibel), energy-saving cleaning with the EcoSilence Drive (motor).</li><li>3. Home Connect allows to start washes, check status, and get alerts via voice or app.</li><li>4. 10‑year inner tub warranty.</li><li>5. The premium brushed and fingerprint‑free stainless steel finish resists smudges and maintains sleek appeal.</li></ul>
+                            
+            <ul class="benefits-list">
+                <li>1200 m³/hr suction power</li><li>Filterless design.</li><li>Auto-Clean function self-cleans oil and grease; saves time and effort.</li>
+                <ul id="benefits_9cb90e06_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Gesture control offers hands-free convenience while cooking.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_9cb90e06_toggle"
+               onclick="toggleBenefits('benefits_9cb90e06')">
+                <span class="show-text">Know More (1 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
                     </div></div><h4 style="margin-top:20px;">Cooktop</h4><div class="products-grid"><div class="product-card selected">
                         
@@ -1237,25 +1288,137 @@
                                 <span class="retail-price">₹8,990</span>
                                 <span class="savings">Save ₹4,390</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Equipped with three brass burners (1 jumbo, 1 medium, and 1 small) for various cooking needs and uniform heat distribution.</li><li>2. 6 MM toughened black glass top for durability and scratch resistance. It looks sleek too.</li><li>3. Stainless steel drip trays simplify cleanup by catching spills.</li><li>4. The powder-coated round pan supports provide sturdy stability for different cookware sizes and resist chipping and rusting.</li></ul>
+                            
+            <ul class="benefits-list">
+                <li>Equipped with three brass burners (1 jumbo, 1 medium, and 1 small) for various cooking needs and uniform heat distribution.</li><li>6 MM toughened black glass top for durability and scratch resistance. It looks sleek too.</li><li>Stainless steel drip trays simplify cleanup by catching spills.</li>
+                <ul id="benefits_f08bffa7_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>The powder-coated round pan supports provide sturdy stability for different cookware sizes and resist chipping and rusting.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_f08bffa7_toggle"
+               onclick="toggleBenefits('benefits_f08bffa7')">
+                <span class="show-text">Know More (1 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
-                    </div></div><h4 style="margin-top:20px;">Chimney</h4><div class="products-grid"><div class="product-card selected">
+                    </div></div><h4 style="margin-top:20px;">Dishwasher</h4><div class="products-grid"><div class="product-card selected">
                         
                         <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Faber_Hood_Sunny_IN_HC_SC_FL_LG_60_Auto_Clean_Filterless_Chimney-Full_View_3.webp?v=1746450177" alt="Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney">
+                            <a href="" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Bosch_Free-Standing_Dishwasher_14_PlaceSettings-Series_6-60_Cm-SMS6IKI01I-Brushed_steelanti-fingerprint-FullView.webp?v=1747739594" alt="Bosch Bosch Free-Standing Dishwasher 14 Place Settings - Series 6 - 60 Cm - SMS6IKI01I- Brushed steel anti-fingerprint">
                             </a>
                             
                         </div>
                         <div class="product-details">
-                            <span class="product-type">Chimney</span>
-                            <h3 class="product-title">Faber Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney</h3>
+                            <span class="product-type">Dishwasher</span>
+                            <h3 class="product-title">Bosch Bosch Free-Standing Dishwasher 14 Place Settings - Series 6 - 60 Cm - SMS6IKI01I- Brushed steel anti-fingerprint</h3>
                             <div class="price-container">
-                                <span class="current-price">₹15,300</span>
-                                <span class="retail-price">₹26,990</span>
+                                <span class="current-price">₹53,500</span>
+                                <span class="retail-price">₹65,190</span>
                                 <span class="savings">Save ₹11,690</span>
                             </div>
-                            <ul class="benefits-list"><li>1. 1200 m³/hr suction power</li><li>2. Filterless design.</li><li>3. Auto-Clean function self-cleans oil and grease; saves time and effort.</li><li>4. Gesture control offers hands-free convenience while cooking.</li></ul>
+                            
+            <ul class="benefits-list">
+                <li>14-place setting is designed to accommodate a large number of dishes, Typically the dishes used through out the day.</li><li>Silent (48 decibel), energy-saving cleaning with the EcoSilence Drive (motor).</li><li>Home Connect allows to start washes, check status, and get alerts via voice or app.</li>
+                <ul id="benefits_0eee2306_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>10‑year inner tub warranty.</li><li>The premium brushed and fingerprint‑free stainless steel finish resists smudges and maintains sleek appeal.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_0eee2306_toggle"
+               onclick="toggleBenefits('benefits_0eee2306')">
+                <span class="show-text">Know More (2 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Water Purifier</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/AO_Smith__Pro_Planet__P4__Pro__5L__RO_SCMT__Water__Purifier__Full_View.png?v=1740507225" alt="AO Smith AO Smith ProPlanet P4 Pro 5 Litres RO Water Purifier With 8-Stage RO plus SCMT and UV Purification">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Water Purifier</span>
+                            <h3 class="product-title">AO Smith AO Smith ProPlanet P4 Pro 5 Litres RO Water Purifier With 8-Stage RO plus SCMT and UV Purification</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹19,800</span>
+                                <span class="retail-price">₹24,400</span>
+                                <span class="savings">Save ₹4,600</span>
+                            </div>
+                            
+            <ul class="benefits-list">
+                <li>100% RO water since all the water is passed through the RO membrane unlike other brands.</li><li>Delivers "Baby-Safe" water with full-spectrum contaminant removal and UV freshness using 8-Stage RO + SCMT + UV purification.</li><li>SCMT (Silver Charged Membrane Technology) removes Virus, Bacteria, Cysts, Particulates, Endotoxins, Colloids, Chemicals and Phosphates.</li>
+                <ul id="benefits_a356552f_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>All time fresh water with in-tank UV purification.</li><li>Adds essential minerals and copper for taste and health.</li><li>India's first 5 star rated water purifier which saves 2X water using ART™MAX Water Saving Technology. This is good for you and our Earth.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_a356552f_toggle"
+               onclick="toggleBenefits('benefits_a356552f')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Exhaust Fan</span>
+                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹1,350</span>
+                                <span class="retail-price">₹3,350</span>
+                                <span class="savings">Save ₹2,000</span>
+                            </div>
+                            
+            <ul class="benefits-list">
+                <li>Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>Back flaps prevent insects from entering the home.</li><li>Low noise.</li>
+                <ul id="benefits_dac72eae_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>Fits square cut out of 175 MM X 175 MM.</li><li>1 year warranty. + 1 year when registered on Atomberg's website.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_dac72eae_toggle"
+               onclick="toggleBenefits('benefits_dac72eae')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
                     </div></div></div></div>
             <div class="room-section">
@@ -1277,7 +1440,26 @@
                                 <span class="retail-price">₹6,100</span>
                                 <span class="savings">Save ₹2,600</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                            
+            <ul class="benefits-list">
+                <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
+                <ul id="benefits_c87c8256_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_c87c8256_toggle"
+               onclick="toggleBenefits('benefits_c87c8256')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
                     </div></div></div></div>
             <div class="room-section">
@@ -1299,25 +1481,26 @@
                                 <span class="retail-price">₹58,200</span>
                                 <span class="savings">Save ₹19,200</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
-                        </div>
-                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
-                        
-                        <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
-                            </a>
                             
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Exhaust Fan</span>
-                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹1,350</span>
-                                <span class="retail-price">₹3,350</span>
-                                <span class="savings">Save ₹2,000</span>
+            <ul class="benefits-list">
+                <li>Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>Coanda airflow gives even cooling across every corner.</li><li>Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li>
+                <ul id="benefits_4a6edc21_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>Cools even at 54°C</li><li>Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_4a6edc21_toggle"
+               onclick="toggleBenefits('benefits_4a6edc21')">
+                <span class="show-text">Know More (7 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
                             </div>
-                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
                         </div>
                     </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
                         
@@ -1335,7 +1518,63 @@
                                 <span class="retail-price">₹6,100</span>
                                 <span class="savings">Save ₹2,600</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                            
+            <ul class="benefits-list">
+                <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
+                <ul id="benefits_6553c189_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_6553c189_toggle"
+               onclick="toggleBenefits('benefits_6553c189')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Exhaust Fan</span>
+                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹1,350</span>
+                                <span class="retail-price">₹3,350</span>
+                                <span class="savings">Save ₹2,000</span>
+                            </div>
+                            
+            <ul class="benefits-list">
+                <li>Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>Back flaps prevent insects from entering the home.</li><li>Low noise.</li>
+                <ul id="benefits_56edc9c7_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>Fits square cut out of 175 MM X 175 MM.</li><li>1 year warranty. + 1 year when registered on Atomberg's website.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_56edc9c7_toggle"
+               onclick="toggleBenefits('benefits_56edc9c7')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
                     </div></div><h4 style="margin-top:20px;">Storage Water Heater</h4><div class="products-grid"><div class="product-card selected">
                             
@@ -1355,9 +1594,27 @@
                                 </div>
                                 <div class="product-info-item"><span class="product-info-label">Warranty:</span> Standard warranty applies</div>
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> Contact store for details</div>
-                                <ul class="reasons-list"><li>Experience instant hot water with this efficient 15-liter water heater, boasting a powerful 2000W element and a sleek white design. With its high performance and ample capacity, this water heater is the perfect choice for quick and reliable hot water supply in your home.</li></ul>
-                                <ul class="benefits-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li><li>4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>7. Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
                                 
+                                
+            <ul class="benefits-list">
+                <li>15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li>
+                <ul id="benefits_e2775773_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>Long lasting anode rod with 2X lifespan even in hard water conditions.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_e2775773_toggle"
+               onclick="toggleBenefits('benefits_e2775773')">
+                <span class="show-text">Know More (6 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                                <div class="product-actions">
+                                    <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                        <i class="fas fa-external-link-alt"></i> Buy Now
+                                    </a>
+                                </div>
                             </div>
                         </div></div></div></div>
             <div class="room-section">
@@ -1379,25 +1636,26 @@
                                 <span class="retail-price">₹58,200</span>
                                 <span class="savings">Save ₹19,200</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
-                        </div>
-                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
-                        
-                        <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
-                            </a>
                             
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Exhaust Fan</span>
-                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹1,350</span>
-                                <span class="retail-price">₹3,350</span>
-                                <span class="savings">Save ₹2,000</span>
+            <ul class="benefits-list">
+                <li>Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>Coanda airflow gives even cooling across every corner.</li><li>Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li>
+                <ul id="benefits_b2c41ac0_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>Cools even at 54°C</li><li>Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_b2c41ac0_toggle"
+               onclick="toggleBenefits('benefits_b2c41ac0')">
+                <span class="show-text">Know More (7 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
                             </div>
-                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
                         </div>
                     </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
                         
@@ -1415,7 +1673,63 @@
                                 <span class="retail-price">₹6,100</span>
                                 <span class="savings">Save ₹2,600</span>
                             </div>
-                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
+                            
+            <ul class="benefits-list">
+                <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
+                <ul id="benefits_7ef6daf7_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_7ef6daf7_toggle"
+               onclick="toggleBenefits('benefits_7ef6daf7')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
+                        </div>
+                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
+                        
+                        <div class="product-image-container">
+                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
+                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
+                            </a>
+                            
+                        </div>
+                        <div class="product-details">
+                            <span class="product-type">Exhaust Fan</span>
+                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
+                            <div class="price-container">
+                                <span class="current-price">₹1,350</span>
+                                <span class="retail-price">₹3,350</span>
+                                <span class="savings">Save ₹2,000</span>
+                            </div>
+                            
+            <ul class="benefits-list">
+                <li>Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>Back flaps prevent insects from entering the home.</li><li>Low noise.</li>
+                <ul id="benefits_bc3b1cb9_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>Fits square cut out of 175 MM X 175 MM.</li><li>1 year warranty. + 1 year when registered on Atomberg's website.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_bc3b1cb9_toggle"
+               onclick="toggleBenefits('benefits_bc3b1cb9')">
+                <span class="show-text">Know More (3 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                            <div class="product-actions">
+                                <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
                     </div></div><h4 style="margin-top:20px;">Storage Water Heater</h4><div class="products-grid"><div class="product-card selected">
                             
@@ -1435,89 +1749,27 @@
                                 </div>
                                 <div class="product-info-item"><span class="product-info-label">Warranty:</span> Standard warranty applies</div>
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> Contact store for details</div>
-                                <ul class="reasons-list"><li>Experience instant hot water with this efficient 15-liter water heater, boasting a powerful 2000W element and a sleek white design. With its high performance and ample capacity, this water heater is the perfect choice for quick and reliable hot water supply in your home.</li></ul>
-                                <ul class="benefits-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li><li>4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>7. Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
                                 
-                            </div>
-                        </div></div></div></div>
-            <div class="room-section">
-                <button class='accordion' type='button'>Bedroom 3</button>
-                <div class='panel' style='display: none;'>
-        <h4 style="margin-top:20px;">Air Conditioner</h4><div class="products-grid"><div class="product-card selected">
-                        
-                        <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Daikin-1.5_Ton-3_Star-Inverter-Split_AC-_FTKC50UV16V_RKC50UV16V_Copper_Condenser_-Front_View.png?v=1734097761" alt="Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser">
-                            </a>
-                            
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Air Conditioner</span>
-                            <h3 class="product-title">Daikin Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹39,000</span>
-                                <span class="retail-price">₹58,200</span>
-                                <span class="savings">Save ₹19,200</span>
-                            </div>
-                            <ul class="benefits-list"><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li><li>4. Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>5. The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>6. Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>7. Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>8. Cools even at 54°C</li><li>9. Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>10. Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li></ul>
-                        </div>
-                    </div></div><h4 style="margin-top:20px;">Exhaust Fan</h4><div class="products-grid"><div class="product-card selected">
-                        
-                        <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/20221117atombergefficioexh150amzpli_black3_1.jpg?v=1720583556" alt="Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan">
-                            </a>
-                            
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Exhaust Fan</span>
-                            <h3 class="product-title">Atomberg Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹1,350</span>
-                                <span class="retail-price">₹3,350</span>
-                                <span class="savings">Save ₹2,000</span>
-                            </div>
-                            <ul class="benefits-list"><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li><li>4. The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>5. Fits square cut out of 175 MM X 175 MM.</li><li>6. 1 year warranty. + 1 year when registered on Atomberg's website.</li></ul>
-                        </div>
-                    </div></div><h4 style="margin-top:20px;">Ceiling Fan</h4><div class="products-grid"><div class="product-card selected">
-                        
-                        <div class="product-image-container">
-                            <a href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan" target="_blank" rel="noopener noreferrer">
-                                <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179" alt="Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown">
-                            </a>
-                            
-                        </div>
-                        <div class="product-details">
-                            <span class="product-type">Ceiling Fan</span>
-                            <h3 class="product-title">Superfan Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h3>
-                            <div class="price-container">
-                                <span class="current-price">₹3,500</span>
-                                <span class="retail-price">₹6,100</span>
-                                <span class="savings">Save ₹2,600</span>
-                            </div>
-                            <ul class="benefits-list"><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>3. 5 years warranty. Highest in the market.</li><li>4. Brown colour has less maintenance because accumulated dust is less visible.</li><li>5. Remote control for convenience.</li><li>6. Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li></ul>
-                        </div>
-                    </div></div><h4 style="margin-top:20px;">Storage Water Heater</h4><div class="products-grid"><div class="product-card selected">
-                            
-                            <div class="product-image-container">
-                                <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr" target="_blank" rel="noopener noreferrer">
-                                    <img class="product-image" src="https://betterhomeapp.com/cdn/shop/files/AO_Smith_Elegance_Prime_Storage_WaterHeater4.png?v=1740223503" alt="AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres">
-                                </a>
                                 
-                            </div>
-                            <div class="product-details">
-                                <span class="product-type">Storage Water Heater</span>
-                                <h3 class="product-title">AO Smith AO Smith Elegance Prime Storage Water Heater 15 Litres</h3>
-                                <div class="price-container">
-                                    <span class="current-price">₹8,500</span>
-                                    <span class="retail-price">₹11,400</span>
-                                    <span class="savings">Save ₹2,900</span>
+            <ul class="benefits-list">
+                <li>15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li>
+                <ul id="benefits_87888cf6_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    <li>5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>Long lasting anode rod with 2X lifespan even in hard water conditions.</li>
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="benefits_87888cf6_toggle"
+               onclick="toggleBenefits('benefits_87888cf6')">
+                <span class="show-text">Know More (6 more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            
+                                <div class="product-actions">
+                                    <a href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                        <i class="fas fa-external-link-alt"></i> Buy Now
+                                    </a>
                                 </div>
-                                <div class="product-info-item"><span class="product-info-label">Warranty:</span> Standard warranty applies</div>
-                                <div class="product-info-item"><span class="product-info-label">Delivery:</span> Contact store for details</div>
-                                <ul class="reasons-list"><li>Experience instant hot water with this efficient 15-liter water heater, boasting a powerful 2000W element and a sleek white design. With its high performance and ample capacity, this water heater is the perfect choice for quick and reliable hot water supply in your home.</li></ul>
-                                <ul class="benefits-list"><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li><li>4. 5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>5. Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>6. Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>7. Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>8. Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>9. Long lasting anode rod with 2X lifespan even in hard water conditions.</li></ul>
-                                
                             </div>
                         </div></div></div></div>
                 <style>
@@ -1551,7 +1803,7 @@
                     (function() {
                         var fab = document.getElementById('customizeFab');
                         if (fab) {
-                            var q = 'name=Lakshmi+Narasimhan&mobile=9845731544&email=slakshnarasimhan%40gmail.com&address=112%2C+Prestige+Silver+Oak%2C+ECC+Rd%2C+Whitefield&bedrooms=2&bathrooms=2';
+                            var q = 'name=Test+User&mobile=9876543210&email=test%40example.com&address=Test+Address&city=Mumbai&budget=245250.0&bedrooms=2&bathrooms=2';
                             // Only append if at least one value exists
                             if (q.replace(/(name=|mobile=|email=|address=)/g,'').replace(/&/g,'').trim() !== '') {
                                 fab.href = '/?' + q;
@@ -1561,8 +1813,8 @@
                 </script>
         
                 <footer>
-                    <p>This product recommendation brochure was created on 2025-08-22</p>
-                    <p> © 2025 BetterHome.</p>
+                    <p>This product recommendation brochure was created on 2025-08-30</p>
+                    <p> © 2025 AppliancesBazaar.</p>
                 </footer>
             </div>
             
@@ -1636,6 +1888,32 @@
         
         // Make function globally available
         window.downloadRecommendationsPdf = downloadRecommendationsPdf;
+        
+        // Function to toggle benefits visibility
+        function toggleBenefits(benefitsId) {{
+            const hiddenElement = document.getElementById(benefitsId + '_hidden');
+            const toggleElement = document.getElementById(benefitsId + '_toggle');
+            
+            if (hiddenElement && toggleElement) {{
+                const showText = toggleElement.querySelector('.show-text');
+                const hideText = toggleElement.querySelector('.hide-text');
+                
+                if (hiddenElement.style.display === 'none') {{
+                    // Show hidden benefits
+                    hiddenElement.style.display = 'block';
+                    showText.style.display = 'none';
+                    hideText.style.display = 'inline';
+                }} else {{
+                    // Hide benefits
+                    hiddenElement.style.display = 'none';
+                    showText.style.display = 'inline';
+                    hideText.style.display = 'none';
+                }}
+            }}
+        }}
+        
+        // Make function globally available
+        window.toggleBenefits = toggleBenefits;
         </script>
       
     </body>

@@ -600,9 +600,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
-        os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
-        os.path.join(os.path.dirname(__file__), 'static', 'better_home_logo.png'),
-        'better_home_logo.png'
+        os.path.join(os.path.dirname(__file__), 'AB-Logo.jpg'),
+        os.path.join(os.path.dirname(__file__), 'static', 'AB-Logo.jpg'),
+        'AB-Logo.jpg'
     ]
     
     logo_path = None
@@ -622,9 +622,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     logo_html = ""
     if logo_exists:
         logo_html = '''<div class="logo-container">
-            <img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo print-hide">
+            <img src="/static/AB-Logo.jpg" alt="AppliancesBazaar Logo" class="logo print-hide">
             <div class="logo-text print-only" style="display: none;">
-                <h1 style="margin: 0; color: #3498db; font-size: 24px; font-weight: bold;">BetterHome</h1>
+                <h1 style="margin: 0; color: #3498db; font-size: 24px; font-weight: bold;">AppliancesBazaar</h1>
                 <p style="margin: 0; color: #666; font-size: 14px;">Product Recommendations</p>
             </div>
         </div>'''
@@ -649,8 +649,46 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             items = [p.strip() for p in parts if p and p.strip()]
         if not items:
             items = [text]
-        lis = ''.join([f'<li>{p}</li>' for p in items])
-        return f'<ul class="benefits-list">{lis}</ul>'
+        
+        # Remove numbered prefixes from items if present
+        cleaned_items = []
+        for item in items:
+            # Remove leading numbers like "1.", "2)", etc.
+            cleaned_item = re.sub(r'^\d+[\.\)\s]*', '', item).strip()
+            if cleaned_item:
+                cleaned_items.append(cleaned_item)
+        
+        # If we have more than 3 benefits, show only first 3 and collapse the rest
+        if len(cleaned_items) > 3:
+            visible_items = cleaned_items[:3]
+            hidden_items = cleaned_items[3:]
+            
+            # Generate unique ID for this benefits list
+            import uuid
+            benefits_id = f"benefits_{str(uuid.uuid4())[:8]}"
+            
+            visible_lis = ''.join([f'<li>{item}</li>' for item in visible_items])
+            hidden_lis = ''.join([f'<li>{item}</li>' for item in hidden_items])
+            
+            return f'''
+            <ul class="benefits-list">
+                {visible_lis}
+                <ul id="{benefits_id}_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                    {hidden_lis}
+                </ul>
+            </ul>
+            <a href="javascript:void(0);" 
+               class="know-more-link" 
+               id="{benefits_id}_toggle"
+               onclick="toggleBenefits('{benefits_id}')">
+                <span class="show-text">Know More ({len(hidden_items)} more benefits)</span>
+                <span class="hide-text" style="display: none;">Show Less</span>
+            </a>
+            '''
+        else:
+            # Show all benefits if 3 or fewer
+            lis = ''.join([f'<li>{item}</li>' for item in cleaned_items])
+            return f'<ul class="benefits-list">{lis}</ul>'
     
     # Create HTML header (CSS part)
     html_content = """
@@ -659,7 +697,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>BetterHome Product Recommendations</title>
+        <title>AppliancesBazaar Product Recommendations</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -942,6 +980,33 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             }
             .benefits-list li:first-child { border-top: none; }
             
+            .hidden-benefits {
+                margin-top: 0 !important;
+            }
+            
+            .know-more-link {
+                display: inline-block;
+                color: #3498db;
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                margin-top: 8px;
+                padding: 4px 0;
+                border-bottom: 1px solid transparent;
+                transition: all 0.2s ease;
+            }
+            .know-more-link:hover {
+                color: #2980b9;
+                border-bottom: 1px solid #3498db;
+                text-decoration: none;
+            }
+            
+            .product-actions {
+                margin-top: 12px;
+                padding-top: 12px;
+                border-top: 1px solid #eee;
+            }
+            
             .buy-button {
                 display: inline-block;
                 background-color: #3498db;
@@ -952,11 +1017,20 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 text-decoration: none;
                 border-radius: 4px;
                 font-weight: 500;
+                font-size: 14px;
                 transition: background-color 0.3s;
+                border: none;
+                cursor: pointer;
             }
             
             .buy-button:hover {
                 background-color: #2980b9;
+                color: white;
+                text-decoration: none;
+            }
+            
+            .buy-button i {
+                margin-right: 6px;
             }
             
             /* Budget summary styling */
@@ -1132,12 +1206,24 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 /* Hide unnecessary visual elements for PDF */
                 .generate-container,
                 .product-selection,
-                .buy-button,
                 .customize-fab,
                 .download-button,
                 #download-pdf,
                 .print-hide {
                     display: none !important;
+                }
+                
+                /* Style buy buttons for PDF */
+                .buy-button {
+                    background-color: #3498db !important;
+                    color: white !important;
+                    text-decoration: none !important;
+                    padding: 8px 16px !important;
+                    border-radius: 4px !important;
+                    font-size: 12px !important;
+                    font-weight: 600 !important;
+                    display: inline-block !important;
+                    margin-top: 8px !important;
                 }
                 
                 .print-only {
@@ -1558,7 +1644,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
                             
                             // Save file
-                            XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                            XLSX.writeFile(wb, 'AppliancesBazaar_Recommendations.xlsx');
                             console.log('Excel file created successfully');
                         } catch (error) {
                             console.error('Error creating Excel file:', error);
@@ -1644,7 +1730,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
                         
                         // Save file
-                        XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                        XLSX.writeFile(wb, 'AppliancesBazaar_Final_Recommendations.xlsx');
                     });
                     
                     // Setup print button
@@ -1893,16 +1979,50 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             room_desc = get_room_description(room, user_data)
         if room_desc:
             html_content += f'                    <div class="room-description">{room_desc}</div>\n'
-        # Group by appliance type (and sub-type), ensuring room items appear before bathroom/nested items
-        ordered_items = [
-            (k, v) for k, v in appliances.items() if not isinstance(v, dict)
-        ] + [
-            (k, v) for k, v in appliances.items() if isinstance(v, dict)
-        ]
+        # Define the desired order of items within each room
+        def get_item_order(item_name: str) -> int:
+            """Return order priority for room items (lower number = higher priority)"""
+            order_map = {
+                # Main room items (highest priority)
+                'Air Conditioner': 1,
+                'Ceiling Fan': 2,
+                'Chimney': 3,
+                'Cooktop': 4,
+                'Hob': 5,
+                'Dishwasher': 6,
+                'Refrigerator': 7,
+                'Water Purifier': 8,
+                'Washing Machine': 9,
+                'Microwave Oven': 10,
+                'OTG': 11,
+                'Exhaust Fan': 12,
+                # Bathroom items (lower priority, shown last)
+                'bathroom': 100,  # All bathroom items grouped together
+            }
+            return order_map.get(item_name, 50)  # Default to middle priority for unknown items
+        
+        # Sort items by the defined order
+        all_items = list(appliances.items())
+        ordered_items = sorted(all_items, key=lambda x: get_item_order(x[0]))
         for appliance_type, products in ordered_items:
             # Handle nested appliance groups (e.g., bathroom)
             if isinstance(products, dict):
-                for sub_appliance_type, sub_products in products.items():
+                # Define order for bathroom items
+                def get_bathroom_item_order(item_name: str) -> int:
+                    """Return order priority for bathroom items (lower number = higher priority)"""
+                    bathroom_order_map = {
+                        'Storage Water Heater': 1,
+                        'Instant Water Heater': 2,
+                        'LED Mirror': 3,
+                        'Exhaust Fan': 4,
+                    }
+                    return bathroom_order_map.get(item_name, 50)
+                
+                # Sort bathroom items by the defined order
+                bathroom_items = list(products.items())
+                ordered_bathroom_items = sorted(bathroom_items, key=lambda x: get_bathroom_item_order(x[0]))
+                
+                for sub_appliance_type, sub_products in ordered_bathroom_items:
                     if not isinstance(sub_products, list) or not sub_products:
                         continue
                     # Only allow duplication for certain types
@@ -2018,7 +2138,11 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <div class="product-info-item"><span class="product-info-label">Delivery:</span> {delivery_time}</div>
                                 {reason_section}
                                 {description_html}
-                                
+                                <div class="product-actions">
+                                    <a href="{purchase_url}" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                        <i class="fas fa-external-link-alt"></i> Buy Now
+                                    </a>
+                                </div>
                             </div>
                         </div>'''
                     html_content += '</div>'
@@ -2133,9 +2257,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 <span class="savings">Save ₹{int(discount):,}</span>
                             </div>
                             {description_html}
+                            <div class="product-actions">
+                                <a href="{purchase_url}" class="buy-button" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> Buy Now
+                                </a>
+                            </div>
                         </div>
                     </div>'''
-                    html_content += '</div>'
+                html_content += '</div>'
         html_content += '</div></div>'
         room_idx += 1
 
@@ -2150,7 +2279,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     if default_mode:
         # Add floating Customize button linking back to landing page, with prefilled query params when available
         # Pass bedrooms/bathrooms guess based on num_bedrooms/num_bathrooms when present
-        customize_query = f"name={quote_plus(str(user_data.get('name','')))}&mobile={quote_plus(str(user_data.get('mobile','')))}&email={quote_plus(str(user_data.get('email','')))}&address={quote_plus(str(user_data.get('address','')))}&bedrooms={quote_plus(str(user_data.get('num_bedrooms','')))}&bathrooms={quote_plus(str(user_data.get('num_bathrooms','')))}"
+        customize_query = f"name={quote_plus(str(user_data.get('name','')))}&mobile={quote_plus(str(user_data.get('mobile','')))}&email={quote_plus(str(user_data.get('email','')))}&address={quote_plus(str(user_data.get('address','')))}&city={quote_plus(str(user_data.get('city','')))}&budget={quote_plus(str(user_data.get('total_budget','')))}&bedrooms={quote_plus(str(user_data.get('num_bedrooms','')))}&bathrooms={quote_plus(str(user_data.get('num_bathrooms','')))}"
         html_content += f"""
                 <div class="generate-container">
                     <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
@@ -2190,7 +2319,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         html_content += f"""
                 <footer>
                     <p>This product recommendation brochure was created on {current_date}</p>
-                    <p> © {current_year} BetterHome.</p>
+                    <p> © {current_year} AppliancesBazaar.</p>
                 </footer>
             </div>
             """
@@ -2247,7 +2376,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             <footer>
                 <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
-                <p> © {current_year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
+                <p> © {current_year} AppliancesBazaar. All recommendations are personalized based on your specific requirements.</p>
             </footer>
         </div>
         
@@ -2405,6 +2534,32 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             
             // Make function globally available
             window.downloadRecommendationsPdf = downloadRecommendationsPdf;
+            
+            // Function to toggle benefits visibility
+            function toggleBenefits(benefitsId) {{
+                const hiddenElement = document.getElementById(benefitsId + '_hidden');
+                const toggleElement = document.getElementById(benefitsId + '_toggle');
+                
+                if (hiddenElement && toggleElement) {{
+                    const showText = toggleElement.querySelector('.show-text');
+                    const hideText = toggleElement.querySelector('.hide-text');
+                    
+                    if (hiddenElement.style.display === 'none') {{
+                        // Show hidden benefits
+                        hiddenElement.style.display = 'block';
+                        showText.style.display = 'none';
+                        hideText.style.display = 'inline';
+                    }} else {{
+                        // Hide benefits
+                        hiddenElement.style.display = 'none';
+                        showText.style.display = 'inline';
+                        hideText.style.display = 'none';
+                    }}
+                }}
+            }}
+            
+            // Make function globally available
+            window.toggleBenefits = toggleBenefits;
 
             // Set up accordion functionality
             (function() {{
@@ -2501,6 +2656,32 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         
         // Make function globally available
         window.downloadRecommendationsPdf = downloadRecommendationsPdf;
+        
+        // Function to toggle benefits visibility
+        function toggleBenefits(benefitsId) {{
+            const hiddenElement = document.getElementById(benefitsId + '_hidden');
+            const toggleElement = document.getElementById(benefitsId + '_toggle');
+            
+            if (hiddenElement && toggleElement) {{
+                const showText = toggleElement.querySelector('.show-text');
+                const hideText = toggleElement.querySelector('.hide-text');
+                
+                if (hiddenElement.style.display === 'none') {{
+                    // Show hidden benefits
+                    hiddenElement.style.display = 'block';
+                    showText.style.display = 'none';
+                    hideText.style.display = 'inline';
+                }} else {{
+                    // Hide benefits
+                    hiddenElement.style.display = 'none';
+                    showText.style.display = 'inline';
+                    hideText.style.display = 'none';
+                }}
+            }}
+        }}
+        
+        // Make function globally available
+        window.toggleBenefits = toggleBenefits;
         </script>
       
     </body>
@@ -2709,6 +2890,7 @@ def generate_default_recommendations(
     mobile: str | None = None,
     email: str | None = None,
     user_budget: float | None = None,
+    city: str | None = None,
 ):
     # Load budget config
     cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'budget_config.yaml')
@@ -2817,13 +2999,14 @@ def generate_default_recommendations(
             'mobile': (mobile or ''),
             'email': (email or ''),
             'address': (address or ''),
+            'city': (city or 'Bengaluru'),
             'total_budget': float(user_budget) if user_budget is not None else (600000.0 if bhk == '2BHK' else 900000.0),
             'num_bedrooms': 2 if bhk == '2BHK' else 3,
             'num_bathrooms': 2 if bhk == '2BHK' else 3,
             'demographics': {'adults': 2, 'elders': 0, 'kids': 0},
         }
         # Provide minimal room data expected by get_room_description and HTML
-        user_data.update({
+        room_data = {
             'hall': {'size_sqft': 200.0, 'fans': 1, 'ac': True, 'color_theme': 'White', 'is_for_kids': False},
             'kitchen': {'size_sqft': 100.0, 'chimney_width': '60 cm', 'num_burners': 3, 'small_fan': True, 'color_theme': 'Grey', 'is_for_kids': False},
             'dining': {'size_sqft': 120.0, 'fans': 1, 'ac': False, 'color_theme': 'Grey', 'is_for_kids': False},
@@ -2836,19 +3019,27 @@ def generate_default_recommendations(
                 'size_sqft': 120.0, 'ac': True, 'color_theme': 'White', 'is_for_kids': False,
                 'bathroom': {'water_heater_type': 'Shower', 'exhaust_fan_size': '150mm', 'water_heater_ceiling': 'No', 'led_mirror': True, 'glass_partition': False}
             },
-            'bedroom_3': {
+        }
+        
+        # Only add bedroom_3 for 3BHK configurations
+        if bhk == '3BHK':
+            room_data['bedroom_3'] = {
                 'size_sqft': 120.0, 'ac': True, 'color_theme': 'White', 'is_for_kids': False,
                 'bathroom': {'water_heater_type': 'Shower', 'exhaust_fan_size': '150mm', 'water_heater_ceiling': 'No', 'led_mirror': True, 'glass_partition': False}
-            },
-        })
+            }
 
-        # Initialize recommendations with all expected rooms
+        user_data.update(room_data)
+
+        # Initialize recommendations with expected rooms (based on BHK)
         recommendations = {
             'hall': {}, 'kitchen': {}, 'dining': {}, 'laundry': {},
             'master_bedroom': {'bathroom': {}},
             'bedroom_2': {'bathroom': {}},
-            'bedroom_3': {'bathroom': {}},
         }
+        
+        # Only add bedroom_3 for 3BHK configurations
+        if bhk == '3BHK':
+            recommendations['bedroom_3'] = {'bathroom': {}}
 
         # If tier is chosen, apply Default List semantics with per-category handling
         if selected_tier:
@@ -2883,13 +3074,19 @@ def generate_default_recommendations(
             tiered_products = list(enriched_products)
             print(f"[defaults] Tier=None, using all curated products: {len(tiered_products)}")
 
+        # Determine which bedrooms to include based on BHK
+        bedroom_keys = ['master_bedroom', 'bedroom_2']
+        if bhk == '3BHK':
+            bedroom_keys.append('bedroom_3')
+        print(f"[defaults] Using bedrooms for {bhk}: {bedroom_keys}")
+
         for p in tiered_products:
             category_name = p.get('category', '').strip()
             if not category_name:
                 continue
-            # Bathroom-nested categories go under each bedroom's bathroom
+            # Bathroom-nested categories go under each bedroom's bathroom (respecting BHK)
             if category_name in bathroom_nested_categories:
-                for room_key in ['master_bedroom', 'bedroom_2', 'bedroom_3']:
+                for room_key in bedroom_keys:  # Only include bedrooms for this BHK
                     bathroom = recommendations[room_key].setdefault('bathroom', {})
                     bathroom.setdefault(category_name, []).append(p)
                 continue
@@ -2897,6 +3094,9 @@ def generate_default_recommendations(
             target_rooms = category_to_rooms.get(category_name)
             if target_rooms:
                 for room_key in target_rooms:
+                    # Filter bedroom_3 for 2BHK configurations
+                    if room_key == 'bedroom_3' and bhk == '2BHK':
+                        continue
                     recommendations[room_key].setdefault(category_name, []).append(p)
             else:
                 # If no mapping, place under hall by default
@@ -2907,7 +3107,11 @@ def generate_default_recommendations(
             if category_name == 'Air Conditioner':
                 return 1
             if category_name == 'Ceiling Fan':
-                return 2 if room_key == 'hall' else 1
+                if room_key == 'hall':
+                    # For 2BHK: 1 fan, for 3BHK: 2 fans
+                    return 1 if bhk == '2BHK' else 2
+                else:
+                    return 1
             if category_name == 'Chimney':
                 return 1 if room_key == 'kitchen' else 0
             if category_name == 'Washing Machine':
@@ -2953,7 +3157,7 @@ def generate_default_recommendations(
             items_list.sort(key=priority_of)
             return items_list[0]
 
-        for room_key in ['master_bedroom', 'bedroom_2', 'bedroom_3']:
+        for room_key in bedroom_keys:  # Use the BHK-filtered bedroom list
             bathroom = recommendations.get(room_key, {}).get('bathroom')
             if not isinstance(bathroom, dict):
                 continue
