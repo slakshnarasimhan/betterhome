@@ -151,16 +151,18 @@
                     <div class="col-md-6 mb-3">
                         <label for="bedrooms" class="form-label required">Number of bedrooms</label>
                         <select class="form-select" id="bedrooms" name="bedrooms" required>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                        </select>
+                        <option value="2" {{ 'selected' if extracted_specs.get('bedrooms') == '2' else '' }}>2</option>
+                        <option value="3" {{ 'selected' if extracted_specs.get('bedrooms') == '3' else '' }}>3</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedrooms') == 'Not needed' else '' }}>Not needed</option>
+                    </select>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="bathrooms" class="form-label required">Number of bathrooms</label>
                         <select class="form-select" id="bathrooms" name="bathrooms" required>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                        </select>
+                        <option value="2" {{ 'selected' if extracted_specs.get('bathrooms') == '2' else '' }}>2</option>
+                        <option value="3" {{ 'selected' if extracted_specs.get('bathrooms') == '3' else '' }}>3</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bathrooms') == 'Not needed' else '' }}>Not needed</option>
+                    </select>
                     </div>
                 </div>
             </div>
@@ -171,29 +173,32 @@
                 <div class="mb-3">
                     <label for="hall_fans" class="form-label required">Hall: Fan(s)?</label>
                     <select class="form-select" id="hall_fans" name="hall_fans" required>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
+                        <option value="1" {{ 'selected' if extracted_specs.get('hall_fans') == '1' else '' }}>1</option>
+                        <option value="2" {{ 'selected' if extracted_specs.get('hall_fans') == '2' else '' }}>2</option>
+                        <option value="3" {{ 'selected' if extracted_specs.get('hall_fans') == '3' else '' }}>3</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('hall_fans') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="hall_ac" class="form-label required">Hall: Air Conditioner (AC)?</label>
                     <select class="form-select" id="hall_ac" name="hall_ac" required>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('hall_ac') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('hall_ac') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('hall_ac') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="hall_color" class="form-label required">Hall: Colour theme?</label>
                     <select class="form-select" id="hall_color" name="hall_color" required>
-                        <option value="">Select color theme</option>
-                        <option value="White">White</option>
-                        <option value="Brown">Brown</option>
-                        <option value="Grey">Grey</option>
-                        <option value="Blue">Blue</option>
-                        <option value="Green">Green</option>
-                        <option value="Yellow">Yellow</option>
-                        <option value="Other">Other</option>
+                        <option value="" {{ 'selected' if extracted_specs.get('hall_color') == '' else '' }}>Select color theme</option>
+                        <option value="White" {{ 'selected' if extracted_specs.get('hall_color') == 'White' else '' }}>White</option>
+                        <option value="Brown" {{ 'selected' if extracted_specs.get('hall_color') == 'Brown' else '' }}>Brown</option>
+                        <option value="Grey" {{ 'selected' if extracted_specs.get('hall_color') == 'Grey' else '' }}>Grey</option>
+                        <option value="Blue" {{ 'selected' if extracted_specs.get('hall_color') == 'Blue' else '' }}>Blue</option>
+                        <option value="Green" {{ 'selected' if extracted_specs.get('hall_color') == 'Green' else '' }}>Green</option>
+                        <option value="Yellow" {{ 'selected' if extracted_specs.get('hall_color') == 'Yellow' else '' }}>Yellow</option>
+                        <option value="Other" {{ 'selected' if extracted_specs.get('hall_color') == 'Other' else '' }}>Other</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('hall_color') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -212,105 +217,130 @@
                 <div class="mb-3">
                     <label class="form-label required">Kitchen: Chimney width?</label>
                     <div>
-                        <input type="radio" id="chimney_60" name="kitchen_chimney" value="60 cm" required>
+                        <input type="radio" id="chimney_60" name="kitchen_chimney" value="60 cm" required {{ 'checked' if extracted_specs.get('kitchen_chimney') == '60 cm' else '' }}>
                         <label for="chimney_60">60 cm</label>
                     </div>
                     <div>
-                        <input type="radio" id="chimney_75" name="kitchen_chimney" value="75 cm">
+                        <input type="radio" id="chimney_75" name="kitchen_chimney" value="75 cm" {{ 'checked' if extracted_specs.get('kitchen_chimney') == '75 cm' else '' }}>
                         <label for="chimney_75">75 cm</label>
                     </div>
                     <div>
-                        <input type="radio" id="chimney_90" name="kitchen_chimney" value="90 cm">
+                        <input type="radio" id="chimney_90" name="kitchen_chimney" value="90 cm" {{ 'checked' if extracted_specs.get('kitchen_chimney') == '90 cm' else '' }}>
                         <label for="chimney_90">90 cm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="chimney_not_needed" name="kitchen_chimney" value="Not needed">
+                        <label for="chimney_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label required">Kitchen: Gas stove type?</label>
                     <div>
-                        <input type="radio" id="stove_cooktop" name="kitchen_stove" value="Cooktop" required>
+                        <input type="radio" id="stove_cooktop" name="kitchen_stove" value="Cooktop" required {{ 'checked' if extracted_specs.get('kitchen_stove') == 'Cooktop' else '' }}>
                         <label for="stove_cooktop">Cooktop</label>
                     </div>
                     <div>
-                        <input type="radio" id="stove_hob" name="kitchen_stove" value="Hob (built-in) - placed inside">
+                        <input type="radio" id="stove_hob" name="kitchen_stove" value="Hob (built-in) - placed inside" {{ 'checked' if extracted_specs.get('kitchen_stove') == 'Hob (built-in) - placed inside' else '' }}>
                         <label for="stove_hob">Hob (built-in) - placed inside</label>
                     </div>
                     <div>
-                        <input type="radio" id="stove_not_needed" name="kitchen_stove" value="Not needed">
+                        <input type="radio" id="stove_not_needed" name="kitchen_stove" value="Not needed" {{ 'checked' if extracted_specs.get('kitchen_stove') == 'Not needed' else '' }}>
                         <label for="stove_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label for="kitchen_burners" class="form-label required">Kitchen: Number of burners?</label>
                     <div>
-                        <input type="radio" id="kitchen_burners_3" name="kitchen_burners" value="3" required>
+                        <input type="radio" id="kitchen_burners_3" name="kitchen_burners" value="3" required {{ 'checked' if extracted_specs.get('kitchen_burners') == '3' else '' }}>
                         <label for="kitchen_burners_3">3</label>
                     </div>
                     <div>
-                        <input type="radio" id="kitchen_burners_4" name="kitchen_burners" value="4">
+                        <input type="radio" id="kitchen_burners_4" name="kitchen_burners" value="4" {{ 'checked' if extracted_specs.get('kitchen_burners') == '4' else '' }}>
                         <label for="kitchen_burners_4">4</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="kitchen_burners_not_needed" name="kitchen_burners" value="Not needed">
+                        <label for="kitchen_burners_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Kitchen: Stove width?</label>
                     <div>
-                        <input type="radio" id="kitchen_stove_width_60" name="kitchen_stove_width" value="60 cm">
+                        <input type="radio" id="kitchen_stove_width_60" name="kitchen_stove_width" value="60 cm" {{ 'checked' if extracted_specs.get('kitchen_stove_width') == '60 cm' else '' }}>
                         <label for="kitchen_stove_width_60">60 cm</label>
                     </div>
                     <div>
-                        <input type="radio" id="kitchen_stove_width_75" name="kitchen_stove_width" value="75 cm">
+                        <input type="radio" id="kitchen_stove_width_75" name="kitchen_stove_width" value="75 cm" {{ 'checked' if extracted_specs.get('kitchen_stove_width') == '75 cm' else '' }}>
                         <label for="kitchen_stove_width_75">75 cm</label>
                     </div>
                     <div>
-                        <input type="radio" id="kitchen_stove_width_90" name="kitchen_stove_width" value="90 cm">
+                        <input type="radio" id="kitchen_stove_width_90" name="kitchen_stove_width" value="90 cm" {{ 'checked' if extracted_specs.get('kitchen_stove_width') == '90 cm' else '' }}>
                         <label for="kitchen_stove_width_90">90 cm</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="kitchen_stove_width_not_needed" name="kitchen_stove_width" value="Not needed">
+                        <label for="kitchen_stove_width_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label for="kitchen_fan" class="form-label required">Kitchen: Do you need a small fan?</label>
                     <select class="form-select" id="kitchen_fan" name="kitchen_fan" required>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('kitchen_fan') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('kitchen_fan') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('kitchen_fan') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Kitchen: Dishwasher capacity?</label>
                     <div>
-                        <input type="radio" id="dishwasher_14" name="kitchen_dishwasher_capacity" value="14 place sittings">
+                        <input type="radio" id="dishwasher_14" name="kitchen_dishwasher_capacity" value="14 place sittings" {{ 'checked' if extracted_specs.get('kitchen_dishwasher_capacity') == '14 place sittings' else '' }}>
                         <label for="dishwasher_14">14 place sittings</label>
                     </div>
                     <div>
-                        <input type="radio" id="dishwasher_15" name="kitchen_dishwasher_capacity" value="15 place sittings">
+                        <input type="radio" id="dishwasher_15" name="kitchen_dishwasher_capacity" value="15 place sittings" {{ 'checked' if extracted_specs.get('kitchen_dishwasher_capacity') == '15 place sittings' else '' }}>
                         <label for="dishwasher_15">15 place sittings</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="dishwasher_not_needed" name="kitchen_dishwasher_capacity" value="Not needed">
+                        <label for="dishwasher_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Kitchen: Refrigerator type?</label>
                     <div>
-                        <input type="radio" id="fridge_double_top" name="kitchen_refrigerator_type" value="Double door - top freezer">
+                        <input type="radio" id="fridge_double_top" name="kitchen_refrigerator_type" value="Double door - top freezer" {{ 'checked' if extracted_specs.get('kitchen_refrigerator_type') == 'Double door - top freezer' else '' }}>
                         <label for="fridge_double_top">Double door - top freezer</label>
                     </div>
                     <div>
-                        <input type="radio" id="fridge_double_bottom" name="kitchen_refrigerator_type" value="Double door - bottom freezer">
+                        <input type="radio" id="fridge_double_bottom" name="kitchen_refrigerator_type" value="Double door - bottom freezer" {{ 'checked' if extracted_specs.get('kitchen_refrigerator_type') == 'Double door - bottom freezer' else '' }}>
                         <label for="fridge_double_bottom">Double door - bottom freezer</label>
                     </div>
                     <div>
-                        <input type="radio" id="fridge_side_by_side" name="kitchen_refrigerator_type" value="Side by Side">
+                        <input type="radio" id="fridge_side_by_side" name="kitchen_refrigerator_type" value="Side by Side" {{ 'checked' if extracted_specs.get('kitchen_refrigerator_type') == 'Side by Side' else '' }}>
                         <label for="fridge_side_by_side">Side by Side</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="fridge_not_needed" name="kitchen_refrigerator_type" value="Not needed">
+                        <label for="fridge_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Kitchen: Refrigerator capacity?</label>
                     <div>
-                        <input type="radio" id="fridge_capacity_250_300" name="kitchen_refrigerator_capacity" value="250 to 300 litres">
+                        <input type="radio" id="fridge_capacity_250_300" name="kitchen_refrigerator_capacity" value="250 to 300 litres" {{ 'checked' if extracted_specs.get('kitchen_refrigerator_capacity') == '250 to 300 litres' else '' }}>
                         <label for="fridge_capacity_250_300">250 to 300 litres</label>
                     </div>
                     <div>
-                        <input type="radio" id="fridge_capacity_300_400" name="kitchen_refrigerator_capacity" value="300 to 400 litres">
+                        <input type="radio" id="fridge_capacity_300_400" name="kitchen_refrigerator_capacity" value="300 to 400 litres" {{ 'checked' if extracted_specs.get('kitchen_refrigerator_capacity') == '300 to 400 litres' else '' }}>
                         <label for="fridge_capacity_300_400">300 to 400 litres</label>
                     </div>
                     <div>
-                        <input type="radio" id="fridge_capacity_400_600" name="kitchen_refrigerator_capacity" value="400 to 600 litres">
+                        <input type="radio" id="fridge_capacity_400_600" name="kitchen_refrigerator_capacity" value="400 to 600 litres" {{ 'checked' if extracted_specs.get('kitchen_refrigerator_capacity') == '400 to 600 litres' else '' }}>
                         <label for="fridge_capacity_400_600">400 to 600 litres</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="fridge_capacity_not_needed" name="kitchen_refrigerator_capacity" value="Not needed">
+                        <label for="fridge_capacity_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -325,66 +355,80 @@
                 <div class="mb-3">
                     <label for="master_ac" class="form-label required">Master: Air Conditioner (AC)?</label>
                     <select class="form-select" id="master_ac" name="master_ac" required>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('master_ac') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('master_ac') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('master_ac') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label required">Master: How do you mix the hot & cold water for bathing? (Helps to determine the capacity for the water heater.)</label>
                     <div>
-                        <input type="radio" id="master_water_shower" name="master_water" value="Shower" required>
+                        <input type="radio" id="master_water_shower" name="master_water" value="Shower" required {{ 'checked' if extracted_specs.get('master_water') == 'Shower' else '' }}>
                         <label for="master_water_shower">Shower</label>
                     </div>
                     <div>
-                        <input type="radio" id="master_water_bucket" name="master_water" value="Bucket">
+                        <input type="radio" id="master_water_bucket" name="master_water" value="Bucket" {{ 'checked' if extracted_specs.get('master_water') == 'Bucket' else '' }}>
                         <label for="master_water_bucket">Bucket (typically 20 litres)</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_water_not_needed" name="master_water" value="Not needed">
+                        <label for="master_water_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label required">Master: Exhaust fan size?</label>
                     <div>
-                        <input type="radio" id="master_exhaust_150" name="master_exhaust_size" value="150mm" required>
+                        <input type="radio" id="master_exhaust_150" name="master_exhaust_size" value="150mm" required {{ 'checked' if extracted_specs.get('master_exhaust_size') == '150mm' else '' }}>
                         <label for="master_exhaust_150">150mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="master_exhaust_200" name="master_exhaust_size" value="200mm">
+                        <input type="radio" id="master_exhaust_200" name="master_exhaust_size" value="200mm" {{ 'checked' if extracted_specs.get('master_exhaust_size') == '200mm' else '' }}>
                         <label for="master_exhaust_200">200mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="master_exhaust_250" name="master_exhaust_size" value="250mm">
+                        <input type="radio" id="master_exhaust_250" name="master_exhaust_size" value="250mm" {{ 'checked' if extracted_specs.get('master_exhaust_size') == '250mm' else '' }}>
                         <label for="master_exhaust_250">250mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="master_exhaust_unknown" name="master_exhaust_size" value="I Don't Know">
+                        <input type="radio" id="master_exhaust_unknown" name="master_exhaust_size" value="I Don't Know" {{ 'checked' if extracted_specs.get('master_exhaust_size') == 'I Don\'t Know' else '' }}>
                         <label for="master_exhaust_unknown">I Don't Know</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_exhaust_not_needed" name="master_exhaust_size" value="Not needed">
+                        <label for="master_exhaust_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Master: Exhaust fan colour?</label>
                     <div>
-                        <input type="radio" id="master_exhaust_white" name="master_exhaust_color" value="White">
+                        <input type="radio" id="master_exhaust_white" name="master_exhaust_color" value="White" {{ 'checked' if extracted_specs.get('master_exhaust_color') == 'White' else '' }}>
                         <label for="master_exhaust_white">White</label>
                     </div>
                     <div>
-                        <input type="radio" id="master_exhaust_black" name="master_exhaust_color" value="Black">
+                        <input type="radio" id="master_exhaust_black" name="master_exhaust_color" value="Black" {{ 'checked' if extracted_specs.get('master_exhaust_color') == 'Black' else '' }}>
                         <label for="master_exhaust_black">Black</label>
                     </div>
                     <div>
-                        <input type="radio" id="master_exhaust_brown" name="master_exhaust_color" value="Brown">
+                        <input type="radio" id="master_exhaust_brown" name="master_exhaust_color" value="Brown" {{ 'checked' if extracted_specs.get('master_exhaust_color') == 'Brown' else '' }}>
                         <label for="master_exhaust_brown">Brown</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="master_exhaust_color_not_needed" name="master_exhaust_color" value="Not needed">
+                        <label for="master_exhaust_color_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label for="master_color" class="form-label required">Master: What is the colour theme?</label>
                     <select class="form-select" id="master_color" name="master_color" required>
                         <option value="">Select color theme</option>
-                        <option value="White">White</option>
-                        <option value="Brown">Brown</option>
-                        <option value="Grey">Grey</option>
-                        <option value="Blue">Blue</option>
-                        <option value="Green">Green</option>
-                        <option value="Yellow">Yellow</option>
-                        <option value="Other">Other</option>
+                        <option value="White" {{ 'selected' if extracted_specs.get('master_color') == 'White' else '' }}>White</option>
+                        <option value="Brown" {{ 'selected' if extracted_specs.get('master_color') == 'Brown' else '' }}>Brown</option>
+                        <option value="Grey" {{ 'selected' if extracted_specs.get('master_color') == 'Grey' else '' }}>Grey</option>
+                        <option value="Blue" {{ 'selected' if extracted_specs.get('master_color') == 'Blue' else '' }}>Blue</option>
+                        <option value="Green" {{ 'selected' if extracted_specs.get('master_color') == 'Green' else '' }}>Green</option>
+                        <option value="Yellow" {{ 'selected' if extracted_specs.get('master_color') == 'Yellow' else '' }}>Yellow</option>
+                        <option value="Other" {{ 'selected' if extracted_specs.get('master_color') == 'Other' else '' }}>Other</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('master_color') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -394,22 +438,25 @@
                 <div class="mb-3">
                     <label for="master_bathroom_for_elders" class="form-label">Master: Do you want a Glass Partition in the bathroom?</label>
                     <select class="form-select" id="master_bathroom_for_elders" name="master_bathroom_for_elders">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('master_bathroom_for_elders') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('master_bathroom_for_elders') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('master_bathroom_for_elders') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="master_water_heater_ceiling" class="form-label">Master: Is the water heater going to be inside the false ceiling in the bathroom?</label>
                     <select class="form-select" id="master_water_heater_ceiling" name="master_water_heater_ceiling">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('master_water_heater_ceiling') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('master_water_heater_ceiling') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('master_water_heater_ceiling') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="master_led_mirror" class="form-label">Master: Would you like to have a LED Mirror?</label>
                     <select class="form-select" id="master_led_mirror" name="master_led_mirror">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('master_led_mirror') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('master_led_mirror') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('master_led_mirror') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -424,66 +471,80 @@
                 <div class="mb-3">
                     <label for="bedroom2_ac" class="form-label required">Bedroom 2: Air Conditioner (AC)?</label>
                     <select class="form-select" id="bedroom2_ac" name="bedroom2_ac" required>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom2_ac') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom2_ac') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom2_ac') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label required">Bedroom 2: How do you mix the hot & cold water for bathing? (Helps to determine the capacity for the water heater.)</label>
                     <div>
-                        <input type="radio" id="bedroom2_water_shower" name="bedroom2_water" value="Shower" required>
+                        <input type="radio" id="bedroom2_water_shower" name="bedroom2_water" value="Shower" required {{ 'checked' if extracted_specs.get('bedroom2_water') == 'Shower' else '' }}>
                         <label for="bedroom2_water_shower">Shower</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom2_water_bucket" name="bedroom2_water" value="Bucket">
+                        <input type="radio" id="bedroom2_water_bucket" name="bedroom2_water" value="Bucket" {{ 'checked' if extracted_specs.get('bedroom2_water') == 'Bucket' else '' }}>
                         <label for="bedroom2_water_bucket">Bucket (typically 20 litres)</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_water_not_needed" name="bedroom2_water" value="Not needed">
+                        <label for="bedroom2_water_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label required">Bedroom 2: Exhaust fan size?</label>
                     <div>
-                        <input type="radio" id="bedroom2_exhaust_150" name="bedroom2_exhaust_size" value="150mm" required>
+                        <input type="radio" id="bedroom2_exhaust_150" name="bedroom2_exhaust_size" value="150mm" required {{ 'checked' if extracted_specs.get('bedroom2_exhaust_size') == '150mm' else '' }}>
                         <label for="bedroom2_exhaust_150">150mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom2_exhaust_200" name="bedroom2_exhaust_size" value="200mm">
+                        <input type="radio" id="bedroom2_exhaust_200" name="bedroom2_exhaust_size" value="200mm" {{ 'checked' if extracted_specs.get('bedroom2_exhaust_size') == '200mm' else '' }}>
                         <label for="bedroom2_exhaust_200">200mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom2_exhaust_250" name="bedroom2_exhaust_size" value="250mm">
+                        <input type="radio" id="bedroom2_exhaust_250" name="bedroom2_exhaust_size" value="250mm" {{ 'checked' if extracted_specs.get('bedroom2_exhaust_size') == '250mm' else '' }}>
                         <label for="bedroom2_exhaust_250">250mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom2_exhaust_unknown" name="bedroom2_exhaust_size" value="I Don't Know">
+                        <input type="radio" id="bedroom2_exhaust_unknown" name="bedroom2_exhaust_size" value="I Don't Know" {{ 'checked' if extracted_specs.get('bedroom2_exhaust_size') == 'I Don\'t Know' else '' }}>
                         <label for="bedroom2_exhaust_unknown">I Don't Know</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_not_needed" name="bedroom2_exhaust_size" value="Not needed">
+                        <label for="bedroom2_exhaust_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Bedroom 2: Exhaust fan colour?</label>
                     <div>
-                        <input type="radio" id="bedroom2_exhaust_white" name="bedroom2_exhaust_color" value="White">
+                        <input type="radio" id="bedroom2_exhaust_white" name="bedroom2_exhaust_color" value="White" {{ 'checked' if extracted_specs.get('bedroom2_exhaust_color') == 'White' else '' }}>
                         <label for="bedroom2_exhaust_white">White</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom2_exhaust_black" name="bedroom2_exhaust_color" value="Black">
+                        <input type="radio" id="bedroom2_exhaust_black" name="bedroom2_exhaust_color" value="Black" {{ 'checked' if extracted_specs.get('bedroom2_exhaust_color') == 'Black' else '' }}>
                         <label for="bedroom2_exhaust_black">Black</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom2_exhaust_brown" name="bedroom2_exhaust_color" value="Brown">
+                        <input type="radio" id="bedroom2_exhaust_brown" name="bedroom2_exhaust_color" value="Brown" {{ 'checked' if extracted_specs.get('bedroom2_exhaust_color') == 'Brown' else '' }}>
                         <label for="bedroom2_exhaust_brown">Brown</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom2_exhaust_color_not_needed" name="bedroom2_exhaust_color" value="Not needed">
+                        <label for="bedroom2_exhaust_color_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom2_color" class="form-label required">Bedroom 2: What is the colour theme?</label>
                     <select class="form-select" id="bedroom2_color" name="bedroom2_color" required>
-                        <option value="">Select color theme</option>
-                        <option value="White">White</option>
-                        <option value="Brown">Brown</option>
-                        <option value="Grey">Grey</option>
-                        <option value="Blue">Blue</option>
-                        <option value="Green">Green</option>
-                        <option value="Yellow">Yellow</option>
-                        <option value="Other">Other</option>
+                        <option value="" {{ 'selected' if extracted_specs.get('bedroom2_color') == '' else '' }}>Select color theme</option>
+                        <option value="White" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'White' else '' }}>White</option>
+                        <option value="Brown" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'Brown' else '' }}>Brown</option>
+                        <option value="Grey" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'Grey' else '' }}>Grey</option>
+                        <option value="Blue" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'Blue' else '' }}>Blue</option>
+                        <option value="Green" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'Green' else '' }}>Green</option>
+                        <option value="Yellow" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'Yellow' else '' }}>Yellow</option>
+                        <option value="Other" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'Other' else '' }}>Other</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom2_color') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -493,29 +554,33 @@
                 <div class="mb-3">
                     <label for="bedroom2_for_kids" class="form-label">Bedroom 2: Is this room for kids?</label>
                     <select class="form-select" id="bedroom2_for_kids" name="bedroom2_for_kids">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom2_for_kids') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom2_for_kids') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom2_for_kids') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom2_water_heater_ceiling" class="form-label">Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?</label>
                     <select class="form-select" id="bedroom2_water_heater_ceiling" name="bedroom2_water_heater_ceiling">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom2_water_heater_ceiling') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom2_water_heater_ceiling') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom2_water_heater_ceiling') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom2_bathroom_for_elders" class="form-label">Bedroom 2: Do you want a Glass Partition in the bathroom?</label>
                     <select class="form-select" id="bedroom2_bathroom_for_elders" name="bedroom2_bathroom_for_elders">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom2_bathroom_for_elders') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom2_bathroom_for_elders') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom2_bathroom_for_elders') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom2_led_mirror" class="form-label">Bedroom 2: Would you like to have a LED Mirror?</label>
                     <select class="form-select" id="bedroom2_led_mirror" name="bedroom2_led_mirror">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom2_led_mirror') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom2_led_mirror') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom2_led_mirror') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -530,66 +595,80 @@
                 <div class="mb-3">
                     <label for="bedroom3_ac" class="form-label">Bedroom 3: Air Conditioner (AC)?</label>
                     <select class="form-select" id="bedroom3_ac" name="bedroom3_ac">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom3_ac') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom3_ac') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom3_ac') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Bedroom 3: How do you mix the hot & cold water for bathing? (Helps to determine the capacity for the water heater.)</label>
                     <div>
-                        <input type="radio" id="bedroom3_water_shower" name="bedroom3_water" value="Shower">
+                        <input type="radio" id="bedroom3_water_shower" name="bedroom3_water" value="Shower" {{ 'checked' if extracted_specs.get('bedroom3_water') == 'Shower' else '' }}>
                         <label for="bedroom3_water_shower">Shower</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom3_water_bucket" name="bedroom3_water" value="Bucket">
+                        <input type="radio" id="bedroom3_water_bucket" name="bedroom3_water" value="Bucket" {{ 'checked' if extracted_specs.get('bedroom3_water') == 'Bucket' else '' }}>
                         <label for="bedroom3_water_bucket">Bucket (typically 20 litres)</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_water_not_needed" name="bedroom3_water" value="Not needed">
+                        <label for="bedroom3_water_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Bedroom 3: Exhaust fan size?</label>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_150" name="bedroom3_exhaust_size" value="150mm">
+                        <input type="radio" id="bedroom3_exhaust_150" name="bedroom3_exhaust_size" value="150mm" {{ 'checked' if extracted_specs.get('bedroom3_exhaust_size') == '150mm' else '' }}>
                         <label for="bedroom3_exhaust_150">150mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_200" name="bedroom3_exhaust_size" value="200mm">
+                        <input type="radio" id="bedroom3_exhaust_200" name="bedroom3_exhaust_size" value="200mm" {{ 'checked' if extracted_specs.get('bedroom3_exhaust_size') == '200mm' else '' }}>
                         <label for="bedroom3_exhaust_200">200mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_250" name="bedroom3_exhaust_size" value="250mm">
+                        <input type="radio" id="bedroom3_exhaust_250" name="bedroom3_exhaust_size" value="250mm" {{ 'checked' if extracted_specs.get('bedroom3_exhaust_size') == '250mm' else '' }}>
                         <label for="bedroom3_exhaust_250">250mm</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_unknown" name="bedroom3_exhaust_size" value="I Don't Know">
+                        <input type="radio" id="bedroom3_exhaust_unknown" name="bedroom3_exhaust_size" value="I Don't Know" {{ 'checked' if extracted_specs.get('bedroom3_exhaust_size') == 'I Don\'t Know' else '' }}>
                         <label for="bedroom3_exhaust_unknown">I Don't Know</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_not_needed" name="bedroom3_exhaust_size" value="Not needed">
+                        <label for="bedroom3_exhaust_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Bedroom 3: Exhaust fan colour?</label>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_white" name="bedroom3_exhaust_color" value="White">
+                        <input type="radio" id="bedroom3_exhaust_white" name="bedroom3_exhaust_color" value="White" {{ 'checked' if extracted_specs.get('bedroom3_exhaust_color') == 'White' else '' }}>
                         <label for="bedroom3_exhaust_white">White</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_black" name="bedroom3_exhaust_color" value="Black">
+                        <input type="radio" id="bedroom3_exhaust_black" name="bedroom3_exhaust_color" value="Black" {{ 'checked' if extracted_specs.get('bedroom3_exhaust_color') == 'Black' else '' }}>
                         <label for="bedroom3_exhaust_black">Black</label>
                     </div>
                     <div>
-                        <input type="radio" id="bedroom3_exhaust_brown" name="bedroom3_exhaust_color" value="Brown">
+                        <input type="radio" id="bedroom3_exhaust_brown" name="bedroom3_exhaust_color" value="Brown" {{ 'checked' if extracted_specs.get('bedroom3_exhaust_color') == 'Brown' else '' }}>
                         <label for="bedroom3_exhaust_brown">Brown</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="bedroom3_exhaust_color_not_needed" name="bedroom3_exhaust_color" value="Not needed">
+                        <label for="bedroom3_exhaust_color_not_needed">Not needed</label>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom3_color" class="form-label">Bedroom 3: What is the colour theme?</label>
                     <select class="form-select" id="bedroom3_color" name="bedroom3_color">
-                        <option value="">Select color theme</option>
-                        <option value="White">White</option>
-                        <option value="Brown">Brown</option>
-                        <option value="Grey">Grey</option>
-                        <option value="Blue">Blue</option>
-                        <option value="Green">Green</option>
-                        <option value="Yellow">Yellow</option>
-                        <option value="Other">Other</option>
+                        <option value="" {{ 'selected' if extracted_specs.get('bedroom3_color') == '' else '' }}>Select color theme</option>
+                        <option value="White" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'White' else '' }}>White</option>
+                        <option value="Brown" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'Brown' else '' }}>Brown</option>
+                        <option value="Grey" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'Grey' else '' }}>Grey</option>
+                        <option value="Blue" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'Blue' else '' }}>Blue</option>
+                        <option value="Green" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'Green' else '' }}>Green</option>
+                        <option value="Yellow" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'Yellow' else '' }}>Yellow</option>
+                        <option value="Other" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'Other' else '' }}>Other</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom3_color') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -599,29 +678,33 @@
                 <div class="mb-3">
                     <label for="bedroom3_for_kids" class="form-label">Bedroom 3: Is this room for kids?</label>
                     <select class="form-select" id="bedroom3_for_kids" name="bedroom3_for_kids">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom3_for_kids') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom3_for_kids') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom3_for_kids') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom3_water_heater_ceiling" class="form-label">Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?</label>
                     <select class="form-select" id="bedroom3_water_heater_ceiling" name="bedroom3_water_heater_ceiling">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom3_water_heater_ceiling') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom3_water_heater_ceiling') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom3_water_heater_ceiling') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom3_bathroom_for_elders" class="form-label">Bedroom 3: Do you want a Glass Partition in the bathroom?</label>
                     <select class="form-select" id="bedroom3_bathroom_for_elders" name="bedroom3_bathroom_for_elders">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom3_bathroom_for_elders') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom3_bathroom_for_elders') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom3_bathroom_for_elders') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="bedroom3_led_mirror" class="form-label">Bedroom 3: Would you like to have a LED Mirror?</label>
                     <select class="form-select" id="bedroom3_led_mirror" name="bedroom3_led_mirror">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('bedroom3_led_mirror') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('bedroom3_led_mirror') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('bedroom3_led_mirror') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -651,8 +734,9 @@
                 <div class="mb-3">
                     <label for="laundry_dryer" class="form-label required">Laundry: Dryer?</label>
                     <select class="form-select" id="laundry_dryer" name="laundry_dryer" required>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('laundry_dryer') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('laundry_dryer') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('laundry_dryer') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
             </div>
@@ -675,21 +759,23 @@
                 <div class="mb-3">
                     <label for="dining_ac" class="form-label required">Dining: Air Conditioner (AC)?</label>
                     <select class="form-select" id="dining_ac" name="dining_ac" required>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes" {{ 'selected' if extracted_specs.get('dining_ac') == 'Yes' else '' }}>Yes</option>
+                        <option value="No" {{ 'selected' if extracted_specs.get('dining_ac') == 'No' else '' }}>No</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('dining_ac') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="dining_color" class="form-label">Dining: Colour theme?</label>
                     <select class="form-select" id="dining_color" name="dining_color">
-                        <option value="">Select color theme</option>
-                        <option value="White">White</option>
-                        <option value="Brown">Brown</option>
-                        <option value="Grey">Grey</option>
-                        <option value="Blue">Blue</option>
-                        <option value="Green">Green</option>
-                        <option value="Yellow">Yellow</option>
-                        <option value="Other">Other</option>
+                        <option value="" {{ 'selected' if extracted_specs.get('dining_color') == '' else '' }}>Select color theme</option>
+                        <option value="White" {{ 'selected' if extracted_specs.get('dining_color') == 'White' else '' }}>White</option>
+                        <option value="Brown" {{ 'selected' if extracted_specs.get('dining_color') == 'Brown' else '' }}>Brown</option>
+                        <option value="Grey" {{ 'selected' if extracted_specs.get('dining_color') == 'Grey' else '' }}>Grey</option>
+                        <option value="Blue" {{ 'selected' if extracted_specs.get('dining_color') == 'Blue' else '' }}>Blue</option>
+                        <option value="Green" {{ 'selected' if extracted_specs.get('dining_color') == 'Green' else '' }}>Green</option>
+                        <option value="Yellow" {{ 'selected' if extracted_specs.get('dining_color') == 'Yellow' else '' }}>Yellow</option>
+                        <option value="Other" {{ 'selected' if extracted_specs.get('dining_color') == 'Other' else '' }}>Other</option>
+                        <option value="Not needed" {{ 'selected' if extracted_specs.get('dining_color') == 'Not needed' else '' }}>Not needed</option>
                     </select>
                 </div>
             </div>

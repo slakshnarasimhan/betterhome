@@ -1,7 +1,7 @@
 import pandas as pd
 import json
 import yaml
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -1988,19 +1988,23 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
             f.write(f"Why we recommend this:\n{reason}\n\n")
 
         # Kitchen
-        if user_data['kitchen'].get('chimney_width'):
+        if is_appliance_needed(user_data['kitchen'].get('chimney_width')):
             budget_category = get_budget_category(user_data['total_budget'], 'chimney')
             required_features = {'dimensions': user_data['kitchen'].get('chimney_width')}
             recommendations = get_specific_product_recommendations('chimney', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
             final_list['kitchen']['chimney'] = recommendations
+        else:
+            final_list['kitchen']['chimney'] = []
 
-        if user_data['kitchen'].get('refrigerator_capacity'):
+        if is_appliance_needed(user_data['kitchen'].get('refrigerator_capacity')):
             budget_category = get_budget_category(user_data['total_budget'], 'refrigerator')
             required_features = {'capacity': user_data['kitchen'].get('refrigerator_capacity')}
             recommendations = get_specific_product_recommendations('refrigerator', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
             final_list['kitchen']['refrigerator'] = recommendations
+        else:
+            final_list['kitchen']['refrigerator'] = []
 
-        if user_data['kitchen'].get('gas_stove_type'):
+        if is_appliance_needed(user_data['kitchen'].get('gas_stove_type')):
             # Debug: Print the gas stove type from user data
             print(f"[DEBUG GAS STOVE TYPE] User data gas stove type: {user_data['kitchen'].get('gas_stove_type')}")
             # Check for specific gas stove type
@@ -2023,10 +2027,6 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                 print("[DEBUG FINAL_LIST ASSIGN] hob_top after assignment:", [h.get('title', 'No title') for h in final_list['kitchen']['hob_top']])
                 # Clear gas_stove as we're using hob_top instead
                 final_list['kitchen']['gas_stove'] = []
-            elif "not needed" in gas_stove_type.lower():
-                print(f"[DEBUG GAS STOVE] Skipping gas stove recommendation for: '{gas_stove_type}'")
-                final_list['kitchen']['gas_stove'] = []
-                final_list['kitchen']['hob_top'] = []
             else:
                 print(f"[DEBUG GAS STOVE] Recommending regular gas stove for: '{gas_stove_type}'")
                 budget_category = get_budget_category(user_data['total_budget'], 'gas_stove')
@@ -2035,18 +2035,23 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                                                                      user_data['kitchen'].get('color_theme'), user_data, required_features)
                 print(f"[DEBUG GAS STOVE] Got {len(recommendations)} gas_stove recommendations")
                 final_list['kitchen']['gas_stove'] = recommendations
+        else:
+            final_list['kitchen']['gas_stove'] = []
+            final_list['kitchen']['hob_top'] = []
 
-        if user_data['kitchen'].get('small_fan', False):
+        if is_appliance_needed(user_data['kitchen'].get('small_fan')):
             budget_category = get_budget_category(user_data['total_budget'], 'small_fan')
             recommendations = get_specific_product_recommendations('small_fan', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data)
             final_list['kitchen']['small_fan'] = recommendations
+        else:
+            final_list['kitchen']['small_fan'] = []
 
         # Process laundry requirements
         user_selected_wm_type = str(user_data['laundry'].get('washing_machine_type', '')).strip()
 
         # Check if a specific type of washing machine is selected by the user
         # The values from HTML form/Excel are expected to be "Front-Load", "Top-Load", "Semi-Automatic"
-        if user_selected_wm_type and user_selected_wm_type.lower() not in ['yes', 'no', 'none', '', 'not applicable', 'na']:
+        if is_appliance_needed(user_selected_wm_type) and user_selected_wm_type.lower() not in ['yes', 'no', 'none', '', 'not applicable', 'na']:
             budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
 
             required_features = {
@@ -2063,12 +2068,12 @@ def generate_text_file(user_data: Dict[str, Any], final_list: Dict[str, Any], tx
                 required_features
             )
             final_list['laundry']['washing_machine'] = recommendations
-        elif user_selected_wm_type.lower() == 'yes': # Fallback for old 'yes' logic if it's still possible
+        elif is_appliance_needed(user_selected_wm_type) and user_selected_wm_type.lower() == 'yes': # Fallback for old 'yes' logic if it's still possible
             budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
             required_features = {'capacity': estimate_washing_machine_capacity(user_data['demographics'])}
             recommendations = get_specific_product_recommendations('washing_machine', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data, required_features)
             final_list['laundry']['washing_machine'] = recommendations
-        else: # User selected "No", "None", or it's empty, so no washing machine
+        else: # User selected "Not needed", "No", "None", or it's empty, so no washing machine
             final_list['laundry']['washing_machine'] = []
 
 
@@ -2156,7 +2161,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     # Process hall requirements
-    if user_data['hall'].get('ac', False):
+    if is_appliance_needed(user_data['hall'].get('ac')):
         # print(f"[DEBUG] Hall AC requirement: {user_data['hall'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         # Override the hall size to 200 sq ft for proper AC sizing, regardless of what was entered
@@ -2166,11 +2171,15 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         required_features = {'tonnage': f"{recommended_tonnage} Ton"}
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data, required_features)
         final_list['hall']['ac'] = recommendations
+    else:
+        final_list['hall']['ac'] = []
 
-    if user_data['hall'].get('fans', 0) > 0:
+    if is_appliance_needed(user_data['hall'].get('fans')) and user_data['hall'].get('fans', 0) > 0:
         budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan', quantity=user_data['hall']['fans'])
         recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['hall'].get('color_theme'), user_data)
         final_list['hall']['fans'] = recommendations
+    else:
+        final_list['hall']['fans'] = []
 
     # Process kitchen requirements
     if user_data['kitchen'].get('chimney_width'):
@@ -2257,7 +2266,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['kitchen']['small_fan'] = small_fan_recommendations[:3]  # Top 3 matches
 
     # Process master bedroom requirements
-    if user_data['master_bedroom'].get('ac', False):
+    if is_appliance_needed(user_data['master_bedroom'].get('ac')):
         # print(f"[DEBUG] Master Bedroom AC requirement: {user_data['master_bedroom'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         # Calculate the recommended AC tonnage based on room size
@@ -2267,22 +2276,28 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         required_features = {'tonnage': f"{recommended_tonnage} Ton"}
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data, required_features)
         final_list['master_bedroom']['ac'] = recommendations
+    else:
+        final_list['master_bedroom']['ac'] = []
 
-    budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
-    recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
-    final_list['master_bedroom']['fans'] = recommendations
+    # Process master bedroom fans
+    if is_appliance_needed(user_data['master_bedroom'].get('fans')):
+        budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['master_bedroom'].get('color_theme'), user_data)
+        final_list['master_bedroom']['fans'] = recommendations
+    else:
+        final_list['master_bedroom']['fans'] = []
 
     # Process master bedroom bathroom requirements
     master_bath = user_data['master_bedroom'].get('bathroom', {})
     master_bath_type = master_bath.get('water_heater_type', '')
     master_bath_ceiling = master_bath.get('water_heater_ceiling', '')
     geyser_recommendations = []
-    if str(master_bath_type).strip().lower() == 'yes':
+    if is_appliance_needed(master_bath_type):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         # print(f"[DEBUG][Geyser] Calling get_specific_product_recommendations with appliance_type='geyser', budget_category={budget_category}, required_features={{}} (ceiling: {master_bath_ceiling})")
         geyser_recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {}, 'master_bedroom_bathroom')
         # print(f"[DEBUG][Geyser] Number of geyser products returned: {len(geyser_recommendations)}")
-    if str(master_bath_ceiling).strip().lower() == 'yes':
+    if is_appliance_needed(master_bath_ceiling):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         # print(f"[DEBUG][Geyser] (Ceiling) Calling get_specific_product_recommendations with appliance_type='geyser', budget_category={budget_category}, required_features={{'type': 'horizontal'}}")
         geyser_recommendations = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], None, user_data, {'type': 'horizontal'}, 'master_bedroom_bathroom')
@@ -2290,7 +2305,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     final_list['master_bedroom']['bathroom']['water_heater'] = geyser_recommendations
 
     # Process exhaust fan for master (updated to use color)
-    if user_data['master_bedroom'].get('bathroom') and user_data['master_bedroom']['bathroom'].get('exhaust_fan_size'):
+    if user_data['master_bedroom'].get('bathroom') and is_appliance_needed(user_data['master_bedroom']['bathroom'].get('exhaust_fan_size')):
         print("\n=== Master Bedroom Exhaust Fan Debug ===")
         print(f"Exhaust fan size: {user_data['master_bedroom']['bathroom'].get('exhaust_fan_size')}")
         print(f"Exhaust fan color: {user_data['master_bedroom']['bathroom'].get('exhaust_fan_color')}")
@@ -2303,9 +2318,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Found {len(recommendations)} recommendations")
         final_list['master_bedroom']['bathroom']['exhaust_fan'] = recommendations
         print("=== End Master Bedroom Exhaust Fan Debug ===\n")
+    else:
+        final_list['master_bedroom']['bathroom']['exhaust_fan'] = []
 
     # Process bedroom 2 requirements
-    if user_data['bedroom_2'].get('ac', False):
+    if is_appliance_needed(user_data['bedroom_2'].get('ac')):
         # print(f"[DEBUG] Bedroom 2 AC requirement: {user_data['bedroom_2'].get('ac', False)}") # DEBUG
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         # Calculate the recommended AC tonnage based on room size
@@ -2315,20 +2332,26 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         required_features = {'tonnage': f"{recommended_tonnage} Ton"}
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data, required_features)
         final_list['bedroom_2']['ac'] = recommendations
+    else:
+        final_list['bedroom_2']['ac'] = []
 
-    budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
-    recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
-    final_list['bedroom_2']['fans'] = recommendations
+    # Process bedroom 2 fans
+    if is_appliance_needed(user_data['bedroom_2'].get('fans')):
+        budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
+        final_list['bedroom_2']['fans'] = recommendations
+    else:
+        final_list['bedroom_2']['fans'] = []
 
     # Process bedroom 2 bathroom requirements
     bedroom2_bath = user_data['bedroom_2'].get('bathroom', {})
     bedroom2_bath_type = bedroom2_bath.get('water_heater_type', '')
     bedroom2_bath_ceiling = bedroom2_bath.get('water_heater_ceiling', '')
     geyser_recommendations_2 = []
-    if str(bedroom2_bath_type).strip().lower() == 'yes':
+    if is_appliance_needed(bedroom2_bath_type):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         # If ceiling is also yes, prefer horizontal
-        if str(bedroom2_bath_ceiling).strip().lower() == 'yes':
+        if is_appliance_needed(bedroom2_bath_ceiling):
             # First, try to get only horizontal water heaters
             all_geysers = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
             horizontal_geysers = [g for g in all_geysers if is_horizontal_water_heater(g)]
@@ -2339,9 +2362,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         else:
             geyser_recommendations_2 = get_specific_product_recommendations('geyser', budget_category, user_data['demographics'], user_data['bedroom_2'].get('color_theme'), user_data)
         final_list['bedroom_2']['bathroom']['water_heater'] = geyser_recommendations_2
+    else:
+        final_list['bedroom_2']['bathroom']['water_heater'] = []
 
     # Process exhaust fan for bedroom 2 (updated to use color)
-    if user_data['bedroom_2'].get('bathroom') and user_data['bedroom_2']['bathroom'].get('exhaust_fan_size'):
+    if user_data['bedroom_2'].get('bathroom') and is_appliance_needed(user_data['bedroom_2']['bathroom'].get('exhaust_fan_size')):
         print("\n=== Bedroom 2 Exhaust Fan Debug ===")
         print(f"Exhaust fan size: {user_data['bedroom_2']['bathroom'].get('exhaust_fan_size')}")
         print(f"Exhaust fan color: {user_data['bedroom_2']['bathroom'].get('exhaust_fan_color')}")
@@ -2354,12 +2379,14 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Found {len(recommendations)} recommendations")
         final_list['bedroom_2']['bathroom']['exhaust_fan'] = recommendations
         print("=== End Bedroom 2 Exhaust Fan Debug ===\n")
+    else:
+        final_list['bedroom_2']['bathroom']['exhaust_fan'] = []
 
 ######
     # Process bedroom 3 requirements
     num_bedrooms = int(user_data.get('num_bedrooms', user_data.get('Number of bedrooms', 2)))
     if num_bedrooms == 3:
-        if user_data['bedroom_3'].get('ac', False):
+        if is_appliance_needed(user_data['bedroom_3'].get('ac')):
             # print(f"[DEBUG] Bedroom 2 AC requirement: {user_data['bedroom_2'].get('ac', False)}") # DEBUG
             budget_category = get_budget_category(user_data['total_budget'], 'ac')
             # Calculate the recommended AC tonnage based on room size
@@ -2369,10 +2396,16 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             required_features = {'tonnage': f"{recommended_tonnage} Ton"}
             recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data, required_features)
             final_list['bedroom_3']['ac'] = recommendations
+        else:
+            final_list['bedroom_3']['ac'] = []
 
-        budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
-        recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
-        final_list['bedroom_3']['fans'] = recommendations
+        # Process bedroom 3 fans
+        if is_appliance_needed(user_data['bedroom_3'].get('fans')):
+            budget_category = get_budget_category(user_data['total_budget'], 'ceiling_fan')
+            recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, user_data['demographics'], user_data['bedroom_3'].get('color_theme'), user_data)
+            final_list['bedroom_3']['fans'] = recommendations
+        else:
+            final_list['bedroom_3']['fans'] = []
 
         # Process bedroom 3 bathroom requirements
         bedroom3_bath = user_data['bedroom_3'].get('bathroom', {})
@@ -2380,7 +2413,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         bedroom3_bath_ceiling = bedroom3_bath.get('water_heater_ceiling', '')
 
         geyser_recommendations_3 = []
-        if str(bedroom3_bath_type).strip().lower() == 'yes':
+        if is_appliance_needed(bedroom3_bath_type):
             budget_category = get_budget_category(user_data['total_budget'], 'geyser')
             # Only recommend horizontal water heaters if ceiling is explicitly "Yes"
             ceiling_condition = str(bedroom3_bath_ceiling).strip().lower()
@@ -2404,9 +2437,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                 geyser_recommendations_3 = [g for g in all_geysers if not is_horizontal_water_heater(g)]
 
             final_list['bedroom_3']['bathroom']['water_heater'] = geyser_recommendations_3
+        else:
+            final_list['bedroom_3']['bathroom']['water_heater'] = []
 
         # Process exhaust fan for bedroom 3 (updated to use color)
-        if user_data['bedroom_3'].get('bathroom') and user_data['bedroom_3']['bathroom'].get('exhaust_fan_size'):
+        if user_data['bedroom_3'].get('bathroom') and is_appliance_needed(user_data['bedroom_3']['bathroom'].get('exhaust_fan_size')):
             print("\n=== Bedroom 3 Exhaust Fan Debug ===")
             print(f"Exhaust fan size: {user_data['bedroom_3']['bathroom'].get('exhaust_fan_size')}")
             print(f"Exhaust fan color: {user_data['bedroom_3']['bathroom'].get('exhaust_fan_color')}")
@@ -2419,6 +2454,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             print(f"Found {len(recommendations)} recommendations")
             final_list['bedroom_3']['bathroom']['exhaust_fan'] = recommendations
             print("=== End Bedroom 3 Exhaust Fan Debug ===\n")
+        else:
+            final_list['bedroom_3']['bathroom']['exhaust_fan'] = []
 
 ######
     # Process laundry requirements
@@ -2426,7 +2463,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Check if a specific type of washing machine is selected by the user
     # The values from HTML form/Excel are expected to be "Front-Load", "Top-Load", "Semi-Automatic"
-    if user_selected_wm_type and user_selected_wm_type.lower() not in ['yes', 'no', 'none', '', 'not applicable', 'na']:
+    if is_appliance_needed(user_selected_wm_type) and user_selected_wm_type.lower() not in ['yes', 'no', 'none', '', 'not applicable', 'na']:
         budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
 
         required_features = {
@@ -2443,19 +2480,19 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             required_features
         )
         final_list['laundry']['washing_machine'] = recommendations
-    elif user_selected_wm_type.lower() == 'yes': # Fallback for old 'yes' logic if it's still possible
+    elif is_appliance_needed(user_selected_wm_type) and user_selected_wm_type.lower() == 'yes': # Fallback for old 'yes' logic if it's still possible
         budget_category = get_budget_category(user_data['total_budget'], 'washing_machine')
         required_features = {'capacity': estimate_washing_machine_capacity(user_data['demographics'])}
         recommendations = get_specific_product_recommendations('washing_machine', budget_category, user_data['demographics'], user_data['laundry'].get('color_theme'), user_data, required_features)
         final_list['laundry']['washing_machine'] = recommendations
-    else: # User selected "No", "None", or it's empty, so no washing machine
+    else: # User selected "Not needed", "No", "None", or it's empty, so no washing machine
         final_list['laundry']['washing_machine'] = []
     # DEBUG print statement left for troubleshooting - Dryer recommendations are now handled in one place below
     # print(f"[DEBUG DRYER_TYPE] Current dryer_type value: '{user_data['laundry'].get('dryer_type')}', Lowercased check value: '{str(user_data['laundry'].get('dryer_type', '')).strip().lower()}'")
     # Dryer recommendations will be processed in a single location further below
 
     # Process dining room requirements
-    if user_data['dining'].get('fan_size'):
+    if is_appliance_needed(user_data['dining'].get('fan_size')):
         fan_size_str = str(user_data['dining'].get('fan_size', '')).strip().upper()
         size_cm = None
         # Handle different unit formats
@@ -2504,21 +2541,27 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         recommendations = [p for p in load_product_catalog().get('products', []) if p.get('product_type', '').lower() == 'ceiling fan' and matches_blade_length_precise(p)]
         # Optionally, sort or limit recommendations as before
         final_list['dining']['fans'] = recommendations[:3]  # Top 3 matches
+    else:
+        final_list['dining']['fans'] = []
 
-    if user_data['dining'].get('ac'):
+    if is_appliance_needed(user_data['dining'].get('ac')):
         budget_category = get_budget_category(user_data['total_budget'], 'ac')
         recommendations = get_specific_product_recommendations('ac', budget_category, user_data['demographics'], user_data['dining'].get('color_theme'))
         final_list['dining']['ac'] = recommendations
+    else:
+        final_list['dining']['ac'] = []
 
     # Add logic to recommend dishwasher
-    if user_data['kitchen'].get('dishwasher_capacity'):
+    if is_appliance_needed(user_data['kitchen'].get('dishwasher_capacity')):
         budget_category = get_budget_category(user_data['total_budget'], 'dishwasher')
         required_features = {'capacity': user_data['kitchen'].get('dishwasher_capacity')}
         recommendations = get_specific_product_recommendations('dishwasher', budget_category, user_data['demographics'], user_data['kitchen'].get('color_theme'), user_data, required_features)
         final_list['kitchen']['dishwasher'] = recommendations
+    else:
+        final_list['kitchen']['dishwasher'] = []
 
     # Add dryer recommendations if needed - standardized logic
-    if user_data['laundry'].get('dryer_type', '').lower() == 'yes': # Standardized to use dryer_type
+    if is_appliance_needed(user_data['laundry'].get('dryer_type')):
         print("\n=== Dryer Debug ===")
         print(f"Looking for dryer products. Dryer type value: '{user_data['laundry'].get('dryer_type')}'")
 
@@ -2556,11 +2599,13 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             print(f"  Final Dryer {i+1}: {dryer.get('brand', 'Unknown')} - {dryer.get('title', 'Unknown')}")
 
         print("=== End Dryer Debug ===\n")
+    else:
+        final_list['laundry']['dryer'] = []
 
 
 
     # Master Bedroom Bathroom
-    if user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type'):
+    if is_appliance_needed(user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type')):
         # print("\n=== Water Heater Debug ===")
         # print(f"Master Bedroom Bathroom - False Ceiling: {user_data['master_bedroom']['bathroom'].get('water_heater_ceiling', False)}")
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
@@ -2583,9 +2628,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
             # For non-ceiling installations, filter out horizontal water heaters
             recommendations = [g for g in all_geysers if not is_horizontal_water_heater(g)]
         final_list['master_bedroom']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
+    else:
+        final_list['master_bedroom']['bathroom']['water_heater'] = []
 
     # Add LED mirror recommendations for master bedroom bathroom
-    if user_data['master_bedroom'].get('bathroom', {}).get('led_mirror', False):
+    if is_appliance_needed(user_data['master_bedroom'].get('bathroom', {}).get('led_mirror')):
         # print("\n=== LED Mirror Debug ===")
         # print("Master Bedroom Bathroom - LED Mirror requested")
         budget_category = get_budget_category(user_data['total_budget'], 'led_mirror')
@@ -2597,9 +2644,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['master_bedroom']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['master_bedroom']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
+    else:
+        final_list['master_bedroom']['bathroom']['led_mirror'] = []
 
     # Add Glass Partition recommendations for master bedroom bathroom if requested
-    if user_data['master_bedroom'].get('bathroom', {}).get('glass_partition', False):
+    if is_appliance_needed(user_data['master_bedroom'].get('bathroom', {}).get('glass_partition')):
         print("\n=== Glass Partition Debug ===")
         print("Master Bedroom Bathroom - Glass Partition Requested: Adding Glass Partition")
         budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
@@ -2611,9 +2660,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['master_bedroom']['bathroom']['glass_partition'] = deduplicate_recommendations(recommendations)
         print(f"Added {len(final_list['master_bedroom']['bathroom']['glass_partition'])} unique glass partitions to recommendations")
         print("=== End Glass Partition Debug ===\n")
+    else:
+        final_list['master_bedroom']['bathroom']['glass_partition'] = []
 
     # Bedroom 2 Bathroom
-    if user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type'):
+    if is_appliance_needed(user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type')):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         bedroom2_bath_ceiling = str(user_data['bedroom_2']['bathroom'].get('water_heater_ceiling', '')).strip().lower()
 
@@ -2638,9 +2689,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                 recommendations = vertical_geysers if vertical_geysers else all_geysers
 
         final_list['bedroom_2']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
+    else:
+        final_list['bedroom_2']['bathroom']['water_heater'] = []
 
     # Add LED mirror recommendations for bedroom 2 bathroom
-    if user_data['bedroom_2'].get('bathroom', {}).get('led_mirror', False):
+    if is_appliance_needed(user_data['bedroom_2'].get('bathroom', {}).get('led_mirror')):
         # print("\n=== LED Mirror Debug ===")
         # print("Bedroom 2 Bathroom - LED Mirror requested")
         budget_category = get_budget_category(user_data['total_budget'], 'led_mirror')
@@ -2652,9 +2705,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_2']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['bedroom_2']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
+    else:
+        final_list['bedroom_2']['bathroom']['led_mirror'] = []
 
     # Add Glass Partition recommendations for bedroom 2 bathroom if requested
-    if user_data['bedroom_2'].get('bathroom', {}).get('glass_partition', False):
+    if is_appliance_needed(user_data['bedroom_2'].get('bathroom', {}).get('glass_partition')):
         print("\n=== Glass Partition Debug ===")
         print("Bedroom 2 Bathroom - Glass Partition Requested: Adding Glass Partition")
         budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
@@ -2666,9 +2721,12 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_2']['bathroom']['glass_partition'] = deduplicate_recommendations(recommendations)
         print(f"Added {len(final_list['bedroom_2']['bathroom']['glass_partition'])} unique glass partitions to recommendations")
         print("=== End Glass Partition Debug ===\n")
+    else:
+        final_list['bedroom_2']['bathroom']['glass_partition'] = []
+
 #####
    # Bedroom 3 Bathroom
-    if user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type'):
+    if is_appliance_needed(user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type')):
         budget_category = get_budget_category(user_data['total_budget'], 'geyser')
         bedroom3_bath_ceiling = str(user_data['bedroom_3']['bathroom'].get('water_heater_ceiling', '')).strip().lower()
 
@@ -2693,9 +2751,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
                 recommendations = vertical_geysers if vertical_geysers else all_geysers
 
         final_list['bedroom_3']['bathroom']['water_heater'] = deduplicate_recommendations(recommendations)
+    else:
+        final_list['bedroom_3']['bathroom']['water_heater'] = []
 
     # Add LED mirror recommendations for bedroom 3 bathroom
-    if user_data['bedroom_3'].get('bathroom', {}).get('led_mirror', False):
+    if is_appliance_needed(user_data['bedroom_3'].get('bathroom', {}).get('led_mirror')):
         # print("\n=== LED Mirror Debug ===")
         # print("Bedroom 3 Bathroom - LED Mirror requested")
         budget_category = get_budget_category(user_data['total_budget'], 'led_mirror')
@@ -2707,9 +2767,11 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_3']['bathroom']['led_mirror'] = deduplicate_recommendations(recommendations)
         # print(f"Added {len(final_list['bedroom_3']['bathroom']['led_mirror'])} unique LED mirrors to recommendations")
         # print("=== End LED Mirror Debug ===\n")
+    else:
+        final_list['bedroom_3']['bathroom']['led_mirror'] = []
 
     # Add Glass Partition recommendations for bedroom 3 bathroom if requested
-    if user_data['bedroom_3'].get('bathroom', {}).get('glass_partition', False):
+    if is_appliance_needed(user_data['bedroom_3'].get('bathroom', {}).get('glass_partition')):
         print("\n=== Glass Partition Debug ===")
         print("Bedroom 3 Bathroom - Glass Partition Requested: Adding Glass Partition")
         budget_category = get_budget_category(user_data['total_budget'], 'glass_partition')
@@ -2721,6 +2783,8 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
         final_list['bedroom_3']['bathroom']['glass_partition'] = deduplicate_recommendations(recommendations)
         print(f"Added {len(final_list['bedroom_3']['bathroom']['glass_partition'])} unique glass partitions to recommendations")
         print("=== End Glass Partition Debug ===\n")
+    else:
+        final_list['bedroom_3']['bathroom']['glass_partition'] = []
 
 #####
     if num_bedrooms == 2:

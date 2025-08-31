@@ -331,74 +331,106 @@ def main(user_xlsx: str, best_sellers_csv: str):
         'exhaust_fan': 'Exhaust Fan',
         'vacuum_cleaner': 'Vacuum Cleaner',
         'led_mirror': 'LED Mirror',
+        'dryer': 'Cloth Dryer',
     }
     recommendations = {}
     total_budget = user_data.get('total_budget', 0)
+    
+    # Helper function to check if appliance is needed
+    def is_appliance_needed(value):
+        """Check if an appliance value indicates it's needed (not 'Not needed')"""
+        if value is None or value == '':
+            return False
+        if isinstance(value, str) and value.lower() == 'not needed':
+            return False
+        return True
+
     # Hall
     recommendations['hall'] = {}
-    if user_data['hall'].get('ac'):
+    if is_appliance_needed(user_data['hall'].get('ac')):
         ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['hall']['ac'] = ac_recs
-    if user_data['hall'].get('fans', 0) > 0:
+    if is_appliance_needed(user_data['hall'].get('fans')) and user_data['hall'].get('fans', 0) > 0:
         fan_recs = get_appliance_recommendations(products, appliance_map['ceiling_fan'], total_budget, user_data['hall']['fans'])
         recommendations['hall']['fans'] = fan_recs
 
     # Kitchen
     recommendations['kitchen'] = {}
-    if user_data['kitchen'].get('chimney_width'):
+    if is_appliance_needed(user_data['kitchen'].get('chimney_width')):
         chimney_recs = get_appliance_recommendations(products, appliance_map['chimney'], total_budget)
         recommendations['kitchen']['chimney'] = chimney_recs
-    if user_data['kitchen'].get('dishwasher_capacity'):
+    if is_appliance_needed(user_data['kitchen'].get('dishwasher_capacity')):
         dishwasher_recs = get_appliance_recommendations(products, appliance_map['dishwasher'], total_budget)
         recommendations['kitchen']['dishwasher'] = dishwasher_recs
-    if user_data['kitchen'].get('refrigerator_type'):
+    if is_appliance_needed(user_data['kitchen'].get('refrigerator_type')):
         refrigerator_recs = get_appliance_recommendations(products, appliance_map['refrigerator'], total_budget)
         recommendations['kitchen']['refrigerator'] = refrigerator_recs
-    if user_data['kitchen'].get('num_burners', 0) > 0:
+    if is_appliance_needed(user_data['kitchen'].get('num_burners')) and user_data['kitchen'].get('num_burners', 0) > 0:
         hob_recs = get_appliance_recommendations(products, appliance_map['hob'], total_budget)
         recommendations['kitchen']['hob'] = hob_recs
+    if is_appliance_needed(user_data['kitchen'].get('stove_type')):
+        stove_recs = get_appliance_recommendations(products, appliance_map['hob'], total_budget)
+        recommendations['kitchen']['stove'] = stove_recs
+    if is_appliance_needed(user_data['kitchen'].get('small_fan')):
+        fan_recs = get_appliance_recommendations(products, appliance_map['pedestal_fan'], total_budget)
+        recommendations['kitchen']['small_fan'] = fan_recs
 
     # Master Bedroom
     recommendations['master_bedroom'] = {}
-    if user_data['master_bedroom'].get('ac'):
+    if is_appliance_needed(user_data['master_bedroom'].get('ac')):
         ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['master_bedroom']['ac'] = ac_recs
-    if user_data['master_bedroom'].get('bathroom', {}).get('water_heater_type'):
+    if is_appliance_needed(user_data['master_bedroom'].get('water_heater_type')):
         water_heater_recs = get_appliance_recommendations(products, appliance_map['water_heater'], total_budget)
         recommendations['master_bedroom']['water_heater'] = water_heater_recs
+    if is_appliance_needed(user_data['master_bedroom'].get('exhaust_fan_size')):
+        exhaust_recs = get_appliance_recommendations(products, appliance_map['exhaust_fan'], total_budget)
+        recommendations['master_bedroom']['exhaust_fan'] = exhaust_recs
+    if is_appliance_needed(user_data['master_bedroom'].get('led_mirror')):
+        mirror_recs = get_appliance_recommendations(products, appliance_map['led_mirror'], total_budget)
+        recommendations['master_bedroom']['led_mirror'] = mirror_recs
 
     # Bedroom 2
     recommendations['bedroom_2'] = {}
-    if user_data['bedroom_2'].get('ac'):
+    if is_appliance_needed(user_data['bedroom_2'].get('ac')):
         ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['bedroom_2']['ac'] = ac_recs
-    if user_data['bedroom_2'].get('bathroom', {}).get('water_heater_type'):
+    if is_appliance_needed(user_data['bedroom_2'].get('water_heater_type')):
         water_heater_recs = get_appliance_recommendations(products, appliance_map['water_heater'], total_budget)
         recommendations['bedroom_2']['water_heater'] = water_heater_recs
+    if is_appliance_needed(user_data['bedroom_2'].get('exhaust_fan_size')):
+        exhaust_recs = get_appliance_recommendations(products, appliance_map['exhaust_fan'], total_budget)
+        recommendations['bedroom_2']['exhaust_fan'] = exhaust_recs
+    if is_appliance_needed(user_data['bedroom_2'].get('led_mirror')):
+        mirror_recs = get_appliance_recommendations(products, appliance_map['led_mirror'], total_budget)
+        recommendations['bedroom_2']['led_mirror'] = mirror_recs
 
     # Bedroom 3
     recommendations['bedroom_3'] = {}
-    if user_data['bedroom_3'].get('ac'):
+    if is_appliance_needed(user_data['bedroom_3'].get('ac')):
         ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['bedroom_3']['ac'] = ac_recs
-    if user_data['bedroom_3'].get('bathroom', {}).get('water_heater_type'):
+    if is_appliance_needed(user_data['bedroom_3'].get('water_heater_type')):
         water_heater_recs = get_appliance_recommendations(products, appliance_map['water_heater'], total_budget)
         recommendations['bedroom_3']['water_heater'] = water_heater_recs
+    if is_appliance_needed(user_data['bedroom_3'].get('exhaust_fan_size')):
+        exhaust_recs = get_appliance_recommendations(products, appliance_map['exhaust_fan'], total_budget)
+        recommendations['bedroom_3']['exhaust_fan'] = exhaust_recs
+    if is_appliance_needed(user_data['bedroom_3'].get('led_mirror')):
+        mirror_recs = get_appliance_recommendations(products, appliance_map['led_mirror'], total_budget)
+        recommendations['bedroom_3']['led_mirror'] = mirror_recs
 
     # Laundry
     recommendations['laundry'] = {}
-    if user_data['laundry'].get('washing_machine_type'):
-        washing_machine_recs = get_appliance_recommendations(products, appliance_map['washing_machine'], total_budget)
-        recommendations['laundry']['washing_machine'] = washing_machine_recs
+    if is_appliance_needed(user_data['laundry'].get('dryer')):
+        dryer_recs = get_appliance_recommendations(products, appliance_map['dryer'], total_budget)
+        recommendations['laundry']['dryer'] = dryer_recs
 
     # Dining
     recommendations['dining'] = {}
-    if user_data['dining'].get('ac'):
+    if is_appliance_needed(user_data['dining'].get('ac')):
         ac_recs = get_ac_recommendations(products, total_budget)
         recommendations['dining']['ac'] = ac_recs
-    if user_data['dining'].get('fans', 0) > 0:
-        fan_recs = get_appliance_recommendations(products, appliance_map['ceiling_fan'], total_budget, user_data['dining']['fans'])
-        recommendations['dining']['fans'] = fan_recs
 
     # Enrich best-seller products with catalog info
     catalog_products = load_product_catalog_json("product_catalog.json")
@@ -586,6 +618,157 @@ def get_room_description(room: str, user_data: Dict[str, Any]) -> str:
         return f"Laundry area of {room_size} sq ft equipped with a {user_data['laundry'].get('washing_machine_type', 'standard')} washing machine" \
                f"{' and a dryer' if user_data['laundry'].get('dryer_type', '').lower() == 'yes' else ''}."
     
+    return ""
+
+def extract_specifications_from_recommendations(final_list: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Extract specifications from recommended products to pre-populate the customize form.
+    
+    Args:
+        final_list: Dictionary containing recommended products organized by room and category
+        
+    Returns:
+        Dictionary of form field names to their extracted values
+    """
+    extracted_specs = {}
+    
+    # Helper function to extract size from product title
+    def extract_size_from_title(title: str, possible_sizes: List[str]) -> str:
+        """Extract size from product title given possible sizes."""
+        title_lower = title.lower()
+        for size in possible_sizes:
+            size_patterns = [
+                size.lower(),
+                size.lower().replace(' ', ''),
+                size.lower().replace('cm', ' cm'),
+                f"- {size.lower()}",
+                f"{size.lower()} "
+            ]
+            for pattern in size_patterns:
+                if pattern in title_lower:
+                    return size
+        return ""
+    
+    # Process each room and category
+    for room, room_items in final_list.items():
+        if not isinstance(room_items, dict):
+            continue
+            
+        for category, products in room_items.items():
+            if not products:
+                continue
+                
+            # Handle nested categories (like bathroom items)
+            if isinstance(products, dict):
+                for sub_category, sub_products in products.items():
+                    if isinstance(sub_products, list) and sub_products:
+                        product = sub_products[0]  # Take the first recommended product
+                        _extract_product_specs(product, sub_category, room, extracted_specs)
+            elif isinstance(products, list) and products:
+                product = products[0]  # Take the first recommended product
+                _extract_product_specs(product, category, room, extracted_specs)
+    
+    return extracted_specs
+
+def _extract_product_specs(product: Dict[str, Any], category: str, room: str, extracted_specs: Dict[str, str]) -> None:
+    """Helper function to extract specifications from a single product."""
+    title = product.get('title', '').lower()
+    model = product.get('model', '').lower()
+    combined_text = f"{title} {model}"
+    
+    # Kitchen Chimney Width extraction
+    if category.lower() in ['chimney']:
+        # Check for size patterns in chimney titles
+        if ' 60 ' in combined_text or combined_text.endswith(' 60') or combined_text.startswith('60 '):
+            extracted_specs['kitchen_chimney'] = '60 cm'
+        elif ' 75 ' in combined_text or combined_text.endswith(' 75') or combined_text.startswith('75 '):
+            extracted_specs['kitchen_chimney'] = '75 cm'
+        elif ' 90 ' in combined_text or combined_text.endswith(' 90') or combined_text.startswith('90 '):
+            extracted_specs['kitchen_chimney'] = '90 cm'
+        else:
+            # Fallback to original pattern matching
+            chimney_sizes = ['60 cm', '75 cm', '90 cm']
+            extracted_size = extract_size_from_title(combined_text, chimney_sizes)
+            if extracted_size:
+                extracted_specs['kitchen_chimney'] = extracted_size
+    
+    # Kitchen Stove/Cooktop Type extraction
+    elif category.lower() in ['cooktop', 'hob']:
+        if 'cooktop' in combined_text:
+            extracted_specs['kitchen_stove'] = 'Cooktop'
+        elif 'hob' in combined_text or 'built-in' in combined_text:
+            extracted_specs['kitchen_stove'] = 'Hob (built-in) - placed inside'
+    
+    # Kitchen Burner Count extraction
+    if category.lower() in ['cooktop', 'hob']:
+        if '3 burner' in combined_text or '3-burner' in combined_text:
+            extracted_specs['kitchen_burners'] = '3'
+        elif '4 burner' in combined_text or '4-burner' in combined_text:
+            extracted_specs['kitchen_burners'] = '4'
+    
+    # Kitchen Stove Width extraction
+    if category.lower() in ['cooktop', 'hob']:
+        stove_sizes = ['60 cm', '75 cm', '90 cm']
+        extracted_size = extract_size_from_title(combined_text, stove_sizes)
+        if extracted_size:
+            extracted_specs['kitchen_stove_width'] = extracted_size
+    
+    # Air Conditioner Tonnage extraction
+    elif category.lower() in ['air conditioner', 'ac']:
+        tonnage_patterns = ['1 ton', '1.5 ton', '2 ton', '2.5 ton']
+        for tonnage in tonnage_patterns:
+            if tonnage in combined_text:
+                field_name = f"{room}_ac_tonnage"
+                extracted_specs[field_name] = tonnage.replace(' ', '').replace('ton', ' Ton')
+                break
+    
+    # Ceiling Fan specifications extraction
+    elif category.lower() in ['ceiling fan', 'fan']:
+        # Extract fan size (diameter)
+        fan_sizes = ['48 inches', '52 inches', '56 inches', '1200 mm', '1320 mm']
+        for size in fan_sizes:
+            if size in combined_text:
+                field_name = f"{room}_fan_size"
+                extracted_specs[field_name] = size
+                break
+        
+        # Extract fan type (BLDC vs normal)
+        if 'bldc' in combined_text:
+            field_name = f"{room}_fan_type"
+            extracted_specs[field_name] = 'BLDC'
+    
+    # Water Heater specifications
+    elif category.lower() in ['storage water heater', 'instant water heater', 'water heater']:
+        # Extract capacity for storage water heaters
+        capacity_patterns = ['15 litres', '25 litres', '35 litres', '50 litres']
+        for capacity in capacity_patterns:
+            if capacity in combined_text:
+                field_name = f"{room}_water_heater_capacity"
+                extracted_specs[field_name] = capacity
+                break
+        
+        # Extract type
+        if 'storage' in combined_text:
+            field_name = f"{room}_water_heater_type"
+            extracted_specs[field_name] = 'Storage Water Heater'
+        elif 'instant' in combined_text:
+            field_name = f"{room}_water_heater_type"
+            extracted_specs[field_name] = 'Instant Water Heater'
+
+def extract_size_from_title(title: str, possible_sizes: List[str]) -> str:
+    """Extract size from product title given possible sizes."""
+    title_lower = title.lower()
+    for size in possible_sizes:
+        size_patterns = [
+            size.lower(),
+            size.lower().replace(' ', ''),
+            size.lower().replace('cm', ' cm'),
+            f"- {size.lower()}",
+            f"{size.lower()} "
+        ]
+        for pattern in size_patterns:
+            if pattern in title_lower:
+                return size
     return ""
 
 # Function to generate an HTML file with recommendations
@@ -1192,15 +1375,15 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     background-color: white !important;
                     background-image: none !important;
                     font-size: 12px;
-                    line-height: 1.4;
-                    margin: 0;
-                    padding: 10px;
+                    line-height: 1.3;
+                    margin: 0 !important;
+                    padding: 0 !important;
                 }
                 
                 .container {
-                    max-width: 100%;
-                    padding: 0;
-                    margin: 0;
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    padding: 15px !important;
                 }
                 
                 /* Hide unnecessary visual elements for PDF */
@@ -1209,7 +1392,14 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 .customize-fab,
                 .download-button,
                 #download-pdf,
-                .print-hide {
+                .print-hide,
+                .debug-info,
+                .technical-info {
+                    display: none !important;
+                }
+                
+                /* Hide detailed address in PDF for cleaner, more professional look */
+                .client-info-address {
                     display: none !important;
                 }
                 
@@ -1231,13 +1421,13 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 }
                 
                 /* Optimize header */
-                .header {
+                .header, header {
                     background: none !important;
                     background-image: none !important;
                     box-shadow: none !important;
                     border-radius: 0 !important;
-                    padding: 10px 0 !important;
-                    margin-bottom: 15px !important;
+                    padding: 8px 0 !important;
+                    margin-bottom: 10px !important;
                 }
                 
                 .logo {
@@ -1269,8 +1459,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     border-radius: 4px !important;
                     break-inside: avoid;
                     page-break-inside: avoid;
-                    margin-bottom: 15px !important;
-                    padding: 10px !important;
+                    margin-bottom: 8px !important;
+                    padding: 8px !important;
                 }
                 
                 .product-details {
@@ -1306,9 +1496,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     font-size: 14px !important;
                 }
                 
-                /* Page breaks */
+                /* Page breaks - optimized for space */
                 .room-section {
-                    page-break-before: always;
+                    page-break-before: auto;
+                    break-inside: avoid;
                 }
                 
                 .room-section:first-child {
@@ -1321,17 +1512,17 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 
                 .client-info, .budget-summary {
                     page-break-inside: avoid;
-                    margin-bottom: 15px !important;
+                    margin-bottom: 8px !important;
                 }
                 
                 .budget-section {
                     page-break-inside: avoid;
-                    margin-bottom: 15px !important;
+                    margin-bottom: 8px !important;
                 }
                 
                 .recommendation-item {
                     page-break-inside: avoid;
-                    margin-bottom: 20px !important;
+                    margin-bottom: 10px !important;
                 }
                 
                 /* Optimize text sizes for print */
@@ -1829,6 +2020,9 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 <p>Specially curated for {user_data['name']}</p>
             </header>
     """
+    
+    # Add the header section to html_content
+    html_content += header_section
             
     # Add client info section with explicit f-string
     # Determine budget display: in default mode, show calculated total instead of provided budget
@@ -1850,7 +2044,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <div class="client-info-value">{user_data['email']}</div>
                 </div>
                 
-                <div class="client-info-item">
+                <div class="client-info-item client-info-address">
                     <div class="client-info-label">Address</div>
                     <div class="client-info-value">{user_data['address']}</div>
                 </div>
@@ -2279,7 +2473,16 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     if default_mode:
         # Add floating Customize button linking back to landing page, with prefilled query params when available
         # Pass bedrooms/bathrooms guess based on num_bedrooms/num_bathrooms when present
-        customize_query = f"name={quote_plus(str(user_data.get('name','')))}&mobile={quote_plus(str(user_data.get('mobile','')))}&email={quote_plus(str(user_data.get('email','')))}&address={quote_plus(str(user_data.get('address','')))}&city={quote_plus(str(user_data.get('city','')))}&budget={quote_plus(str(user_data.get('total_budget','')))}&bedrooms={quote_plus(str(user_data.get('num_bedrooms','')))}&bathrooms={quote_plus(str(user_data.get('num_bathrooms','')))}"
+        
+        # Extract specifications from recommended products for pre-population
+        extracted_specs = extract_specifications_from_recommendations(final_list)
+        
+        # Build customize query with basic user data and extracted specifications
+        basic_query = f"name={quote_plus(str(user_data.get('name','')))}&mobile={quote_plus(str(user_data.get('mobile','')))}&email={quote_plus(str(user_data.get('email','')))}&address={quote_plus(str(user_data.get('address','')))}&city={quote_plus(str(user_data.get('city','')))}&budget={quote_plus(str(user_data.get('total_budget','')))}&bedrooms={quote_plus(str(user_data.get('num_bedrooms','')))}&bathrooms={quote_plus(str(user_data.get('num_bathrooms','')))}"
+        
+        # Add extracted specifications to the query
+        specs_query = "&".join([f"{field}={quote_plus(str(value))}" for field, value in extracted_specs.items()])
+        customize_query = basic_query + ("&" + specs_query if specs_query else "")
         html_content += f"""
                 <div class="generate-container">
                     <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">

@@ -499,15 +499,15 @@
                     background-color: white !important;
                     background-image: none !important;
                     font-size: 12px;
-                    line-height: 1.4;
-                    margin: 0;
-                    padding: 10px;
+                    line-height: 1.3;
+                    margin: 0 !important;
+                    padding: 0 !important;
                 }
                 
                 .container {
-                    max-width: 100%;
-                    padding: 0;
-                    margin: 0;
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    padding: 15px !important;
                 }
                 
                 /* Hide unnecessary visual elements for PDF */
@@ -516,7 +516,14 @@
                 .customize-fab,
                 .download-button,
                 #download-pdf,
-                .print-hide {
+                .print-hide,
+                .debug-info,
+                .technical-info {
+                    display: none !important;
+                }
+                
+                /* Hide detailed address in PDF for cleaner, more professional look */
+                .client-info-address {
                     display: none !important;
                 }
                 
@@ -538,13 +545,13 @@
                 }
                 
                 /* Optimize header */
-                .header {
+                .header, header {
                     background: none !important;
                     background-image: none !important;
                     box-shadow: none !important;
                     border-radius: 0 !important;
-                    padding: 10px 0 !important;
-                    margin-bottom: 15px !important;
+                    padding: 8px 0 !important;
+                    margin-bottom: 10px !important;
                 }
                 
                 .logo {
@@ -576,8 +583,8 @@
                     border-radius: 4px !important;
                     break-inside: avoid;
                     page-break-inside: avoid;
-                    margin-bottom: 15px !important;
-                    padding: 10px !important;
+                    margin-bottom: 8px !important;
+                    padding: 8px !important;
                 }
                 
                 .product-details {
@@ -613,9 +620,10 @@
                     font-size: 14px !important;
                 }
                 
-                /* Page breaks */
+                /* Page breaks - optimized for space */
                 .room-section {
-                    page-break-before: always;
+                    page-break-before: auto;
+                    break-inside: avoid;
                 }
                 
                 .room-section:first-child {
@@ -628,17 +636,17 @@
                 
                 .client-info, .budget-summary {
                     page-break-inside: avoid;
-                    margin-bottom: 15px !important;
+                    margin-bottom: 8px !important;
                 }
                 
                 .budget-section {
                     page-break-inside: avoid;
-                    margin-bottom: 15px !important;
+                    margin-bottom: 8px !important;
                 }
                 
                 .recommendation-item {
                     page-break-inside: avoid;
-                    margin-bottom: 20px !important;
+                    margin-bottom: 10px !important;
                 }
                 
                 /* Optimize text sizes for print */
@@ -1127,6 +1135,18 @@
     <body>
         <div class="container">
     
+            <header>
+                <div class="logo-container">
+            <img src="/static/AB-Logo.jpg" alt="AppliancesBazaar Logo" class="logo print-hide">
+            <div class="logo-text print-only" style="display: none;">
+                <h1 style="margin: 0; color: #3498db; font-size: 24px; font-weight: bold;">AppliancesBazaar</h1>
+                <p style="margin: 0; color: #666; font-size: 14px;">Product Recommendations</p>
+            </div>
+        </div>
+                <h1>Your Personalized Home Appliance Recommendations</h1>
+                <p>Specially curated for Lakshmi Narasimhan</p>
+            </header>
+    
             <div class="client-info">
                 <div class="client-info-item">
                     <div class="client-info-label">Name</div>
@@ -1143,7 +1163,7 @@
                     <div class="client-info-value">slakshnarasimhan@gmail.com</div>
                 </div>
                 
-                <div class="client-info-item">
+                <div class="client-info-item client-info-address">
                     <div class="client-info-label">Address</div>
                     <div class="client-info-value">112, Prestige Silver Oak, ECC Rd, Whitefield</div>
                 </div>
@@ -1176,14 +1196,14 @@
                             
             <ul class="benefits-list">
                 <li>Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>Coanda airflow gives even cooling across every corner.</li><li>Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li>
-                <ul id="benefits_a277d6c7_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_4bb7589a_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>Cools even at 54°C</li><li>Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_a277d6c7_toggle"
-               onclick="toggleBenefits('benefits_a277d6c7')">
+               id="benefits_4bb7589a_toggle"
+               onclick="toggleBenefits('benefits_4bb7589a')">
                 <span class="show-text">Know More (7 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1213,14 +1233,14 @@
                             
             <ul class="benefits-list">
                 <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
-                <ul id="benefits_4994921a_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_e571b5c6_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_4994921a_toggle"
-               onclick="toggleBenefits('benefits_4994921a')">
+               id="benefits_e571b5c6_toggle"
+               onclick="toggleBenefits('benefits_e571b5c6')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1254,14 +1274,14 @@
                             
             <ul class="benefits-list">
                 <li>1200 m³/hr suction power</li><li>Filterless design.</li><li>Auto-Clean function self-cleans oil and grease; saves time and effort.</li>
-                <ul id="benefits_20707533_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_5afc9b1f_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Gesture control offers hands-free convenience while cooking.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_20707533_toggle"
-               onclick="toggleBenefits('benefits_20707533')">
+               id="benefits_5afc9b1f_toggle"
+               onclick="toggleBenefits('benefits_5afc9b1f')">
                 <span class="show-text">Know More (1 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1291,14 +1311,14 @@
                             
             <ul class="benefits-list">
                 <li>Equipped with three brass burners (1 jumbo, 1 medium, and 1 small) for various cooking needs and uniform heat distribution.</li><li>6 MM toughened black glass top for durability and scratch resistance. It looks sleek too.</li><li>Stainless steel drip trays simplify cleanup by catching spills.</li>
-                <ul id="benefits_f7c3d47b_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_41a9350b_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>The powder-coated round pan supports provide sturdy stability for different cookware sizes and resist chipping and rusting.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_f7c3d47b_toggle"
-               onclick="toggleBenefits('benefits_f7c3d47b')">
+               id="benefits_41a9350b_toggle"
+               onclick="toggleBenefits('benefits_41a9350b')">
                 <span class="show-text">Know More (1 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1328,14 +1348,14 @@
                             
             <ul class="benefits-list">
                 <li>14-place setting is designed to accommodate a large number of dishes, Typically the dishes used through out the day.</li><li>Silent (48 decibel), energy-saving cleaning with the EcoSilence Drive (motor).</li><li>Home Connect allows to start washes, check status, and get alerts via voice or app.</li>
-                <ul id="benefits_f19eb2b3_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_c4263b0a_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>10‑year inner tub warranty.</li><li>The premium brushed and fingerprint‑free stainless steel finish resists smudges and maintains sleek appeal.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_f19eb2b3_toggle"
-               onclick="toggleBenefits('benefits_f19eb2b3')">
+               id="benefits_c4263b0a_toggle"
+               onclick="toggleBenefits('benefits_c4263b0a')">
                 <span class="show-text">Know More (2 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1365,14 +1385,14 @@
                             
             <ul class="benefits-list">
                 <li>100% RO water since all the water is passed through the RO membrane unlike other brands.</li><li>Delivers "Baby-Safe" water with full-spectrum contaminant removal and UV freshness using 8-Stage RO + SCMT + UV purification.</li><li>SCMT (Silver Charged Membrane Technology) removes Virus, Bacteria, Cysts, Particulates, Endotoxins, Colloids, Chemicals and Phosphates.</li>
-                <ul id="benefits_1f3911fc_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_4ab512ad_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>All time fresh water with in-tank UV purification.</li><li>Adds essential minerals and copper for taste and health.</li><li>India's first 5 star rated water purifier which saves 2X water using ART™MAX Water Saving Technology. This is good for you and our Earth.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_1f3911fc_toggle"
-               onclick="toggleBenefits('benefits_1f3911fc')">
+               id="benefits_4ab512ad_toggle"
+               onclick="toggleBenefits('benefits_4ab512ad')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1402,14 +1422,14 @@
                             
             <ul class="benefits-list">
                 <li>Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>Back flaps prevent insects from entering the home.</li><li>Low noise.</li>
-                <ul id="benefits_f0624982_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_eb1eae62_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>Fits square cut out of 175 MM X 175 MM.</li><li>1 year warranty. + 1 year when registered on Atomberg's website.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_f0624982_toggle"
-               onclick="toggleBenefits('benefits_f0624982')">
+               id="benefits_eb1eae62_toggle"
+               onclick="toggleBenefits('benefits_eb1eae62')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1443,14 +1463,14 @@
                             
             <ul class="benefits-list">
                 <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
-                <ul id="benefits_832d0a9c_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_da9a88a2_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_832d0a9c_toggle"
-               onclick="toggleBenefits('benefits_832d0a9c')">
+               id="benefits_da9a88a2_toggle"
+               onclick="toggleBenefits('benefits_da9a88a2')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1484,14 +1504,14 @@
                             
             <ul class="benefits-list">
                 <li>Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>Coanda airflow gives even cooling across every corner.</li><li>Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li>
-                <ul id="benefits_3252a76b_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_90a74e36_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>Cools even at 54°C</li><li>Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_3252a76b_toggle"
-               onclick="toggleBenefits('benefits_3252a76b')">
+               id="benefits_90a74e36_toggle"
+               onclick="toggleBenefits('benefits_90a74e36')">
                 <span class="show-text">Know More (7 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1521,14 +1541,14 @@
                             
             <ul class="benefits-list">
                 <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
-                <ul id="benefits_b7054be6_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_678b835a_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_b7054be6_toggle"
-               onclick="toggleBenefits('benefits_b7054be6')">
+               id="benefits_678b835a_toggle"
+               onclick="toggleBenefits('benefits_678b835a')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1558,14 +1578,14 @@
                             
             <ul class="benefits-list">
                 <li>Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>Back flaps prevent insects from entering the home.</li><li>Low noise.</li>
-                <ul id="benefits_6c76b9e1_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_f7b0b570_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>Fits square cut out of 175 MM X 175 MM.</li><li>1 year warranty. + 1 year when registered on Atomberg's website.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_6c76b9e1_toggle"
-               onclick="toggleBenefits('benefits_6c76b9e1')">
+               id="benefits_f7b0b570_toggle"
+               onclick="toggleBenefits('benefits_f7b0b570')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1598,14 +1618,14 @@
                                 
             <ul class="benefits-list">
                 <li>15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li>
-                <ul id="benefits_ee962bb0_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_52b66ab4_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>Long lasting anode rod with 2X lifespan even in hard water conditions.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_ee962bb0_toggle"
-               onclick="toggleBenefits('benefits_ee962bb0')">
+               id="benefits_52b66ab4_toggle"
+               onclick="toggleBenefits('benefits_52b66ab4')">
                 <span class="show-text">Know More (6 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1639,14 +1659,14 @@
                             
             <ul class="benefits-list">
                 <li>Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>Coanda airflow gives even cooling across every corner.</li><li>Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li>
-                <ul id="benefits_d1bc75bf_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_d6ed652f_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Power Chill mode cools 20% faster providing instant relief from the heat. Econo mode reduces the power consumption.</li><li>The PM 2.5 filter keeps indoor air cleaner and healthier.</li><li>Stabiliser Inside technology regulates across a wide range of fluctuation (130 Volts to 285 Volts). Saves the additional cost of the stabiliser. The room looks aesthetic without the bulky stabiliser and the unorganised wire.</li><li>Warranty: 1 year for Product, 5 years for Printed Circuit Board and 10 years for compressor gives peace of mind.</li><li>Cools even at 54°C</li><li>Ant-corrosion treatment is provided for the outdoor copper coils. The indoor unit has an anti-corrosive coating active agent which has Self Healing properties that activates upon chipping, scratches due to environmental or chemical pollution.</li><li>Dew Clean Technology auto-cleans the indoor heat exchanger unit, getting rid of bacteria, moulds, etc., ensuring odour-free, fresh and consistent cool air flow.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_d1bc75bf_toggle"
-               onclick="toggleBenefits('benefits_d1bc75bf')">
+               id="benefits_d6ed652f_toggle"
+               onclick="toggleBenefits('benefits_d6ed652f')">
                 <span class="show-text">Know More (7 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1676,14 +1696,14 @@
                             
             <ul class="benefits-list">
                 <li>Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>5-Star energy rated;  35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li><li>5 years warranty. Highest in the market.</li>
-                <ul id="benefits_0718f718_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_a0b0d488_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>Brown colour has less maintenance because accumulated dust is less visible.</li><li>Remote control for convenience.</li><li>Power Factor is greater than 0.99 which means less loss of power which is good for the country.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_0718f718_toggle"
-               onclick="toggleBenefits('benefits_0718f718')">
+               id="benefits_a0b0d488_toggle"
+               onclick="toggleBenefits('benefits_a0b0d488')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1713,14 +1733,14 @@
                             
             <ul class="benefits-list">
                 <li>Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>Back flaps prevent insects from entering the home.</li><li>Low noise.</li>
-                <ul id="benefits_06120b08_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_0c656072_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>The BLDC motor consumes 65% less electricity but it is not too impactful since exhaust fans are not used for a longer time in the bathroom.</li><li>Fits square cut out of 175 MM X 175 MM.</li><li>1 year warranty. + 1 year when registered on Atomberg's website.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_06120b08_toggle"
-               onclick="toggleBenefits('benefits_06120b08')">
+               id="benefits_0c656072_toggle"
+               onclick="toggleBenefits('benefits_0c656072')">
                 <span class="show-text">Know More (3 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1753,14 +1773,14 @@
                                 
             <ul class="benefits-list">
                 <li>15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li>
-                <ul id="benefits_bacb6195_hidden" class="benefits-list hidden-benefits" style="display: none;">
+                <ul id="benefits_6eff302b_hidden" class="benefits-list hidden-benefits" style="display: none;">
                     <li>5-Star energy rated for its high energy efficiency and lead to lower electricity bills and faster heating. It consumes 2,000 watts.</li><li>Superior aesthetics with a rust-proof outer body with stylish Temperature gauge.</li><li>Patented RRID (Rust Resistant Integrated Diffuser) Technology is used in the Elegance models to improve the efficiency of heat transfer within the water heater, resulting in a greater volume of hot water being produced.</li><li>Suitable for high-rise buildings by handling water pressure of 8 bars.</li><li>Warranty: 2 years for the product; 7 years for the tank; 3 years for the heating element.</li><li>Long lasting anode rod with 2X lifespan even in hard water conditions.</li>
                 </ul>
             </ul>
             <a href="javascript:void(0);" 
                class="know-more-link" 
-               id="benefits_bacb6195_toggle"
-               onclick="toggleBenefits('benefits_bacb6195')">
+               id="benefits_6eff302b_toggle"
+               onclick="toggleBenefits('benefits_6eff302b')">
                 <span class="show-text">Know More (6 more benefits)</span>
                 <span class="hide-text" style="display: none;">Show Less</span>
             </a>
@@ -1803,7 +1823,7 @@
                     (function() {
                         var fab = document.getElementById('customizeFab');
                         if (fab) {
-                            var q = 'name=Lakshmi+Narasimhan&mobile=9845731544&email=slakshnarasimhan%40gmail.com&address=112%2C+Prestige+Silver+Oak%2C+ECC+Rd%2C+Whitefield&city=Bengaluru&budget=245250.0&bedrooms=2&bathrooms=2';
+                            var q = 'name=Lakshmi+Narasimhan&mobile=9845731544&email=slakshnarasimhan%40gmail.com&address=112%2C+Prestige+Silver+Oak%2C+ECC+Rd%2C+Whitefield&city=Bengaluru&budget=245250.0&bedrooms=2&bathrooms=2&hall_ac_tonnage=1.5+Ton&hall_fan_size=48+inches&hall_fan_type=BLDC&kitchen_stove=Cooktop&kitchen_burners=3&kitchen_chimney=60+cm&dining_fan_size=48+inches&dining_fan_type=BLDC&master_bedroom_water_heater_capacity=15+litres&master_bedroom_water_heater_type=Storage+Water+Heater&master_bedroom_ac_tonnage=1.5+Ton&master_bedroom_fan_size=48+inches&master_bedroom_fan_type=BLDC&bedroom_2_water_heater_capacity=15+litres&bedroom_2_water_heater_type=Storage+Water+Heater&bedroom_2_ac_tonnage=1.5+Ton&bedroom_2_fan_size=48+inches&bedroom_2_fan_type=BLDC';
                             // Only append if at least one value exists
                             if (q.replace(/(name=|mobile=|email=|address=)/g,'').replace(/&/g,'').trim() !== '') {
                                 fab.href = '/?' + q;
@@ -1813,7 +1833,7 @@
                 </script>
         
                 <footer>
-                    <p>This product recommendation brochure was created on 2025-08-30</p>
+                    <p>This product recommendation brochure was created on 2025-08-31</p>
                     <p> © 2025 AppliancesBazaar.</p>
                 </footer>
             </div>

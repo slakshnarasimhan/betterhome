@@ -86,7 +86,17 @@ def index():
     budget = request.args.get('budget', '')
     pref_bedrooms = request.args.get('bedrooms', '')
     pref_bathrooms = request.args.get('bathrooms', '')
-    response = make_response(render_template('index.html', name=name, mobile=mobile, email=email, address=address, city=city, budget=budget, pref_bedrooms=pref_bedrooms, pref_bathrooms=pref_bathrooms))
+    
+    # Extract all specification parameters for form pre-population
+    extracted_specs = {}
+    for key, value in request.args.items():
+        if key not in ['name', 'mobile', 'email', 'address', 'city', 'budget', 'bedrooms', 'bathrooms']:
+            extracted_specs[key] = value
+    
+    response = make_response(render_template('index.html', 
+                                           name=name, mobile=mobile, email=email, address=address, 
+                                           city=city, budget=budget, pref_bedrooms=pref_bedrooms, 
+                                           pref_bathrooms=pref_bathrooms, extracted_specs=extracted_specs))
     # Add cache control headers to prevent caching
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
