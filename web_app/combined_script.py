@@ -85,6 +85,60 @@ def load_config() -> Dict[str, Any]:
         print("Configuration file not found")
         return {}
 
+def is_appliance_needed(value) -> bool:
+    """
+    Check if an appliance is needed based on the input value.
+    
+    Args:
+        value: The value to check (can be string, boolean, number, or None)
+        
+    Returns:
+        bool: True if appliance is needed, False otherwise
+    """
+    if value is None:
+        return False
+    
+    # Convert to string for consistent checking
+    value_str = str(value).strip().lower()
+    
+    # Values that indicate appliance is NOT needed
+    not_needed_values = [
+        'no', 'none', 'not needed', 'not applicable', 'na', 'n/a', 
+        'false', '0', '', 'not required', 'skip', 'omit'
+    ]
+    
+    # Values that indicate appliance IS needed
+    needed_values = [
+        'yes', 'true', '1', 'required', 'needed', 'must have'
+    ]
+    
+    # Check if value indicates not needed
+    if value_str in not_needed_values:
+        return False
+    
+    # Check if value indicates needed
+    if value_str in needed_values:
+        return True
+    
+    # For numeric values, check if > 0
+    try:
+        num_value = float(value)
+        return num_value > 0
+    except (ValueError, TypeError):
+        pass
+    
+    # For boolean values
+    if isinstance(value, bool):
+        return value
+    
+    # For string values that might contain specific requirements (like dimensions, types, etc.)
+    # If it's not explicitly "not needed" and contains meaningful content, assume it's needed
+    if value_str and value_str not in not_needed_values:
+        return True
+    
+    # Default to False if we can't determine
+    return False
+
 # Function to analyze user requirements
 def analyze_user_requirements(excel_file: str):
     try:
@@ -333,7 +387,7 @@ def calculate_total_cost(recommendations):
                     except (ValueError, TypeError):
                         continue
 
-    return total_cos
+    return total_cost
 
 # Function to get budget category
 def get_budget_category(total_budget: float, appliance_type: str, quantity: int = 1) -> str:
@@ -2789,7 +2843,7 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 #####
     if num_bedrooms == 2:
         del final_list['bedroom_3']
-    return final_lis
+    return final_list
 
 
 # Function to generate an HTML file with recommendations
