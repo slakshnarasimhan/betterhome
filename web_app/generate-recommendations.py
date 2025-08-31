@@ -45,13 +45,26 @@ def read_best_sellers_csv(csv_path: str) -> List[Dict[str, Any]]:
                 return int(str(val).strip()) if str(val).strip() else 0
             except Exception:
                 return 0
+        # Extract model from title by removing the brand name if it appears at the beginning
+        title = row.get('Title', '').strip()
+        brand = row.get('Brand', '').strip()
+        
+        # Create model by removing brand from the beginning of title if it exists
+        model = title
+        if brand and title.startswith(brand):
+            # Remove the brand name and any following spaces/hyphens
+            model = title[len(brand):].strip()
+            if model.startswith('-') or model.startswith(' '):
+                model = model.lstrip('- ').strip()
+        
         product = {
             'sku': row.get('SKU Code', '').strip(),
             'category': row.get('Category', '').strip(),
             'bh_price': parse_price(row.get('BH Price', '')),
             'standard_premium': row.get('Standard/Premium', '').strip(),
-            'brand': row.get('Brand', '').strip(),
-            'title': row.get('Title', '').strip(),
+            'brand': brand,
+            'title': title,
+            'model': model,
             'priority': parse_int(row.get('Priority', '')),
             'image_src': row.get('Product Image URL', '').strip(),
             'top_benefits': row.get('Top Benefits', '').strip(),
@@ -106,10 +119,25 @@ def get_recommended_products_with_fallback(
         price_field = 'better_home_price' if 'better_home_price' in catalog_products[0] else 'retail_price'
         price_limit = 1000000  # High value for 'Premium'
     filtered = [p for p in catalog_products if str(p.get('product_type', '')).lower() == category.lower() and float(p.get(price_field, 0)) <= price_limit]
-    # Sort by price ascending, then by title
-    filtered.sort(key=lambda x: (float(x.get(price_field, 0)), x.get('title', '')))
+    
+    # Add model field to catalog products to avoid brand duplication
     for p in filtered:
         p['source'] = 'catalog'
+        # Extract model from title by removing the brand name if it appears at the beginning
+        title = p.get('title', '')
+        brand = p.get('brand', '')
+        
+        if brand and title and title.startswith(brand):
+            # Remove the brand name and any following spaces/hyphens
+            model = title[len(brand):].strip()
+            if model.startswith('-') or model.startswith(' '):
+                model = model.lstrip('- ').strip()
+            p['model'] = model
+        else:
+            p['model'] = title
+    
+    # Sort by price ascending, then by title
+    filtered.sort(key=lambda x: (float(x.get(price_field, 0)), x.get('title', '')))
     return filtered
 
 
@@ -2234,7 +2262,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     checked_product_keys = set()
                     for idx, product in enumerate(grouped_products):
                         brand = product.get('brand', 'Unknown Brand')
-                        model = product.get('model', product.get('title', 'Unknown Model'))
+                        model = product.get('model', 'Unknown Model')
                         image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                         description = product.get('description', 'No description available')
                         better_home_price = float(product.get('bh_price', 0.0))
@@ -2351,7 +2379,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 checked_product_keys = set()
                 for idx, product in enumerate(grouped_products):
                     brand = product.get('brand', 'Unknown Brand')
-                    model = product.get('model', product.get('title', 'Unknown Model'))
+                    model = product.get('model', 'Unknown Model')
                     image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                     description = product.get('description', 'No description available')
                     better_home_price = float(product.get('bh_price', 0.0))
@@ -3019,6 +3047,22 @@ def enrich_best_seller_product(best_seller, catalog_products):
     if 'title' not in best_seller or not best_seller.get('title'):
         if match and 'title' in match:
             best_seller['title'] = match['title']
+    
+    # Ensure model field is properly extracted to avoid brand duplication
+    if 'model' not in best_seller or not best_seller.get('model'):
+        title = best_seller.get('title', '')
+        brand = best_seller.get('brand', '')
+        
+        # Create model by removing brand from the beginning of title if it exists
+        model = title
+        if brand and title.startswith(brand):
+            # Remove the brand name and any following spaces/hyphens
+            model = title[len(brand):].strip()
+            if model.startswith('-') or model.startswith(' '):
+                model = model.lstrip('- ').strip()
+        
+        best_seller['model'] = model
+    
     return best_seller
 
 
@@ -3109,14 +3153,20 @@ def generate_default_recommendations(
     # Read the CSV and filter curated rows using new semantics
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
     df.columns = [col.strip() for col in df.columns]
-    dl_col = df.get('Default List', '').astype(str)
-    # Curated rows are those explicitly tagged for any list (Standard/Premium) or legacy 'Y'
-    mask_any_list = (
-        dl_col.str.upper().eq('Y') |
-        dl_col.str.contains('Standard List', case=False, na=False) |
-        dl_col.str.contains('Premium List', case=False, na=False)
-    )
-    default_items = df[mask_any_list].copy()
+    
+    # Check if 'Default List' column exists
+    if 'Default List' not in df.columns:
+        print("Warning: 'Default List' column not found in CSV. Using all rows.")
+        default_items = df.copy()
+    else:
+        dl_col = df['Default List']
+        # Curated rows are those explicitly tagged for any list (Standard/Premium) or legacy 'Y'
+        mask_any_list = (
+            dl_col.str.upper().eq('Y') |
+            dl_col.str.contains('Standard List', case=False, na=False) |
+            dl_col.str.contains('Premium List', case=False, na=False)
+        )
+        default_items = df[mask_any_list].copy()
     print('[defaults] Filtered curated rows (any list):', len(default_items))
     products = []
 
@@ -3132,13 +3182,26 @@ def generate_default_recommendations(
         except Exception:
             return 0
     for _, row in default_items.iterrows():
+        # Extract model from title by removing the brand name if it appears at the beginning
+        title = row.get('Title', '').strip()
+        brand = row.get('Brand', '').strip()
+        
+        # Create model by removing brand from the beginning of title if it exists
+        model = title
+        if brand and title.startswith(brand):
+            # Remove the brand name and any following spaces/hyphens
+            model = title[len(brand):].strip()
+            if model.startswith('-') or model.startswith(' '):
+                model = model.lstrip('- ').strip()
+        
         product = {
             'sku': row.get('SKU Code', '').strip(),
             'category': row.get('Category', '').strip(),
             'bh_price': parse_price(row.get('BH Price', '')),
             'standard_premium': row.get('Standard/Premium', '').strip(),
-            'brand': row.get('Brand', '').strip(),
-            'title': row.get('Title', '').strip(),
+            'brand': brand,
+            'title': title,
+            'model': model,
             'priority': parse_int(row.get('Priority', '')),
             'image_src': row.get('Product Image URL', '').strip(),
             'url': row.get('Product URL', '').strip() if 'Product URL' in row else '',
@@ -3379,15 +3442,23 @@ def generate_default_recommendations(
 # Update main block to handle --generate-defaults
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('user_xlsx', nargs='?', default=None)
-    parser.add_argument('best_sellers_csv', nargs='?', default=None)
     parser.add_argument('--generate-defaults', action='store_true')
     parser.add_argument('--catalog', default='product_catalog.json')
+    parser.add_argument('user_xlsx', nargs='?', default=None)
+    parser.add_argument('best_sellers_csv', nargs='?', default=None)
     args = parser.parse_args()
+    
     if args.generate_defaults:
-        generate_default_recommendations(args.best_sellers_csv, args.catalog)
+        # When generating defaults, the first positional argument is the CSV file
+        csv_file = args.user_xlsx if args.user_xlsx else args.best_sellers_csv
+        if not csv_file:
+            print("Error: best_sellers_csv is required when using --generate-defaults")
+            print("Usage: python generate-recommendations.py <best_sellers_csv> --generate-defaults [--catalog <catalog_path>]")
+            exit(1)
+        generate_default_recommendations(csv_file, args.catalog)
     elif args.user_xlsx and args.best_sellers_csv:
         main(args.user_xlsx, args.best_sellers_csv)
     else:
         print("Usage: python generate-recommendations.py <user_input.xlsx> <best_sellers_csv> [--generate-defaults] [--catalog <catalog_path>]")
+        print("For generating defaults: python generate-recommendations.py <best_sellers_csv> --generate-defaults [--catalog <catalog_path>]")
 
