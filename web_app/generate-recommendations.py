@@ -3436,8 +3436,512 @@ def generate_default_recommendations(
         # Determine output filename based on selected tier for clarity
         tier_for_filename = (selected_tier or 'Standard').lower()
         output_filename = f'{tier_for_filename}_default_recommendations_{bhk}.html'
-        generate_html_file(user_data, recommendations, output_filename, default_mode=True)
+        
+        # Create template assets directory for the default recommendations
+        template_assets_dir = f"{tier_for_filename}_default_recommendations_{bhk}_assets"
+        if not os.path.exists(template_assets_dir):
+            os.makedirs(template_assets_dir)
+        
+        # Copy template assets (CSS, JS, images)
+        import shutil
+        template_source = "templates/Appliances-Bazaar-Recommendation-Page"
+        if os.path.exists(template_source):
+            # Copy CSS directory
+            css_source = f"{template_source}/css"
+            css_dest = f"{template_assets_dir}/css"
+            if os.path.exists(css_source):
+                if os.path.exists(css_dest):
+                    shutil.rmtree(css_dest)
+                shutil.copytree(css_source, css_dest)
+            
+            # Copy JS directory
+            js_source = f"{template_source}/js"
+            js_dest = f"{template_assets_dir}/js"
+            if os.path.exists(js_source):
+                if os.path.exists(js_dest):
+                    shutil.rmtree(js_dest)
+                shutil.copytree(js_source, js_dest)
+            
+            # Copy assets directory
+            assets_source = f"{template_source}/assets"
+            assets_dest = f"{template_assets_dir}/assets"
+            if os.path.exists(assets_source):
+                if os.path.exists(assets_dest):
+                    shutil.rmtree(assets_dest)
+                shutil.copytree(assets_source, assets_dest)
+            
+            print(f"Template assets copied to: {template_assets_dir}")
+        
+        # Use the new template function for default recommendations
+        generate_html_file_with_new_template(user_data, recommendations, output_filename)
+        
+        # Update HTML file to use relative paths for assets
+        update_html_asset_paths(output_filename, template_assets_dir)
+        
         print(f"Generated {selected_tier or 'Standard'} default recommendations for {bhk}: {output_filename}")
+
+# Function to generate an HTML file with recommendations using the new Appliances-Bazaar template
+def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
+    """
+    Generate HTML recommendations using the new Appliances-Bazaar template design.
+    This function creates a modern, accordion-based layout with Bootstrap styling.
+    """
+    # Get current date for the footer
+    current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
+    
+    # Calculate total cost and savings
+    total_cost = calculate_total_cost(final_list)
+    budget_utilization = (total_cost / user_data['total_budget']) * 100 if user_data['total_budget'] > 0 else 0
+    
+    # Calculate total savings
+    total_savings = 0
+    for room, products in final_list.items():
+        if not isinstance(products, dict):
+            continue
+        for product_type, options in products.items():
+            if isinstance(options, dict):
+                for nested_type, nested_options in options.items():
+                    if not isinstance(nested_options, list) or not nested_options:
+                        continue
+                    best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0), default=None)
+                    if best_product:
+                        total_savings += best_product.get('savings', 0)
+            elif isinstance(options, list) and options:
+                best_product = max(options, key=lambda x: x.get('feature_match_score', 0), default=None)
+                if best_product:
+                    total_savings += best_product.get('savings', 0)
+    
+    # Start building HTML content
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="BetterHome Product Recommendations for {user_data.get('name', 'Customer')}" />
+    <meta name="author" content="BetterHome" />
+    <title>BetterHome Product Recommendations - {user_data.get('name', 'Customer')}</title>
+    <!-- Favicon-->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <!-- Bootstrap icons-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet" />
+    <!-- Core theme CSS (includes Bootstrap)-->
+    <link href="css/styles.css" rel="stylesheet" />
+    <style>
+        .accordion-button:not(.collapsed) {{
+            background-color: #00aa9f;
+            color: white;
+        }}
+        .accordion-button:focus {{
+            box-shadow: 0 0 0 0.25rem rgba(0, 170, 159, 0.25);
+        }}
+        .product-card {{
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .product-image {{
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }}
+        .price-section {{
+            margin: 15px 0;
+        }}
+        .bh-price {{
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00aa9f;
+        }}
+        .retail-price {{
+            text-decoration: line-through;
+            color: #666;
+            margin-left: 10px;
+        }}
+        .savings {{
+            color: #15ce04;
+            font-weight: bold;
+            margin-left: 10px;
+        }}
+        .room-description {{
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #00aa9f;
+        }}
+        .contact-section {{
+            background-color: #00aa9f;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }}
+        .contact-section .card {{
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }}
+        .budget-badge {{
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+        }}
+    </style>
+</head>
+
+<body>
+    <!-- Features section-->
+    <section class="py-5 border-bottom" id="features">
+        <div class="container px-5 my-5">
+            <div class="text-center mb-5">
+                <h2 class="fw-bolder">Contact Information</h2>
+                <p class="lead mb-0">Your personalized product recommendations from BetterHome</p>
+            </div>
+            <section class="contact-section">
+                <div class="container py-3">
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="my-3">{user_data.get('name', 'Customer')}</h5>
+                                    <p class="text-muted mb-1" style="font-weight: bold;">Address:</p>
+                                    <p class="text-muted mb-4">{user_data.get('address', 'Address not provided')}</p>
+                                    <div class="d-flex justify-content-center mb-2">
+                                        <button type="button" class="budget-badge">
+                                            Total Budget: ₹{user_data['total_budget']:,.0f}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-8">
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Full Name</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('name', 'Not provided')}</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Email</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('email', 'Not provided')}</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Phone</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('mobile', 'Not provided')}</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Budget Utilization</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{budget_utilization:.1f}% (₹{total_cost:,.0f} used)</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Total Savings</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">₹{int(total_savings):,}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+    
+    <!-- Pricing section-->
+    <section class="bg-light py-5 border-bottom">
+        <div class="container px-5 my-5">
+            <div class="text-center mb-5">
+                <h2 class="fw-bolder">Product Recommendations</h2>
+            </div>
+            <div class="col-lg-12 col-xl-12">
+                <div class="accordion" id="accordionExample">"""
+    
+    # Define room order and their display names
+    room_order = ['hall', 'kitchen', 'dining', 'laundry', 'master_bedroom', 'bedroom_2', 'bedroom_3']
+    room_display_names = {
+        'hall': 'HALL',
+        'kitchen': 'KITCHEN', 
+        'dining': 'DINING',
+        'laundry': 'LAUNDRY',
+        'master_bedroom': 'MASTER BEDROOM',
+        'bedroom_2': 'BEDROOM 2',
+        'bedroom_3': 'BEDROOM 3'
+    }
+    
+    # Process each room
+    for room_idx, room in enumerate(room_order):
+        if room not in final_list:
+            continue
+            
+        appliances = final_list[room]
+        if room == 'summary':
+            continue
+            
+        # Check if room has products
+        has_products = False
+        for appliance_type, products in appliances.items():
+            if isinstance(products, list) and products:
+                has_products = True
+                break
+            if isinstance(products, dict):
+                for sub_products in products.values():
+                    if isinstance(sub_products, list) and sub_products:
+                        has_products = True
+                        break
+                        
+        if not has_products:
+            continue
+            
+        room_display_name = room_display_names.get(room, room.replace('_', ' ').upper())
+        is_first = room_idx == 0
+        
+        html_content += f"""
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{room_idx}">
+                            <button class="accordion-button{' collapsed' if not is_first else ''}" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapse{room_idx}" aria-expanded="{str(is_first).lower()}" aria-controls="collapse{room_idx}">
+                                {room_display_name}
+                            </button>
+                        </h2>
+                        <div id="collapse{room_idx}" class="accordion-collapse collapse{' show' if is_first else ''}" aria-labelledby="heading{room_idx}"
+                            data-bs-parent="#accordionExample">
+                            <div class="accordion-body">"""
+        
+        # Process appliances in this room
+        for appliance_type, products in appliances.items():
+            if isinstance(products, dict):
+                # Handle nested appliance groups (e.g., bathroom)
+                for sub_appliance_type, sub_products in products.items():
+                    if not isinstance(sub_products, list) or not sub_products:
+                        continue
+                    
+                    # Ensure we have products to display
+                    grouped_products = sub_products[:3] if len(sub_products) >= 3 else sub_products
+                    
+                    # Add sub-type heading
+                    sub_type_title = sub_appliance_type.replace('_', ' ').title()
+                    html_content += f'<h4 style="margin-top:20px; color: #00aa9f;">{sub_type_title}</h4>'
+                    
+                    # Display products
+                    for product in grouped_products:
+                        brand = product.get('brand', 'Unknown Brand')
+                        model = product.get('model', product.get('title', 'Unknown Model'))
+                        image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
+                        description = product.get('description', 'Product description not available')
+                        
+                        # Handle pricing
+                        better_home_price = float(product.get('bh_price', 0.0))
+                        retail_price = float(product.get('mrp_price', 0.0))
+                        if better_home_price <= 0:
+                            better_home_price = float(product.get('price', retail_price * 0.8))
+                        if retail_price <= 0:
+                            retail_price = better_home_price * 1.25
+                        if retail_price <= better_home_price:
+                            retail_price = better_home_price * 1.25
+                        savings = retail_price - better_home_price
+                        
+                        html_content += f"""
+                                <div class="container mt-5" style="border-bottom: 2px dotted #242424">
+                                    <div class="row">
+                                        <!-- Product Images -->
+                                        <div class="col-md-5 mb-4">
+                                            <img src="{image_src}"
+                                                alt="{brand} {model}" class="img-fluid rounded mb-3 product-image">
+                                        </div>
+
+                                        <!-- Product Details -->
+                                        <div class="col-md-7">
+                                            <h2 class="mb-3">{sub_type_title}</h2>
+                                            <h6 class="mb-3">{brand} {model}</h6>
+                                            <div class="mb-3">
+                                                <span class="h2 me-2">₹{better_home_price:,.0f}</span>
+                                                <span class="text-muted"><s>₹{retail_price:,.0f}</s></span>
+                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹{savings:,.0f}</span>
+                                            </div>
+                                            <div class="mb-3">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-half text-warning"></i>
+                                                <span class="ms-2">4.5 (120 reviews)</span>
+                                            </div>
+                                            <p class="mb-4">{description}</p>
+                                            <div class="mt-4">
+                                                <h5>Key Features:</h5>
+                                                <ul>
+                                                    <li>High-quality {sub_type_title.lower()}</li>
+                                                    <li>Energy efficient</li>
+                                                    <li>Warranty included</li>
+                                                    <li>Professional installation support</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>"""
+            
+            elif isinstance(products, list) and products:
+                # Handle direct appliance lists
+                grouped_products = products[:3] if len(products) >= 3 else products
+                
+                # Add appliance type heading
+                appliance_title = appliance_type.replace('_', ' ').title()
+                html_content += f'<h4 style="margin-top:20px; color: #00aa9f;">{appliance_title}</h4>'
+                
+                # Display products
+                for product in grouped_products:
+                    brand = product.get('brand', 'Unknown Brand')
+                    model = product.get('model', product.get('title', 'Unknown Model'))
+                    image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
+                    description = product.get('description', 'Product description not available')
+                    
+                    # Handle pricing
+                    better_home_price = float(product.get('bh_price', 0.0))
+                    retail_price = float(product.get('mrp_price', 0.0))
+                    if better_home_price <= 0:
+                        better_home_price = float(product.get('price', retail_price * 0.8))
+                    if retail_price <= 0:
+                        retail_price = better_home_price * 1.25
+                    if retail_price <= better_home_price:
+                        retail_price = better_home_price * 1.25
+                    savings = retail_price - better_home_price
+                    
+                    html_content += f"""
+                                <div class="container mt-5" style="border-bottom: 2px dotted #242424">
+                                    <div class="row">
+                                        <!-- Product Images -->
+                                        <div class="col-md-5 mb-4">
+                                            <img src="{image_src}"
+                                                alt="{brand} {model}" class="img-fluid rounded mb-3 product-image">
+                                        </div>
+
+                                        <!-- Product Details -->
+                                        <div class="col-md-7">
+                                            <h2 class="mb-3">{appliance_title}</h2>
+                                            <h6 class="mb-3">{brand} {model}</h6>
+                                            <div class="mb-3">
+                                                <span class="h2 me-2">₹{better_home_price:,.0f}</span>
+                                                <span class="text-muted"><s>₹{retail_price:,.0f}</s></span>
+                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹{savings:,.0f}</span>
+                                            </div>
+                                            <div class="mb-3">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-half text-warning"></i>
+                                                <span class="ms-2">4.5 (120 reviews)</span>
+                                            </div>
+                                            <p class="mb-4">{description}</p>
+                                            <div class="mt-4">
+                                                <h5>Key Features:</h5>
+                                                <ul>
+                                                    <li>High-quality {appliance_title.lower()}</li>
+                                                    <li>Energy efficient</li>
+                                                    <li>Warranty included</li>
+                                                    <li>Professional installation support</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>"""
+        
+        # Close room section
+        html_content += """
+                            </div>
+                        </div>
+                    </div>"""
+    
+    # Close accordion and add footer
+    html_content += f"""
+                </div>
+            </div>
+        </div>
+    </section>
+   
+    <!-- Footer-->
+    <footer class="py-5 bg-dark">
+        <div class="container px-5">
+            <p class="m-0 text-center text-white">This product recommendation brochure was created on {current_date}<br/>
+                © 2025 BetterHome.</p>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap core JS-->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core theme JS-->
+    <script src="js/scripts.js"></script>
+    <!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *-->
+    <!-- * *                               SB Forms JS                               * *-->
+    <!-- * * Activate your form at https://startbootstrap.com/solution/contact-forms * *-->
+    <!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *-->
+    <script src="https://cdn.startbootstrap.com/sb-forms-latest.js"></script>
+    <script>
+        function changeImage(event, src) {{
+            document.getElementById('mainImage').src = src;
+            document.querySelectorAll('.thumbnail').forEach(thumb => thumb.classList.remove('active'));
+            event.target.classList.add('active');
+        }}
+    </script>
+</body>
+
+</html>"""
+    
+    # Write the HTML file
+    with open(html_filename, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print(f"Generated professional HTML brochure with new template: {html_filename}")
+
+def update_html_asset_paths(html_filename: str, assets_dir: str) -> None:
+    """
+    Update the HTML file to use relative paths for CSS, JS, and image assets.
+    This ensures the generated HTML can find the template assets.
+    """
+    try:
+        with open(html_filename, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Update asset paths to use the copied assets directory
+        html_content = html_content.replace('href="css/', f'href="{assets_dir}/css/')
+        html_content = html_content.replace('src="js/', f'src="{assets_dir}/js/')
+        html_content = html_content.replace('href="assets/', f'href="{assets_dir}/assets/')
+        html_content = html_content.replace('src="assets/', f'src="{assets_dir}/assets/')
+        
+        # Write the updated HTML back
+        with open(html_filename, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        print(f"Updated HTML asset paths to use: {assets_dir}")
+    except Exception as e:
+        print(f"Warning: Could not update HTML asset paths: {e}")
 
 # Update main block to handle --generate-defaults
 if __name__ == "__main__":
