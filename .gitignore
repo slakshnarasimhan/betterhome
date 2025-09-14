@@ -1,3 +1,6 @@
 betterhome_env/
 .streamlit/secrets.toml
 web_app/__pycache__/
+.env
+*.env
+.env.*

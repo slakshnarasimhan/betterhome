@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compact Card View Recommendations</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        h1, h2, h3 { color: #333; }
+        .product-section { margin-bottom: 30px; }
+        .product-section h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .product-item { margin-bottom: 10px; }
+        .product-item strong { color: #555; }
+        .price { font-weight: bold; color: #007bff; }
+        .description { font-size: 0.9em; color: #666; }
+        .image-thumbnail { width: 80px; height: 80px; object-fit: contain; margin-right: 10px; vertical-align: middle; }
+        .product-card { border: 1px solid #eee; border-radius: 5px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; }
+        .product-card-details { flex-grow: 1; }
+        .product-card h3 { margin-top: 0; margin-bottom: 5px; }
+        .product-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .product-table th, .product-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .product-table th { background-color: #f2f2f2; }
+        .total-cost { margin-top: 20px; font-size: 1.2em; font-weight: bold; }
+        .checkbox-item { display: flex; align-items: center; margin-bottom: 10px; }
+        .checkbox-item input { margin-right: 10px; }
+        .compact-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .compact-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .compact-card img {
+            max-width: 100px;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+        .compact-card h3 {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        .compact-card .price {
+            font-size: 1.1em;
+        }
+        .compact-card .description {
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Product Recommendations (Compact Card View)</h1>
+        <p>Visually appealing, yet compact product recommendations.</p>
+
+        <!-- Hall -->
+        <div class="product-section">
+            <h2>Hall</h2>
+            <div class="compact-card-grid">
+                <div class="compact-card">
+                    <img src="https://via.placeholder.com/300x300?text=Daikin+AC" alt="Daikin AC">
+                    <h3>Daikin AC 1.0 Ton</h3>
+                    <p class="price">₹27,992</p>
+                    <p class="description">Efficient and quiet AC.</p>
+                </div>
+                <div class="compact-card">
+                    <img src="https://via.placeholder.com/300x300?text=Superfan" alt="Superfan">
+                    <h3>Superfan Ceiling Fan</h3>
+                    <p class="price">₹4,500</p>
+                    <p class="description">High speed fan for air circulation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kitchen -->
+        <div class="product-section">
+            <h2>Kitchen</h2>
+            <div class="compact-card-grid">
+                <div class="compact-card">
+                    <img src="https://via.placeholder.com/300x300?text=Faber+Chimney" alt="Faber Chimney">
+                    <h3>Faber Auto Clean Chimney</h3>
+                    <p class="price">₹13,216</p>
+                    <p class="description">Auto clean chimney for smoke-free kitchen.</p>
+                </div>
+                <div class="compact-card">
+                    <img src="https://via.placeholder.com/300x300?text=Bosch+Fridge" alt="Bosch Refrigerator">
+                    <h3>Bosch 187L Refrigerator</h3>
+                    <p class="price">₹20,566</p>
+                    <p class="description">Compact and energy-efficient refrigerator.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Master Bedroom -->
+        <div class="product-section">
+            <h2>Master Bedroom</h2>
+            <div class="compact-card-grid">
+                <div class="compact-card">
+                    <img src="https://via.placeholder.com/300x300?text=Water+Heater" alt="AO Smith Water Heater">
+                    <h3>AO Smith Water Heater</h3>
+                    <p class="price">₹8,500</p>
+                    <p class="description">Instant hot water with durable tank.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table View Recommendations</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        h1, h2, h3 { color: #333; }
+        .product-section { margin-bottom: 30px; }
+        .product-section h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .product-item { margin-bottom: 10px; }
+        .product-item strong { color: #555; }
+        .price { font-weight: bold; color: #007bff; }
+        .description { font-size: 0.9em; color: #666; }
+        .image-thumbnail { width: 80px; height: 80px; object-fit: contain; margin-right: 10px; vertical-align: middle; }
+        .product-card { border: 1px solid #eee; border-radius: 5px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; }
+        .product-card-details { flex-grow: 1; }
+        .product-card h3 { margin-top: 0; margin-bottom: 5px; }
+        .product-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .product-table th, .product-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .product-table th { background-color: #f2f2f2; }
+        .total-cost { margin-top: 20px; font-size: 1.2em; font-weight: bold; }
+        .checkbox-item { display: flex; align-items: center; margin-bottom: 10px; }
+        .checkbox-item input { margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Product Recommendations (Table View)</h1>
+        <p>A structured table for easy comparison of recommended products.</p>
+
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th>Room</th>
+                    <th>Category</th>
+                    <th>Brand</th>
+                    <th>Model</th>
+                    <th>Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Hall</td>
+                    <td>AC</td>
+                    <td>Daikin</td>
+                    <td>Daikin AC 1.0 Ton - Inverter - 3 Star FTKC35UV16</td>
+                    <td>₹27,992</td>
+                </tr>
+                <tr>
+                    <td>Hall</td>
+                    <td>Fans</td>
+                    <td>Superfan</td>
+                    <td>Superfan Super X1 High Speed BLDC Ceiling Fan</td>
+                    <td>₹4,500</td>
+                </tr>
+                <tr>
+                    <td>Kitchen</td>
+                    <td>Chimney</td>
+                    <td>Faber</td>
+                    <td>Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney</td>
+                    <td>₹13,216</td>
+                </tr>
+                <tr>
+                    <td>Kitchen</td>
+                    <td>Refrigerator</td>
+                    <td>Bosch</td>
+                    <td>Bosch 187L 4 Star Single Door Refrigerator Series 4 CST18S24NI</td>
+                    <td>₹20,566</td>
+                </tr>
+                <tr>
+                    <td>Master Bedroom</td>
+                    <td>Water Heater</td>
+                    <td>AO Smith</td>
+                    <td>AO Smith Elegance Prime 15 Ltr</td>
+                    <td>₹8,500</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="text-align: right;"><strong>Total Estimated Cost:</strong></td>
+                    <td><strong id="total-estimated-cost">₹74,774</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Checklist Recommendations</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        h1, h2, h3 { color: #333; }
+        .product-section { margin-bottom: 30px; }
+        .product-section h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .product-item { margin-bottom: 10px; }
+        .product-item strong { color: #555; }
+        .price { font-weight: bold; color: #007bff; }
+        .description { font-size: 0.9em; color: #666; }
+        .image-thumbnail { width: 80px; height: 80px; object-fit: contain; margin-right: 10px; vertical-align: middle; }
+        .product-card { border: 1px solid #eee; border-radius: 5px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; }
+        .product-card-details { flex-grow: 1; }
+        .product-card h3 { margin-top: 0; margin-bottom: 5px; }
+        .product-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .product-table th, .product-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .product-table th { background-color: #f2f2f2; }
+        .total-cost { margin-top: 20px; font-size: 1.2em; font-weight: bold; }
+        .checkbox-item { display: flex; align-items: center; margin-bottom: 10px; }
+        .checkbox-item input { margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Product Recommendations (Interactive Checklist)</h1>
+        <p>Select the products you'd like to include in your final list.</p>
+
+        <div class="product-section">
+            <h2>Hall</h2>
+            <div class="checkbox-item">
+                <input type="checkbox" id="hall-ac" value="27992.0" onchange="calculateTotal()">
+                <label for="hall-ac">Daikin AC 1.0 Ton - Inverter - 3 Star FTKC35UV16 (<span class="price">₹27,992</span>)</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="hall-fan" value="4500.0" onchange="calculateTotal()">
+                <label for="hall-fan">Superfan Super X1 High Speed BLDC Ceiling Fan (<span class="price">₹4,500</span>)</label>
+            </div>
+        </div>
+
+        <div class="product-section">
+            <h2>Kitchen</h2>
+            <div class="checkbox-item">
+                <input type="checkbox" id="kitchen-chimney" value="13216.0" onchange="calculateTotal()">
+                <label for="kitchen-chimney">Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney (<span class="price">₹13,216</span>)</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="kitchen-fridge" value="20566.0" onchange="calculateTotal()">
+                <label for="kitchen-fridge">Bosch 187L 4 Star Single Door Refrigerator Series 4 CST18S24NI (<span class="price">₹20,566</span>)</label>
+            </div>
+        </div>
+
+        <div class="product-section">
+            <h2>Master Bedroom</h2>
+            <div class="checkbox-item">
+                <input type="checkbox" id="master-water-heater" value="8500.0" onchange="calculateTotal()">
+                <label for="master-water-heater">AO Smith Elegance Prime 15 Ltr Water Heater (<span class="price">₹8,500</span>)</label>
+            </div>
+        </div>
+
+        <div class="total-cost">
+            Total Selected Cost: <span id="total-display">₹0</span>
+        </div>
+
+        <script>
+            function calculateTotal() {
+                let total = 0;
+                document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+                    total += parseFloat(checkbox.value);
+                });
+                document.getElementById('total-display').textContent = '₹' + total.toLocaleString('en-IN');
+            }
+        </script>
+    </div>
+</body>
+</html>
