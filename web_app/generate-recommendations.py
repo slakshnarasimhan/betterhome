@@ -3257,6 +3257,10 @@ def generate_default_recommendations(
         selected_tier = None
         if user_budget is not None and threshold is not None:
             selected_tier = 'Premium' if user_budget >= threshold else 'Standard'
+        else:
+            # When no budget is provided, default to Premium tier for default recommendations
+            selected_tier = 'Premium'
+            print(f"[defaults] No budget provided, defaulting to Premium tier")
         print(f"[defaults] Tier decision → BHK={bhk}, user_budget={user_budget}, threshold={threshold}, selected_tier={selected_tier}")
         # Fall back to CSV Standard/Premium mix if not determined
 
@@ -3503,13 +3507,19 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                 for nested_type, nested_options in options.items():
                     if not isinstance(nested_options, list) or not nested_options:
                         continue
-                    best_product = max(nested_options, key=lambda x: x.get('feature_match_score', 0), default=None)
-                    if best_product:
-                        total_savings += best_product.get('savings', 0)
+                    for product in nested_options:
+                        # Calculate savings as (original_price - bh_price)
+                        bh_price = product.get('bh_price', 0) or product.get('better_home_price', 0)
+                        original_price = product.get('mrp_price', 0) or product.get('market_price_1', 0) or product.get('retail_price', 0)
+                        if original_price > bh_price > 0:
+                            total_savings += (original_price - bh_price)
             elif isinstance(options, list) and options:
-                best_product = max(options, key=lambda x: x.get('feature_match_score', 0), default=None)
-                if best_product:
-                    total_savings += best_product.get('savings', 0)
+                for product in options:
+                    # Calculate savings as (original_price - bh_price)
+                    bh_price = product.get('bh_price', 0) or product.get('better_home_price', 0)
+                    original_price = product.get('mrp_price', 0) or product.get('market_price_1', 0) or product.get('retail_price', 0)
+                    if original_price > bh_price > 0:
+                        total_savings += (original_price - bh_price)
     
     # Start building HTML content
     html_content = f"""<!DOCTYPE html>
@@ -3671,6 +3681,20 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                     </div>
                 </div>
             </section>
+        </div>
+    </section>
+    
+    <!-- Customize button section-->
+    <section class="py-4 border-bottom">
+        <div class="container px-5">
+            <div class="text-center">
+                <p class="lead mb-3">Not satisfied with these recommendations?</p>
+                <a href="/?name={user_data.get('name', '')}&mobile={user_data.get('mobile', '')}&email={user_data.get('email', '')}&address={user_data.get('address', '')}&budget={user_data.get('total_budget', '')}&bedrooms={user_data.get('num_bedrooms', 2)}&bathrooms={user_data.get('num_bathrooms', 2)}" 
+                   class="btn btn-primary btn-lg px-5 py-3" style="background-color: #00aa9f; border-color: #00aa9f;">
+                    <i class="bi bi-gear-fill me-2"></i>Customize Your Recommendations
+                </a>
+                <p class="text-muted mt-2 small">Get personalized choices for each appliance based on your specific needs</p>
+            </div>
         </div>
     </section>
     
@@ -3922,24 +3946,25 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
 
 def update_html_asset_paths(html_filename: str, assets_dir: str) -> None:
     """
-    Update the HTML file to use relative paths for CSS, JS, and image assets.
-    This ensures the generated HTML can find the template assets.
+    Update the HTML file to use absolute paths for CSS, JS, and image assets.
+    This ensures the generated HTML can find the template assets when served through Flask.
     """
     try:
         with open(html_filename, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        # Update asset paths to use the copied assets directory
-        html_content = html_content.replace('href="css/', f'href="{assets_dir}/css/')
-        html_content = html_content.replace('src="js/', f'src="{assets_dir}/js/')
-        html_content = html_content.replace('href="assets/', f'href="{assets_dir}/assets/')
-        html_content = html_content.replace('src="assets/', f'src="{assets_dir}/assets/')
+        # Update asset paths to use the copied assets directory with absolute paths
+        # Use absolute paths (starting with /) to ensure correct resolution when served through Flask
+        html_content = html_content.replace('href="css/', f'href="/{assets_dir}/css/')
+        html_content = html_content.replace('src="js/', f'src="/{assets_dir}/js/')
+        html_content = html_content.replace('href="assets/', f'href="/{assets_dir}/assets/')
+        html_content = html_content.replace('src="assets/', f'src="/{assets_dir}/assets/')
         
         # Write the updated HTML back
         with open(html_filename, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
-        print(f"Updated HTML asset paths to use: {assets_dir}")
+        print(f"Updated HTML asset paths to use: /{assets_dir}")
     except Exception as e:
         print(f"Warning: Could not update HTML asset paths: {e}")
 

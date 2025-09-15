@@ -63,11 +63,17 @@ def format_currency(amount: float) -> str:
 
 # Function to load product catalog
 def load_product_catalog() -> Dict[str, Any]:
-    """Load product catalog from JSON file"""
+    """Load product catalog from JSON file and enrich with CSV image data"""
     try:
         with open('product_catalog.json', 'r') as f:
             catalog = json.load(f)
-            return catalog
+        
+        # Enrich catalog with image URLs from CSV files
+        image_mapping = load_csv_image_data()
+        if image_mapping:
+            catalog = enrich_catalog_with_images(catalog, image_mapping)
+        
+        return catalog
     except FileNotFoundError:
         print("Product catalog file not found")
         return {}
@@ -84,6 +90,83 @@ def load_config() -> Dict[str, Any]:
     except FileNotFoundError:
         print("Configuration file not found")
         return {}
+
+def load_csv_image_data():
+    """
+    Load product image URLs from CSV files and return a mapping of SKU -> Image URL
+    """
+    import pandas as pd
+    image_mapping = {}
+    
+    csv_files = ['best-seller-1.csv', 'best-seller-2.csv', 'best-seller-3.csv', 'best-seller-4.csv']
+    
+    for csv_file in csv_files:
+        try:
+            if os.path.exists(csv_file):
+                df = pd.read_csv(csv_file)
+                if 'Product Image URL' in df.columns and 'SKU Code' in df.columns:
+                    # Create mapping of SKU -> Image URL for non-null values
+                    for _, row in df.iterrows():
+                        sku = row.get('SKU Code')
+                        image_url = row.get('Product Image URL')
+                        if pd.notna(sku) and pd.notna(image_url) and str(image_url).strip():
+                            image_mapping[str(sku).strip()] = str(image_url).strip()
+        except Exception as e:
+            print(f"Warning: Could not load image data from {csv_file}: {e}")
+    
+    print(f"Loaded {len(image_mapping)} product images from CSV files")
+    return image_mapping
+
+def enrich_catalog_with_images(catalog, image_mapping):
+    """
+    Enrich the product catalog with image URLs from CSV data
+    """
+    if not catalog or 'products' not in catalog:
+        return catalog
+    
+    enriched_count = 0
+    for product in catalog['products']:
+        sku = product.get('sku')
+        if sku and str(sku) in image_mapping:
+            product['image_url'] = image_mapping[str(sku)]
+            enriched_count += 1
+    
+    print(f"Enriched {enriched_count} products with image URLs")
+    return catalog
+
+def safe_int(value, default=0):
+    """Safely convert a value to integer, handling NaN and None values."""
+    import pandas as pd
+    if pd.isna(value) or value is None or value == '':
+        return default
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return default
+
+def safe_float(value, default=0.0):
+    """Safely convert a value to float, handling NaN and None values."""
+    import pandas as pd
+    if pd.isna(value) or value is None or value == '':
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+def safe_bool(value, default=False):
+    """Safely convert a value to boolean, handling NaN and None values."""
+    import pandas as pd
+    if pd.isna(value) or value is None or value == '':
+        return default
+    return str(value).lower() in ['yes', 'true', '1']
+
+def safe_string(value, default=None):
+    """Safely convert a value to string, handling NaN and None values."""
+    import pandas as pd
+    if pd.isna(value) or value is None:
+        return default
+    return str(value).strip()
 
 def is_appliance_needed(value) -> bool:
     """
@@ -182,43 +265,19 @@ def analyze_user_requirements(excel_file: str):
 
         # Use safer data access with error handling
         try:
-            # Handle potentially empty or non-numeric fields
-            def safe_int(val):
-                try:
-                    if pd.isna(val):
-                        return 0
-                    return int(val)
-                except (ValueError, TypeError):
-                    print(f"Warning: Could not convert {val} to int, using 0")
-                    return 0
-
-            def safe_float(val):
-                try:
-                    if pd.isna(val):
-                        return 0.0
-                    return float(val)
-                except (ValueError, TypeError):
-                    print(f"Warning: Could not convert {val} to float, using 0.0")
-                    return 0.0
-
-            def safe_str(val):
-                if pd.isna(val):
-                    return ""
-                return str(val).replace('\n', ' ')
-
             # Convert DataFrame to dictionary with safer access
             user_data = {
-                'name': safe_str(df.iloc[0]['Name']),
-                'mobile': safe_str(df.iloc[0]['Mobile Number (Preferably on WhatsApp)']),
-                'email': safe_str(df.iloc[0]['E-mail']),
-                'address': safe_str(df.iloc[0]['Apartment Address']),
-                'total_budget': safe_float(df.iloc[0]['What is your overall budget for home appliances?']),
-                'num_bedrooms': safe_int(df.iloc[0]['Number of bedrooms']),
-                'num_bathrooms': safe_int(df.iloc[0]['Number of bathrooms']),
+                'name': safe_string(df.iloc[0].get('Name')),
+                'mobile': safe_string(df.iloc[0].get('Mobile Number (Preferably on WhatsApp)')),
+                'email': safe_string(df.iloc[0].get('E-mail')),
+                'address': safe_string(df.iloc[0].get('Apartment Address')),
+                'total_budget': safe_float(df.iloc[0].get('What is your overall budget for home appliances?')),
+                'num_bedrooms': safe_int(df.iloc[0].get('Number of bedrooms')),
+                'num_bathrooms': safe_int(df.iloc[0].get('Number of bathrooms')),
                 'demographics': {
-                    'adults': safe_int(df.iloc[0]['Adults (between the age 18 to 50)']),
-                    'elders': safe_int(df.iloc[0]['Elders (above the age 60)']),
-                    'kids': safe_int(df.iloc[0]['Kids (below the age 18)'])
+                    'adults': safe_int(df.iloc[0].get('Adults (between the age 18 to 50)')),
+                    'elders': safe_int(df.iloc[0].get('Elders (above the age 60)')),
+                    'kids': safe_int(df.iloc[0].get('Kids (below the age 18)'))
                 }
             }
 
@@ -243,77 +302,77 @@ def analyze_user_requirements(excel_file: str):
         # Extract room requirements
         requirements = {
             'hall': {
-                'fans': int(df.iloc[0]['Hall: Fan(s)?']),
-                'ac': df.iloc[0]['Hall: Air Conditioner (AC)?'] == 'Yes',
-                'color_theme': df.iloc[0]['Hall: Colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Hall: What is the square feet ?', 150.0)),  # Updated column name
-                'is_for_kids': df.iloc[0].get('Hall: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
+                'fans': safe_int(df.iloc[0].get('Hall: Fan(s)?'), 1),
+                'ac': safe_bool(df.iloc[0].get('Hall: Air Conditioner (AC)?'), False),
+                'color_theme': safe_string(df.iloc[0].get('Hall: Colour theme?')),
+                'size_sqft': safe_float(df.iloc[0].get('Hall: What is the square feet ?'), 150.0),
+                'is_for_kids': safe_bool(df.iloc[0].get('Hall: Is this for kids above'), False)
             },
             'kitchen': {
-                'chimney_width': df.iloc[0]['Kitchen: Chimney width?'],
-                'gas_stove_type': df.iloc[0]['Kitchen: Gas stove type?'],
-                'num_burners': int(df.iloc[0]['Kitchen: Number of burners?']),
-                'small_fan': df.iloc[0]['Kitchen: Do you need a small fan?'] == 'Yes',
+                'chimney_width': safe_string(df.iloc[0].get('Kitchen: Chimney width?')),
+                'gas_stove_type': safe_string(df.iloc[0].get('Kitchen: Gas stove type?')),
+                'num_burners': safe_int(df.iloc[0].get('Kitchen: Number of burners?'), 3),
+                'small_fan': safe_bool(df.iloc[0].get('Kitchen: Do you need a small fan?'), False),
                 'color_theme': None,  # No color theme specified for kitchen
-                'refrigerator_type': df.iloc[0].get('Kitchen: Refrigerator type?', None), # Add refrigerator type
-                'refrigerator_capacity': df.iloc[0].get('Kitchen: Refrigerator capacity?', None), # Add refrigerator capacity
-                'dishwasher_capacity': df.iloc[0].get('Kitchen: Dishwasher capacity?', None), # Add dishwasher capacity
-                'size_sqft': float(df.iloc[0].get('Kitchen: Size (square feet)', 100.0)),  # Default to 100 sq ft if not specified
-                'is_for_kids': df.iloc[0].get('Kitchen: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
+                'refrigerator_type': safe_string(df.iloc[0].get('Kitchen: Refrigerator type?')),
+                'refrigerator_capacity': safe_string(df.iloc[0].get('Kitchen: Refrigerator capacity?')),
+                'dishwasher_capacity': safe_string(df.iloc[0].get('Kitchen: Dishwasher capacity?')),
+                'size_sqft': safe_float(df.iloc[0].get('Kitchen: Size (square feet)'), 100.0),
+                'is_for_kids': safe_bool(df.iloc[0].get('Kitchen: Is this for kids above'), False)
             },
             'master_bedroom': {
-                'ac': df.iloc[0]['Master: Air Conditioner (AC)?'] == 'Yes',
+                'ac': safe_bool(df.iloc[0].get('Master: Air Conditioner (AC)?'), False),
                 'bathroom': {
-                    'water_heater_type': df.iloc[0]['Master: How do you bath with the hot & cold water?'],
-                    'exhaust_fan_size': df.iloc[0]['Master: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Master: Is the water heater going to be inside the false ceiling in the bathroom?'],
-                    'led_mirror': df.iloc[0]['Master: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
-                    'glass_partition': df.iloc[0].get('Master: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
+                    'water_heater_type': safe_string(df.iloc[0].get('Master: How do you bath with the hot & cold water?')),
+                    'exhaust_fan_size': safe_string(df.iloc[0].get('Master: Exhaust fan size?')),
+                    'water_heater_ceiling': safe_string(df.iloc[0].get('Master: Is the water heater going to be inside the false ceiling in the bathroom?')),
+                    'led_mirror': safe_bool(df.iloc[0].get('Master: Would you like to have a LED Mirror?'), False),
+                    'glass_partition': safe_bool(df.iloc[0].get('Master: Do you want a Glass Partition in the bathroom?'), False)
                 },
-                'color_theme': df.iloc[0]['Master: What is the colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?', 140.0)),  # Updated column name
-                'is_for_kids': df.iloc[0].get('Master: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
+                'color_theme': safe_string(df.iloc[0].get('Master: What is the colour theme?')),
+                'size_sqft': safe_float(df.iloc[0].get('Master: What is the area of the bedroom in square feet?'), 140.0),
+                'is_for_kids': safe_bool(df.iloc[0].get('Master: Is this for kids above'), False)
             },
             'bedroom_2': {
-                'ac': df.iloc[0]['Bedroom 2: Air Conditioner (AC)?'] == 'Yes',
+                'ac': safe_bool(df.iloc[0].get('Bedroom 2: Air Conditioner (AC)?'), False),
                 'bathroom': {
-                    'water_heater_type': df.iloc[0]['Bedroom 2: How do you bath with the hot & cold water?'],
-                    'exhaust_fan_size': df.iloc[0]['Bedroom 2: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?'],
-                    'led_mirror': df.iloc[0]['Bedroom 2: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
-                    'glass_partition': df.iloc[0].get('Bedroom 2: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
+                    'water_heater_type': safe_string(df.iloc[0].get('Bedroom 2: How do you bath with the hot & cold water?')),
+                    'exhaust_fan_size': safe_string(df.iloc[0].get('Bedroom 2: Exhaust fan size?')),
+                    'water_heater_ceiling': safe_string(df.iloc[0].get('Bedroom 2: Is the water heater going to be inside the false ceiling in the bathroom?')),
+                    'led_mirror': safe_bool(df.iloc[0].get('Bedroom 2: Would you like to have a LED Mirror?'), False),
+                    'glass_partition': safe_bool(df.iloc[0].get('Bedroom 2: Do you want a Glass Partition in the bathroom?'), False)
                 },
-                'color_theme': df.iloc[0]['Bedroom 2: What is the colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?', 120.0)),  # Updated column name
-                'is_for_kids': df.iloc[0].get('Bedroom 2: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
+                'color_theme': safe_string(df.iloc[0].get('Bedroom 2: What is the colour theme?')),
+                'size_sqft': safe_float(df.iloc[0].get('Bedroom 2: What is the area of the bedroom in square feet?'), 120.0),
+                'is_for_kids': safe_bool(df.iloc[0].get('Bedroom 2: Is this for kids above'), False)
             },
             'bedroom_3': {
-                'ac': df.iloc[0]['Bedroom 3: Air Conditioner (AC)?'] == 'Yes',
+                'ac': safe_bool(df.iloc[0].get('Bedroom 3: Air Conditioner (AC)?'), False),
                 'bathroom': {
-                    'water_heater_type': df.iloc[0]['Bedroom 3: How do you bath with the hot & cold water?'],
-                    'exhaust_fan_size': df.iloc[0]['Bedroom 3: Exhaust fan size?'],
-                    'water_heater_ceiling': df.iloc[0]['Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?'],
-                    'led_mirror': df.iloc[0]['Bedroom 3: Would you like to have a LED Mirror?'] == 'Yes',  # Add LED mirror preference
-                    'glass_partition': df.iloc[0].get('Bedroom 3: Do you want a Glass Partition in the bathroom?') == 'Yes'  # Add glass partition preference
+                    'water_heater_type': safe_string(df.iloc[0].get('Bedroom 3: How do you bath with the hot & cold water?')),
+                    'exhaust_fan_size': safe_string(df.iloc[0].get('Bedroom 3: Exhaust fan size?')),
+                    'water_heater_ceiling': safe_string(df.iloc[0].get('Bedroom 3: Is the water heater going to be inside the false ceiling in the bathroom?')),
+                    'led_mirror': safe_bool(df.iloc[0].get('Bedroom 3: Would you like to have a LED Mirror?'), False),
+                    'glass_partition': safe_bool(df.iloc[0].get('Bedroom 3: Do you want a Glass Partition in the bathroom?'), False)
                 },
-                'color_theme': df.iloc[0]['Bedroom 3: What is the colour theme?'],
-                'size_sqft': float(df.iloc[0].get('Bedroom 3: What is the area of the bedroom in square feet?', 120.0)),  # Updated column name
-                'is_for_kids': df.iloc[0].get('Bedroom 3: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
+                'color_theme': safe_string(df.iloc[0].get('Bedroom 3: What is the colour theme?')),
+                'size_sqft': safe_float(df.iloc[0].get('Bedroom 3: What is the area of the bedroom in square feet?'), 120.0),
+                'is_for_kids': safe_bool(df.iloc[0].get('Bedroom 3: Is this for kids above'), False)
             },
             'laundry': {
-                'washing_machine_type': df.iloc[0]['Laundry: Washing Machine?'],
-                'dryer_type': df.iloc[0]['Laundry: Dryer?'],
+                'washing_machine_type': safe_string(df.iloc[0].get('Laundry: Washing Machine?')),
+                'dryer_type': safe_string(df.iloc[0].get('Laundry: Dryer?')),
                 'color_theme': None,  # No color theme specified for laundry
-                'size_sqft': float(df.iloc[0].get('Laundry: Size (square feet)', 50.0)),  # Default to 50 sq ft if not specified
-                'is_for_kids': df.iloc[0].get('Laundry: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
+                'size_sqft': safe_float(df.iloc[0].get('Laundry: Size (square feet)'), 50.0),
+                'is_for_kids': safe_bool(df.iloc[0].get('Laundry: Is this for kids above'), False)
             },
             'dining': {
-                'fan_size': df.iloc[0].get('Dining: Fan', None),
-                'fans': safe_int(df.iloc[0].get('Dining: Fan(s)?', 1)),  # Use safe_int to handle non-numeric values
-                'ac': df.iloc[0].get('Dining: Air Conditioner (AC)?', 'No') == 'Yes',
-                'color_theme': df.iloc[0].get('Dining: Colour theme?', None),
-                'size_sqft': safe_float(df.iloc[0].get('Dining: What is the square feet?', 120.0)),  # Use safe_floa
-                'is_for_kids': df.iloc[0].get('Dining: Is this for kids above', 'No') == 'Yes'  # Add is_for_kids field
+                'fan_size': safe_string(df.iloc[0].get('Dining: Fan')),
+                'fans': safe_int(df.iloc[0].get('Dining: Fan(s)?'), 0),
+                'ac': safe_bool(df.iloc[0].get('Dining: Air Conditioner (AC)?'), False),
+                'color_theme': safe_string(df.iloc[0].get('Dining: Colour theme?')),
+                'size_sqft': safe_float(df.iloc[0].get('Dining: What is the square feet?'), 120.0),
+                'is_for_kids': safe_bool(df.iloc[0].get('Dining: Is this for kids above'), False)
             }
         }
 
@@ -2173,6 +2232,111 @@ def download_image(image_url: str, save_dir: str) -> str:
     """Download an image from a URL and save it to the specified directory."""
 
 # Function to generate final product lis
+def should_provide_default_recommendations(user_data: Dict[str, Any]) -> bool:
+    """
+    Check if user data is mostly empty and we should provide default recommendations.
+    """
+    # Count how many appliance requirements are None/False vs actual requirements
+    empty_count = 0
+    total_count = 0
+    
+    for room_name, room_data in user_data.items():
+        if room_name in ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'bedroom_3', 'laundry', 'dining']:
+            if isinstance(room_data, dict):
+                for key, value in room_data.items():
+                    if key in ['ac', 'fans', 'refrigerator_type', 'gas_stove_type', 'washing_machine_type']:
+                        total_count += 1
+                        if value is None or value is False or (isinstance(value, str) and value.lower() in ['none', 'nan']):
+                            empty_count += 1
+    
+    # If more than 80% of key appliance fields are empty, provide defaults
+    percentage = (empty_count / total_count) if total_count > 0 else 0
+    # Debug: print(f"Default recommendations check - Empty: {empty_count}/{total_count} = {percentage:.1%} (threshold: 80%)")
+    return total_count > 0 and percentage >= 0.8
+
+def add_default_recommendations(final_list: Dict[str, Any], user_data: Dict[str, Any]) -> None:
+    """
+    Add sensible default recommendations when user data is missing.
+    """
+    # Only add defaults if the room has no products
+    rooms_to_check = ['hall', 'kitchen', 'master_bedroom', 'bedroom_2', 'bedroom_3', 'laundry', 'dining']
+    
+    for room_name in rooms_to_check:
+        if room_name in final_list:
+            room_has_products = False
+            
+            # Check if room has any products
+            if isinstance(final_list[room_name], dict):
+                for category, products in final_list[room_name].items():
+                    if isinstance(products, list) and len(products) > 0:
+                        room_has_products = True
+                        break
+                    elif isinstance(products, dict):
+                        for sub_cat, sub_products in products.items():
+                            if isinstance(sub_products, list) and len(sub_products) > 0:
+                                room_has_products = True
+                                break
+            
+            # Add default recommendations if room is empty
+            if not room_has_products:
+                print(f"Adding default recommendations for {room_name}")
+                
+                try:
+                    budget_category = get_budget_category(user_data['total_budget'], 'ac') if user_data.get('total_budget') else 'standard'
+                    demographics = user_data.get('demographics', {'adults': 2, 'elders': 0, 'kids': 0})
+                    
+                    # Add basic appliances for each room type
+                    if room_name == 'hall':
+                        # Add fans for hall
+                        fan_recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, demographics, None, user_data)
+                        # Debug: check if recommended products have image URLs
+                        for i, product in enumerate(fan_recommendations[:3]):
+                            image_url = product.get('image_url') or product.get('image_src') or 'No image'
+                            sku = product.get('sku', 'No SKU')
+                            print(f"DEBUG: Hall fan {i+1} - SKU: {sku}, Image: {'Yes' if image_url and image_url != 'No image' else 'No'}")
+                        final_list[room_name]['fans'] = fan_recommendations[:3]
+                        
+                        # Add AC for hall
+                        ac_recommendations = get_specific_product_recommendations('ac', budget_category, demographics, None, user_data, {'tonnage': '2 Ton'})
+                        final_list[room_name]['ac'] = ac_recommendations[:3]
+                    
+                    elif room_name == 'kitchen':
+                        # Add refrigerator
+                        refrigerator_recommendations = get_specific_product_recommendations('refrigerator', budget_category, demographics, None, user_data, {'capacity': '300 to 400 litres'})
+                        # Debug: check if recommended products have image URLs
+                        for i, product in enumerate(refrigerator_recommendations[:3]):
+                            image_url = product.get('image_url', 'No image')
+                            sku = product.get('sku', 'No SKU')
+                            print(f"DEBUG: Kitchen refrigerator {i+1} - SKU: {sku}, Image: {'Yes' if image_url and image_url != 'No image' else 'No'}")
+                        final_list[room_name]['refrigerator'] = refrigerator_recommendations[:3]
+                        
+                        # Add gas stove
+                        gas_stove_recommendations = get_specific_product_recommendations('gas_stove', budget_category, demographics, None, user_data, {'num_burners': 4})
+                        final_list[room_name]['gas_stove'] = gas_stove_recommendations[:3]
+                    
+                    elif room_name in ['master_bedroom', 'bedroom_2']:
+                        # Add AC for bedrooms
+                        ac_recommendations = get_specific_product_recommendations('ac', budget_category, demographics, None, user_data, {'tonnage': '1.5 Ton'})
+                        final_list[room_name]['ac'] = ac_recommendations[:3]
+                    
+                    elif room_name == 'bedroom_3':
+                        # Add fans for bedroom 3
+                        fan_recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, demographics, None, user_data)
+                        final_list[room_name]['fans'] = fan_recommendations[:3]
+                    
+                    elif room_name == 'laundry':
+                        # Add washing machine
+                        washing_machine_recommendations = get_specific_product_recommendations('washing_machine', budget_category, demographics, None, user_data)
+                        final_list[room_name]['washing_machine'] = washing_machine_recommendations[:3]
+                    
+                    elif room_name == 'dining':
+                        # Add fans for dining
+                        fan_recommendations = get_specific_product_recommendations('ceiling_fan', budget_category, demographics, None, user_data)
+                        final_list[room_name]['fans'] = fan_recommendations[:3]
+                        
+                except Exception as e:
+                    print(f"Error getting default recommendations for {room_name}: {e}")
+
 def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
     """Generate a final list of preferred products with specific recommendations"""
     # Debug: Print the entire user data to verify gas stove type
@@ -2843,6 +3007,12 @@ def generate_final_product_list(user_data: Dict[str, Any]) -> Dict[str, Any]:
 #####
     if num_bedrooms == 2:
         del final_list['bedroom_3']
+    
+    # Add default recommendations if user data is mostly empty
+    if should_provide_default_recommendations(user_data):
+        print("User data appears to be mostly empty - adding default recommendations for better demo experience")
+        add_default_recommendations(final_list, user_data)
+    
     return final_list
 
 
@@ -4532,6 +4702,337 @@ def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str
         print(f"Error in upload_recommendation_files_to_s3: {str(e)}")
         return {}
 
+# Function to generate an HTML file with recommendations using the new shop-page template
+def generate_html_file_with_shop_template(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
+    """
+    Generate HTML recommendations using the new shop-page template design.
+    This function creates a modern, card-based layout with product selection functionality.
+    """
+    # Get current date for the footer
+    current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
+    
+    # Calculate total cost and savings
+    total_cost = calculate_total_cost(final_list)
+    budget_utilization = (total_cost / user_data['total_budget']) * 100 if user_data['total_budget'] > 0 else 0
+    
+    # Start building HTML content
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="BetterHome Product Recommendations for {user_data.get('name', 'Customer')}" />
+    <meta name="author" content="BetterHome" />
+    <title>Appliances-Bazaar-Recommendation- Page</title>
+    <!-- Favicon-->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap icons-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet" />
+    <!-- Core theme CSS (includes Bootstrap)-->
+    <link href="css/styles.css" rel="stylesheet" />
+</head>
+
+<body>
+
+    <!-- Features section-->
+    <section class="py-5 border-bottom" id="features">
+        <div class="container px-5 my-5">
+            <div class="text-center mb-5">
+                <h2 class="fw-bolder">Contact Information</h2>
+                <p class="lead mb-0">Your personalized appliance recommendations</p>
+            </div>
+            <section style="background-color: #00aa9f;border-radius: 20px;padding: 10px 10px;">
+                <div class="container py-5">
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="my-3">{user_data.get('name', 'Customer')}</h5>
+                                    <p class="text-muted mb-1" style="font-weight: bold;">Address:</p>
+                                    <p class="text-muted mb-4">{user_data.get('address', 'Address not provided')}</p>
+                                    <div class="d-flex justify-content-center mb-2">
+                                        <button type="button" data-mdb-button-init data-mdb-ripple-init
+                                            class="btn btn-primary">Total Budget: ₹{total_cost:,.0f}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-8">
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Full Name</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('name', 'Customer')}</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Email</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('email', 'Not provided')}</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Phone</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('phone', 'Not provided')}</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Mobile</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('mobile', 'Not provided')}</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <p class="mb-0">Address</p>
+                                        </div>
+                                        <div class="col-sm-9">
+                                            <p class="text-muted mb-0">{user_data.get('address', 'Not provided')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+    <!-- Pricing section-->
+    <section class="bg-light py-5 border-bottom">
+        <div class="container px-5 my-5">
+            <div class="text-center mb-5">
+                <h2 class="fw-bolder">Product Recommendations</h2>
+            </div>
+            <div class="col-lg-12 col-xl-12">
+                <div class="accordion" id="accordionExample">"""
+    
+    # Generate accordion items for each room
+    accordion_items = []
+    collapse_id = 1
+    
+    for room_name, products in final_list.items():
+        if not isinstance(products, dict):
+            continue
+            
+        room_display_name = room_name.replace('_', ' ').title()
+        
+        accordion_item = f"""
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{room_display_name.replace(' ', '')}">
+                            <button class="accordion-button {'collapsed' if collapse_id > 1 else ''}" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapse{room_display_name.replace(' ', '')}" aria-expanded="{'true' if collapse_id == 1 else 'false'}" aria-controls="collapse{room_display_name.replace(' ', '')}">
+                                {room_display_name.upper()}
+                            </button>
+                        </h2>
+                        <div id="collapse{room_display_name.replace(' ', '')}" class="accordion-collapse collapse {'show' if collapse_id == 1 else ''}" aria-labelledby="heading{room_display_name.replace(' ', '')}"
+                            data-bs-parent="#accordionExample">
+                            <div class="accordion-body">
+                                <div class="container">
+                                    <div class="row">"""
+        
+        # Generate product cards for each category in this room
+        for product_type, options in products.items():
+            if isinstance(options, dict):
+                # Handle nested structure (like 'air_conditioner' -> 'ac' -> list)
+                for nested_type, nested_options in options.items():
+                    if not nested_options or not isinstance(nested_options, list):
+                        continue
+                    
+                    category_display_name = nested_type.replace('_', ' ').title()
+                    accordion_item += f"""
+                                        <h2 class="fw-bolder">{category_display_name}</h2>"""
+                    
+                    # Show top 3 products for this category
+                    top_products = sorted(nested_options, key=lambda x: x.get('feature_match_score', 0), reverse=True)[:3]
+                    
+                    for idx, product in enumerate(top_products):
+                        accordion_item += generate_product_card(product, room_name, nested_type, idx, collapse_id)
+                        
+            elif isinstance(options, list) and options:
+                # Handle direct list structure
+                category_display_name = product_type.replace('_', ' ').title()
+                accordion_item += f"""
+                                    <h2 class="fw-bolder">{category_display_name}</h2>"""
+                
+                # Show top 3 products for this category
+                top_products = sorted(options, key=lambda x: x.get('feature_match_score', 0), reverse=True)[:3]
+                
+                for idx, product in enumerate(top_products):
+                    accordion_item += generate_product_card(product, room_name, product_type, idx, collapse_id)
+        
+        accordion_item += """
+                                    </div>
+                                </div>
+                                <div class="container">
+                                    <hr />
+                                </div>
+                            </div>
+                        </div>
+                    </div>"""
+        
+        accordion_items.append(accordion_item)
+        collapse_id += 1
+    
+    # Add all accordion items to HTML
+    html_content += ''.join(accordion_items)
+    
+    # Close accordion and add footer
+    html_content += f"""
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer-->
+    <footer class="py-5 bg-dark">
+        <div class="container px-5">
+            <p class="m-0 text-center text-white">This product recommendation brochure was created on {current_date}<br/>
+                © 2025 BetterHome.
+            </p>
+        </div>
+    </footer>
+    <!-- Bootstrap core JS-->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core theme JS-->
+    <script src="js/scripts.js"></script>
+    <script src="https://cdn.startbootstrap.com/sb-forms-latest.js"></script>
+    <script>
+        function changeImage(event, src) {{
+            document.getElementById('mainImage').src = src;
+            document.querySelectorAll('.thumbnail').forEach(thumb => thumb.classList.remove('active'));
+            event.target.classList.add('active');
+        }}
+    </script>
+</body>
+
+</html>"""
+    
+    # Write HTML content to file
+    with open(html_filename, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print(f"HTML file generated successfully: {html_filename}")
+
+def generate_product_card(product: Dict[str, Any], room: str, category: str, index: int, collapse_id: int) -> str:
+    """
+    Generate a product card HTML for the shop template.
+    """
+    # Extract product details
+    brand = product.get('brand', 'Unknown Brand')
+    model = product.get('model', product.get('title', 'Unknown Model'))
+    price = product.get('price', 0)
+    original_price = product.get('original_price', price * 1.25)  # Assume 25% discount
+    savings = original_price - price
+    # Use actual product image URL if available, otherwise use a simple placeholder
+    image_url = product.get('image_url') or product.get('image_src') or product.get('Product Image URL')
+    if not image_url or pd.isna(image_url):
+        # Use a clean, simple placeholder when no real image is available
+        image_url = 'https://via.placeholder.com/700x550/f8f9fa/6c757d?text=Product+Image'
+    description = product.get('concise_description', product.get('description', 'No description available'))[:200] + '...'
+    
+    # Create unique IDs for this product
+    product_id = f"{room}-{category}-{index}"
+    collapse_link_id = f"collapsewithlink{collapse_id}_{index}"
+    
+    # Generate features list
+    features_html = ""
+    if 'features' in product and isinstance(product['features'], dict):
+        features_html = "<ul>"
+        for key, value in product['features'].items():
+            if value and str(value).lower() not in ['nan', 'none', '']:
+                display_key = key.replace('_', ' ').title()
+                features_html += f"<li>{display_key}: {value}</li>"
+        features_html += "</ul>"
+    
+    # Generate star rating (assume 4-5 stars for recommended products)
+    stars_html = '<i class="fa fa-star" aria-hidden="true"></i>' * 5
+    
+    card_html = f"""
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card h-100">
+                                                <div class="d-flex justify-content-between position-absolute w-100">
+                                                    <div class="label-new">
+                                                        <div class="product-selection">
+                                                            <input type="checkbox" id="{product_id}" class="product-checkbox" 
+                                                                   name="{room}-{category}" data-product-id="{product_id}" 
+                                                                   data-room="{room}" data-category="{category}" 
+                                                                   data-brand="{brand}" data-model="{model}" 
+                                                                   data-price="{price}" data-image="{image_url}" checked="">
+                                                            <label for="{product_id}"></label>
+                                                            <span class="selection-label">Selected</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="label-sale">
+                                                        <span class="text-white bg-primary small d-flex align-items-center px-2 py-1">
+                                                            <i class="fas fa-thumbs-up"></i>
+                                                            <span class="ml-1">RECOMMENDED</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <a href="#">
+                                                    <img src="{image_url}" class="card-img-top" alt="Product">
+                                                </a>
+                                                <div class="card-body px-2 pb-2 pt-1">
+                                                    <p class="mb-1">
+                                                        <small>
+                                                            <a href="#" class="text-secondary">{category.replace('_', ' ').title()}</a>
+                                                        </small>
+                                                    </p>
+                                                    <p class="mb-0">
+                                                        <strong>
+                                                            <a href="#" class="text-secondary">{model}</a>
+                                                        </strong>
+                                                    </p>
+                                                    <div class="mb-3">
+                                                        <span class="h2 me-2">₹{price:,.0f}</span>
+                                                        <span class="text-muted"><s>₹{original_price:,.0f}</s></span>
+                                                        <span class="h6 me-2" style="color: #15ce04;">Save ₹{savings:,.0f}</span>
+                                                    </div>
+                                                    
+                                                    <p class="text-warning d-flex align-items-center mb-2">
+                                                        {stars_html}
+                                                    </p>
+                                                    <p>{description}</p>
+                                                    
+                                                    <p><a class="btn btn-primary btn-acct" data-bs-toggle="collapse" href="#{collapse_link_id}" role="button" aria-expanded="false" aria-controls="{collapse_link_id}">Product Features <i class="fa fa-long-arrow-right" aria-hidden="true"></i></a></p>
+
+                                                    <div class="collapse" id="{collapse_link_id}">
+                                                        <div class="card card-body">
+                                                            {features_html}
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div class="col-12 px-0">
+                                                            <button class="btn btn-outline-primary btn-block" style="background:#0d6efd;color:#fff;padding: 10px 39px">
+                                                                Buy Now
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>"""
+    
+    return card_html
+
 # Function to generate an HTML file with recommendations using the new Appliances-Bazaar template
 def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """
@@ -5001,20 +5502,46 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
     
     print(f"Generated professional HTML brochure with new template: {html_filename}")
 
+def copy_shop_template_assets(base_filename: str) -> str:
+    """
+    Copy the shop template assets (CSS, JS, images) to the output directory.
+    Returns the assets directory name.
+    """
+    import shutil
+    
+    # Define source and destination paths
+    template_dir = os.path.join(os.path.dirname(__file__), 'recommended-page')
+    assets_dir = f"{base_filename}_shop_assets"
+    
+    try:
+        # Remove existing assets directory if it exists
+        if os.path.exists(assets_dir):
+            shutil.rmtree(assets_dir)
+        
+        # Copy the entire template directory structure
+        shutil.copytree(template_dir, assets_dir)
+        
+        print(f"Copied shop template assets to {assets_dir}")
+        return assets_dir
+    except Exception as e:
+        print(f"Error copying shop template assets: {str(e)}")
+        return assets_dir
+
 def update_html_asset_paths(html_filename: str, assets_dir: str) -> None:
     """
-    Update the HTML file to use relative paths for CSS, JS, and image assets.
-    This ensures the generated HTML can find the template assets.
+    Update the HTML file to use absolute paths for CSS, JS, and image assets.
+    This ensures the generated HTML can find the template assets when served through Flask.
     """
     try:
         with open(html_filename, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        # Update asset paths to use the copied assets directory
-        html_content = html_content.replace('href="css/', f'href="{assets_dir}/css/')
-        html_content = html_content.replace('src="js/', f'src="{assets_dir}/js/')
-        html_content = html_content.replace('href="assets/', f'href="{assets_dir}/assets/')
-        html_content = html_content.replace('src="assets/', f'src="{assets_dir}/assets/')
+        # Update asset paths to use the copied assets directory with absolute paths
+        # Use absolute paths (starting with /) to ensure correct resolution when served through Flask
+        html_content = html_content.replace('href="css/', f'href="/{assets_dir}/css/')
+        html_content = html_content.replace('src="js/', f'src="/{assets_dir}/js/')
+        html_content = html_content.replace('href="assets/', f'href="/{assets_dir}/assets/')
+        html_content = html_content.replace('src="assets/', f'src="/{assets_dir}/assets/')
         
         # Write the updated HTML back
         with open(html_filename, 'w', encoding='utf-8') as f:
@@ -5090,29 +5617,33 @@ if __name__ == "__main__":
     # create_styled_pdf(pdf_filename, user_data, final_list, required_features)
     #generate_text_file(user_data, final_list, txt_filename)
     
-    # Use the new template function
-    generate_html_file_with_new_template(user_data, final_list, html_filename)
+    # Copy shop template assets
+    shop_assets_dir = copy_shop_template_assets(base_filename)
+    
+    # Use the new shop template function
+    generate_html_file_with_shop_template(user_data, final_list, html_filename)
     
     # Update HTML file to use relative paths for assets
-    update_html_asset_paths(html_filename, f"{base_filename}_assets")
+    update_html_asset_paths(html_filename, shop_assets_dir)
 
     print("\nProduct recommendations have been generated!")
     print(f"Check {pdf_filename}, {txt_filename}, and {html_filename} for details.")
 
 def update_html_asset_paths(html_filename: str, assets_dir: str) -> None:
     """
-    Update the HTML file to use relative paths for CSS, JS, and image assets.
-    This ensures the generated HTML can find the template assets.
+    Update the HTML file to use absolute paths for CSS, JS, and image assets.
+    This ensures the generated HTML can find the template assets when served through Flask.
     """
     try:
         with open(html_filename, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        # Update asset paths to use the copied assets directory
-        html_content = html_content.replace('href="css/', f'href="{assets_dir}/css/')
-        html_content = html_content.replace('src="js/', f'src="{assets_dir}/js/')
-        html_content = html_content.replace('href="assets/', f'href="{assets_dir}/assets/')
-        html_content = html_content.replace('src="assets/', f'src="{assets_dir}/assets/')
+        # Update asset paths to use the copied assets directory with absolute paths
+        # Use absolute paths (starting with /) to ensure correct resolution when served through Flask
+        html_content = html_content.replace('href="css/', f'href="/{assets_dir}/css/')
+        html_content = html_content.replace('src="js/', f'src="/{assets_dir}/js/')
+        html_content = html_content.replace('href="assets/', f'href="/{assets_dir}/assets/')
+        html_content = html_content.replace('src="assets/', f'src="/{assets_dir}/assets/')
         
         # Write the updated HTML back
         with open(html_filename, 'w', encoding='utf-8') as f:

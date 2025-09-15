@@ -437,6 +437,25 @@ def serve_uploads(filename):
     """Serve files from the uploads directory (for images in HTML)"""
     return send_from_directory(UPLOAD_FOLDER, filename)
 
+@betterhome.route('/<asset_dir>/<path:filename>')
+def serve_default_assets(asset_dir, filename):
+    """Serve asset files for default recommendations (CSS, JS, images)"""
+    # Only serve from directories ending with '_assets'
+    if asset_dir.endswith('_assets'):
+        try:
+            web_app_dir = os.path.dirname(os.path.abspath(__file__))
+            asset_path = os.path.join(asset_dir, filename)
+            file_path = os.path.join(web_app_dir, asset_path)
+            if os.path.exists(file_path):
+                return send_from_directory(web_app_dir, asset_path)
+            else:
+                print(f"Default asset file not found: {file_path}")
+                return "Asset file not found", 404
+        except Exception as e:
+            print(f"Error serving default asset: {str(e)}")
+            return "Error serving asset", 500
+    return "Not found", 404
+
 # Serve default recommendations by BHK
 @betterhome.route('/default_recommendations/<bhk>')
 def default_recommendations(bhk):
