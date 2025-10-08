@@ -71,8 +71,17 @@ def send_otp():
 def verify_otp():
     data = request.get_json() or {}
     otp = str(data.get('otp', '')).strip()
+    mobile = str(data.get('mobile', '')).strip()
     if otp == '024680':
-        return jsonify({'success': True})
+        # If there's an existing final recommendation for this mobile in S3, send that URL back
+        mobile_digits = ''.join(ch for ch in mobile if ch.isdigit()) if mobile else ''
+        if mobile_digits:
+            final_html_key = f"users/{mobile_digits}/final/final.html"
+            if s3_handler.file_exists(final_html_key):
+                url = s3_handler.get_file_url(final_html_key)
+                return jsonify({'success': True, 'redirect_to': url})
+        # Otherwise, go to default recommendations (2BHK by default)
+        return jsonify({'success': True, 'redirect_to': url_for('default_recommendations', bhk='2')})
     return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
     
 @betterhome.route('/')
@@ -125,7 +134,18 @@ def submit():
         
         # Create a timestamp for the folder
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        user_folder = os.path.join(UPLOAD_FOLDER, timestamp)
+        # Derive a normalized phone number to organize local storage by user
+        raw_mobile_local = (
+            form_data.get('mobile')
+            or form_data.get('Mobile Number (Preferably on WhatsApp)')
+            or ''
+        )
+        mobile_digits_local = ''.join(ch for ch in str(raw_mobile_local) if ch.isdigit()) or 'unknown'
+        # Base folder for this user's session (images, xlsx, html) -> uploads/{phone}/{name}_{timestamp}
+        # Use absolute path under UPLOAD_FOLDER to ensure files are saved inside web_app/uploads
+        customer_name_tmp = form_data.get('name', 'Customer').strip()
+        safe_customer_name_tmp = secure_filename(customer_name_tmp)
+        user_folder = os.path.join(UPLOAD_FOLDER, mobile_digits_local, f"{safe_customer_name_tmp}_{timestamp}")
         os.makedirs(user_folder, exist_ok=True)
         
         # Get uploaded files (if any)
@@ -145,16 +165,13 @@ def submit():
         else:
             print("No files uploaded (optional)")
         
-        # Use the customer's name and timestamp for the Excel filename
+        # Use the customer's name and timestamp for the Excel filename (stored under phone folder locally)
         customer_name = form_data.get('name', 'Customer').strip()
         safe_customer_name = secure_filename(customer_name)
-        folder_name = f"uploads/{safe_customer_name}_{timestamp}"
-
-        # Create the folder if it doesn't exist
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
-
-        excel_filename = f"{folder_name}/{safe_customer_name}_{timestamp}.xlsx"
+        # Local folder (absolute) under uploads/{phone}/{name}_{timestamp}
+        folder_abs = user_folder
+        # Ensure folder exists (already created above)
+        excel_filename = os.path.join(folder_abs, f"{safe_customer_name}_{timestamp}.xlsx")
         
         # Map form field names to the expected column names in analyze_user_requirements
         field_mapping = {
@@ -344,35 +361,23 @@ def submit():
             print(f"Error executing combined script: {str(e)}")
             recommendation_html = f"Error executing combined script: {str(e)}"
         
-        # Upload files to S3
-        # s3_excel_key = f"{folder_name}.xlsx"
-        # s3_html_key = f"{folder_name}.html"
-        # excel_uploaded = s3_handler.upload_file(excel_filename, s3_excel_key)
-        # html_uploaded = s3_handler.upload_file(html_filename, s3_html_key)
-        # if excel_uploaded and html_uploaded:
-        #     # Get S3 URLs
-        #     excel_url = s3_handler.get_file_url(s3_excel_key)
-        #     html_url = s3_handler.get_file_url(s3_html_key)
-        #     # Format the timestamp for display
-        #     display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
-        #     # Safely access the 'Name' field with a default value
-        #     user_name = form_data.get('Name', 'Customer')
-        #     return render_template('results.html', 
-        #                          html_file=html_filename,
-        #                          excel_file=excel_filename,
-        #                          s3_html_url=html_url,
-        #                          s3_excel_url=excel_url,
-        #                          user_name=user_name,
-        #                          timestamp=display_timestamp,
-        #                          recommendation_html=recommendation_html)
-        # else:
-        #     print("Failed to upload files to S3")
-        #     return "Error uploading files to S3. Please try again."
+        # Upload Excel input to S3 under user phone folder (timestamped and canonical)
+        try:
+            raw_mobile = (
+                form_data.get('mobile')
+                or form_data.get('Mobile Number (Preferably on WhatsApp)')
+                or ''
+            )
+            mobile_digits = ''.join(ch for ch in str(raw_mobile) if ch.isdigit()) or 'unknown'
+            excel_base = os.path.basename(excel_filename)
+            excel_ts_key = f"users/{mobile_digits}/inputs/{excel_base}"
+            excel_latest_key = f"users/{mobile_digits}/inputs/latest.xlsx"
+            s3_handler.upload_file(excel_filename, excel_ts_key)
+            s3_handler.upload_file(excel_filename, excel_latest_key)
+        except Exception as e:
+            print(f"Warning: failed to upload excel to S3: {e}")
 
-        # Instead, just render the results page using local files
-        display_timestamp = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%B %d, %Y at %I:%M %p')
-        user_name = form_data.get('Name', 'Customer')
-        # After generating html_filename
+        # Instead, redirect to the locally generated HTML; S3 uploads for final are handled in combined_script
         relative_html_path = html_filename.replace('web_app/', '')  # adjust as needed
         return redirect(url_for('view_html', filename=relative_html_path))
             
