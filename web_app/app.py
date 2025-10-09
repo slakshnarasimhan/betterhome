@@ -77,9 +77,14 @@ def verify_otp():
         mobile_digits = ''.join(ch for ch in mobile if ch.isdigit()) if mobile else ''
         if mobile_digits:
             final_html_key = f"users/{mobile_digits}/final/final.html"
-            if s3_handler.file_exists(final_html_key):
-                url = s3_handler.get_file_url(final_html_key)
-                return jsonify({'success': True, 'redirect_to': url})
+            try:
+                if s3_handler.file_exists(final_html_key):
+                    url = s3_handler.get_file_url(final_html_key)
+                    if url:
+                        return jsonify({'success': True, 'redirect_to': url})
+            except Exception as e:
+                # Log and gracefully fall back to defaults to avoid client-side network errors
+                print(f"Warning: S3 lookup failed in verify_otp: {e}")
         # Otherwise, go to default recommendations (2BHK by default)
         return jsonify({'success': True, 'redirect_to': url_for('default_recommendations', bhk='2')})
     return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
