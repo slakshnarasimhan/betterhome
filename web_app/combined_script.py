@@ -4660,42 +4660,48 @@ def deduplicate_recommendations(recommendations: List[Dict[str, Any]], max_recom
 
 def upload_recommendation_files_to_s3(user_data: Dict[str, Any], files: Dict[str, str]) -> Dict[str, str]:
     """
-    Upload recommendation files to S3 and return their URLs
+    Upload recommendation files to S3 under a per-user (phone) folder and return presigned URLs
 
-    Args:
-        user_data: Dictionary containing user information
-        files: Dictionary mapping file types to their local paths
-
-    Returns:
-        Dictionary mapping file types to their S3 URLs
+    Folder structure:
+      users/{mobile}/final/{timestamped_filename}
+      users/{mobile}/final/final.{ext} (canonical/latest)
     """
-    #temp implementation to return a dummy s3 url
-    s3_urls = {}
-    for file_type, file_path in files.items():
-        s3_urls[file_type] = f"https://dummy-s3-url.com/{file_type}/{os.path.basename(file_path)}"
-    return s3_urls
-    #dummy implementation ends
     try:
         s3_handler = S3Handler()
-        s3_urls = {}
+        s3_urls: Dict[str, str] = {}
 
-        # Create a unique folder for this user's recommendations
-        # Use our helper function for consistent access regardless of key forma
-        user_name = get_user_data_value(user_data, 'name', 'unknown')
+        # Determine mobile number from provided user_data without relying on helper
+        raw_mobile = (
+            user_data.get('mobile')
+            or user_data.get('Mobile Number (Preferably on WhatsApp)')
+            or user_data.get('mobile_number')
+            or ''
+        )
+        mobile_digits = ''.join(ch for ch in str(raw_mobile) if ch.isdigit()) or 'unknown'
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        user_folder = f"recommendations/{user_name}_{timestamp}"
 
         for file_type, file_path in files.items():
-            if os.path.exists(file_path):
-                # Create S3 key with user folder
-                s3_key = f"{user_folder}/{os.path.basename(file_path)}"
+            if not file_path or not os.path.exists(file_path):
+                continue
 
-                # Upload file to S3
-                if s3_handler.upload_file(file_path, s3_key):
-                    # Get presigned URL
-                    url = s3_handler.get_file_url(s3_key)
-                    if url:
-                        s3_urls[file_type] = url
+            base_name = os.path.basename(file_path)
+            ext = os.path.splitext(base_name)[1].lstrip('.') or file_type
+
+            # Timestamped object
+            s3_key_ts = f"users/{mobile_digits}/final/{timestamp}_{base_name}"
+            # Canonical/latest object
+            s3_key_latest = f"users/{mobile_digits}/final/final.{ext}"
+
+            # Upload timestamped
+            s3_handler.upload_file(file_path, s3_key_ts)
+            # Upload/overwrite latest canonical
+            s3_handler.upload_file(file_path, s3_key_latest)
+
+            # Return URL for the canonical one
+            url = s3_handler.get_file_url(s3_key_latest)
+            if url:
+                s3_urls[file_type] = url
 
         return s3_urls
     except Exception as e:

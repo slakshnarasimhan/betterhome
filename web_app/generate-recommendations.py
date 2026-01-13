@@ -3484,6 +3484,30 @@ def generate_default_recommendations(
         
         print(f"Generated {selected_tier or 'Standard'} default recommendations for {bhk}: {output_filename}")
 
+        # Upload generated default page and its assets to S3 under users/{mobile}/defaults/
+        try:
+            s3 = S3Handler()
+            raw_mobile = user_data.get('mobile') or ''
+            mobile_digits = ''.join(ch for ch in str(raw_mobile) if ch.isdigit()) or 'unknown'
+            # Upload HTML (timestamped and canonical per-tier)
+            ts = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+            html_base = os.path.basename(output_filename)
+            s3.upload_file(output_filename, f"users/{mobile_digits}/defaults/{ts}_{html_base}")
+            s3.upload_file(output_filename, f"users/{mobile_digits}/defaults/{html_base}")
+            # Optionally upload assets directory (best-effort)
+            if os.path.isdir(template_assets_dir):
+                for root, _, files in os.walk(template_assets_dir):
+                    for fn in files:
+                        local_path = os.path.join(root, fn)
+                        rel_path = os.path.relpath(local_path, start=os.path.dirname(output_filename))
+                        s3_key = f"users/{mobile_digits}/defaults/{rel_path}"
+                        try:
+                            s3.upload_file(local_path, s3_key)
+                        except Exception as _e:
+                            print(f"Warning: failed to upload default asset {local_path} -> {s3_key}: {_e}")
+        except Exception as e:
+            print(f"Warning: failed to upload default recommendations to S3: {e}")
+
 # Function to generate an HTML file with recommendations using the new Appliances-Bazaar template
 def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """

@@ -167,11 +167,16 @@
         const res = await fetch('/verify_otp', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mobile: mobile.value, otp})});
         const data = await res.json();
         if (data.success) {
+          // If server provides a redirect target (S3 final or default page), navigate there
+          if (data.redirect_to) {
+            window.location.href = data.redirect_to;
+            return;
+          }
+          // Otherwise continue to profile form
           hiddenMobile.value = mobile.value;
           const email = document.getElementById('email');
           const hiddenEmail = document.getElementById('hiddenEmail');
           if (email && hiddenEmail) hiddenEmail.value = email.value || '';
-          // Persist budget from slider into hidden field
           if (budgetSlider && hiddenBudget) hiddenBudget.value = budgetSlider.value;
           step1.classList.add('hidden');
           step2.classList.remove('hidden');
