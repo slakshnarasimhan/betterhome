@@ -3498,7 +3498,12 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
 
                 .generate-container,
                 .product-selection,
-                .buy-button {
+                .buy-button,
+                .print-hide,
+                #download-pdf,
+                #print-final,
+                #download-final-excel,
+                .generate-button {
                     display: none !important;
                 }
 
@@ -3744,22 +3749,27 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
 
                         // Update budget information
                         const totalElement = document.getElementById('final-total-cost');
-                        totalElement.textContent = totalPrice.toLocaleString('en-IN', {
-                            style: 'currency',
-                            currency: 'INR',
-                            maximumFractionDigits: 2
-                        });
+                        if (totalElement) {
+                            totalElement.textContent = totalPrice.toLocaleString('en-IN', {
+                                style: 'currency',
+                                currency: 'INR',
+                                maximumFractionDigits: 2
+                            });
+                        }
 
                         // Calculate budget utilization
+                        if (totalElement && totalElement.nextElementSibling && totalElement.nextElementSibling.nextElementSibling) {
                         const budget = parseFloat(totalElement.nextElementSibling.nextElementSibling.textContent.replace(/[^0-9.]/g, ''));
                         const utilization = (totalPrice / budget) * 100;
-                        document.getElementById('final-budget-utilization').textContent = `${utilization.toFixed(1)}%`;
+                        const utilizationEl = document.getElementById('final-budget-utilization');
+                        if (utilizationEl) utilizationEl.textContent = `${utilization.toFixed(1)}%`;
 
                         // Update budget status
                         const budgetStatus = document.getElementById('final-budget-status');
-                        if (utilization > 100) {
+                        if (budgetStatus && utilization > 100) {
                             budgetStatus.className = 'budget-status warning';
                             budgetStatus.textContent = '⚠ The total cost exceeds your budget. Consider reviewing your selections.';
+                        }
                         }
                     }
                 };
@@ -3833,79 +3843,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     const downloadButton = checkElement('download-final-excel');
                     if (!downloadButton) {
                         console.error('Final download button not found in the DOM');
-                        return;
                     }
-
-                    downloadButton.addEventListener('click', function() {
-                        console.log('Download final button clicked');
-                        const selectedProducts = [];
-
-                        // Collect all products from the selected-products-container
-                        const roomSections = document.querySelectorAll('#selected-products-container .room-section');
-                        roomSections.forEach(section => {
-                            const roomName = section.querySelector('h2').textContent;
-                            const productCards = section.querySelectorAll('.product-card');
-
-                            productCards.forEach(card => {
-                                const category = card.querySelector('.product-type').textContent;
-                                const title = card.querySelector('.product-title').textContent;
-                                const price = card.querySelector('.current-price').textContent;
-
-                                // Split title into brand and model - assumes format "Brand Model"
-                                const titleParts = title.split(' ');
-                                const brand = titleParts[0];
-                                const model = titleParts.slice(1).join(' ');
-
-                                selectedProducts.push({
-                                    room: roomName,
-                                    category: category,
-                                    brand: brand,
-                                    model: model,
-                                    price: price.replace(/[^0-9.]/g, '') // Remove currency symbols
-                                });
-                            });
-                        });
-
-                        // Prepare data for Excel
-                        const data = [
-                            ['Room', 'Category', 'Brand', 'Model', 'Price']
-                        ];
-
-                        selectedProducts.forEach(product => {
-                            data.push([
-                                product.room,
-                                product.category,
-                                product.brand,
-                                product.model,
-                                product.price
-                            ]);
-                        });
-
-                        // Add total price
-                        const totalElement = document.getElementById('final-total-cost');
-                        const totalPrice = totalElement.textContent.replace(/[^0-9.]/g, '');
-                        data.push(['', '', '', 'TOTAL', totalPrice]);
-
-                        // Add client information
-                        data.push([]);
-                        data.push(['Client Information']);
-                        const clientInfoItems = document.querySelectorAll('.client-info .client-info-item');
-                        clientInfoItems.forEach(item => {
-                            const label = item.querySelector('.client-info-label').textContent;
-                            const value = item.querySelector('.client-info-value').textContent;
-                            data.push([label, value]);
-                        });
-
-                        // Create workshee
-                        const ws = XLSX.utils.aoa_to_sheet(data);
-
-                        // Create workbook
-                        const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
-
-                        // Save file
-                        XLSX.writeFile(wb, 'AppliancesBazaar_Final_Recommendations.xlsx');
-                    });
 
                     // Setup print button
                     console.log('Setting up print button');
@@ -3917,7 +3855,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
 
                     printButton.addEventListener('click', function() {
                         console.log('Print button clicked');
-                        window.print();
+                        downloadRecommendationsPdf();
                     });
                 };
 
@@ -3953,7 +3891,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                                 console.log('Panel opened');
                             }
                             this.blur();
-                            requestAnimationFrame(() => {{ window.scrollTo(0, prevY); }});
+                            requestAnimationFrame(() => { window.scrollTo(0, prevY); });
                         };
                     });
                 }
@@ -3986,7 +3924,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         </script>
     </head>
     <body>
-        <div class="container">
+        <div class="container" id="product-selection-page">
     """
 
     # Add header section with explicit f-string
@@ -4215,7 +4153,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         else:
                             checked = ''
                         selected_class = ' selected' if checked else ''
-                        html_content += f'''<div class="product-card{selected_class}">
+                        html_content += f'''<div class="product-card{selected_class}" data-room="{room}" data-category="{sub_appliance_type}">
                             <div class="product-selection">
                                 <input type="checkbox"
                                     id="{product_id}"
@@ -4311,7 +4249,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         for k, v in features['parsed_features'].items():
                             parsed_features_html += f'<li><span class="product-info-label">{k}:</span> {v}</li>'
                         parsed_features_html += '</ul></div>'
-                    html_content += f'''<div class="product-card{selected_class}">
+                    html_content += f'''<div class="product-card{selected_class}" data-room="{room}" data-category="{appliance_type}">
                         <div class="product-selection">
                             <input type="checkbox"
                                 id="{product_id}"
@@ -4363,7 +4301,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
             <div class="generate-container">
                 <h2>Select Your Preferred Products</h2>
                 <p>Please select one product from each category above that best suits your needs.</p>
-                <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                    <button id="generate-final" class="generate-button" onclick="generateFinalRecommendation()">Generate Final Recommendations</button>
+                    <button id="download-pdf" class="generate-button" onclick="downloadRecommendationsPdf();">Download PDF</button>
+                </div>
             </div>
 
             <footer>
@@ -4381,6 +4322,32 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <h1>Your Final Product Selections</h1>
                     <p>Specially curated for {user_data['name']}</p>
                 </header>
+                <div class="client-info">
+                    <div class="client-info-item">
+                        <div class="client-info-label">Name</div>
+                        <div class="client-info-value">{user_data['name']}</div>
+                    </div>
+                    <div class="client-info-item">
+                        <div class="client-info-label">Mobile</div>
+                        <div class="client-info-value">{user_data['mobile']}</div>
+                    </div>
+                    <div class="client-info-item">
+                        <div class="client-info-label">Email</div>
+                        <div class="client-info-value">{user_data['email']}</div>
+                    </div>
+                    <div class="client-info-item">
+                        <div class="client-info-label">Address</div>
+                        <div class="client-info-value">{user_data['address']}</div>
+                    </div>
+                    <div class="client-info-item">
+                        <div class="client-info-label">Total Budget</div>
+                        <div class="client-info-value">₹{user_data['total_budget']:,.2f}</div>
+                    </div>
+                    <div class="client-info-item">
+                        <div class="client-info-label">Family Size</div>
+                        <div class="client-info-value">{sum(user_data['demographics'].values())} members</div>
+                    </div>
+                </div>
                 <div id="selected-products-container"></div>
                 <div class="budget-summary">
                     <h2>Budget Summary</h2>
@@ -4388,8 +4355,10 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                     <p>Total Savings: <span id="total-savings">{total_savings}</span></p>
                     <p id="budget-utilization"></p>
                 </div>
-                <div style="display: flex; justify-content: center; margin-top: 24px;">
+                <div class="print-hide" style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 24px;">
                     <button onclick="backToSelection()" class="generate-button">Back to Selection</button>
+                    <button id="print-final" class="generate-button" onclick="downloadRecommendationsPdf()">Print / Save as PDF</button>
+                    <button id="download-final-excel" class="generate-button" onclick="downloadFinalExcel()">Download Excel</button>
                 </div>
             </div>
         </div>
@@ -4397,8 +4366,27 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
         <script>
             function backToSelection() {{
                 window.location.reload();
-
             }}
+
+            function downloadRecommendationsPdf() {{
+                const panels = document.querySelectorAll('.panel');
+                const accordions = document.querySelectorAll('.accordion');
+                for (let i = 0; i < panels.length; i++) {{
+                    panels[i].style.display = 'block';
+                }}
+                for (let j = 0; j < accordions.length; j++) {{
+                    accordions[j].classList.add('active');
+                }}
+                document.body.classList.add('printing');
+                setTimeout(function() {{
+                    document.body.offsetHeight;
+                    window.print();
+                    setTimeout(function() {{
+                        document.body.classList.remove('printing');
+                    }}, 1000);
+                }}, 750);
+            }}
+            window.downloadRecommendationsPdf = downloadRecommendationsPdf;
 
             function generateFinalRecommendation() {{
                 const selectedProducts = [];
@@ -4534,6 +4522,86 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
 
                 console.log('DIRECT: Setting up accordion - complete');
             }})();
+        </script>
+        """
+    html_content += """
+        <script>
+            function downloadFinalExcel() {
+                try {
+                    if (typeof XLSX === 'undefined') {
+                        alert('Excel export library not loaded. Please refresh the page and try again.');
+                        return;
+                    }
+
+                    const data = [['Room', 'Category', 'Product', 'Price']];
+                    let rows = window.__finalExcelRows || [];
+
+                    if (!rows.length) {
+                        const finalCards = document.querySelectorAll('#selected-products-container .final-product-card');
+                        finalCards.forEach(card => {
+                            const name = (card.querySelector('h3') || {}).textContent || '';
+                            const info = {};
+                            card.querySelectorAll('.final-product-info p').forEach(p => {
+                                const strong = p.querySelector('strong');
+                                if (!strong) return;
+                                const key = strong.textContent.replace(':', '').trim().toLowerCase();
+                                info[key] = p.textContent.replace(strong.textContent, '').trim();
+                            });
+                            rows.push([
+                                info.room || '',
+                                info.category || '',
+                                name,
+                                (info.price || '').replace(/[^0-9.]/g, '')
+                            ]);
+                        });
+                    }
+
+                    if (!rows.length) {
+                        const stored = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+                        stored.forEach(function(p) {
+                            rows.push([
+                                p.room || '',
+                                p.category || '',
+                                ((p.brand || '') + ' ' + (p.model || '')).trim() || p.name || '',
+                                p.price
+                            ]);
+                        });
+                    }
+
+                    if (!rows.length) {
+                        alert('No selected products found to export. Generate final recommendations first.');
+                        return;
+                    }
+
+                    rows.forEach(row => data.push(row));
+
+                    const totalEl = document.getElementById('total-cost');
+                    const totalPrice = window.__finalExcelTotal != null
+                        ? window.__finalExcelTotal
+                        : (totalEl ? totalEl.textContent.replace(/[^0-9.]/g, '') : '');
+                    data.push(['', '', 'TOTAL', totalPrice]);
+
+                    data.push([]);
+                    data.push(['Client Information']);
+                    document.querySelectorAll('#final-recommendation-page .client-info .client-info-item').forEach(item => {
+                        const label = item.querySelector('.client-info-label');
+                        const value = item.querySelector('.client-info-value');
+                        if (label && value) {
+                            data.push([label.textContent.trim(), value.textContent.trim()]);
+                        }
+                    });
+
+                    const ws = XLSX.utils.aoa_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
+                    XLSX.writeFile(wb, 'AppliancesBazaar_Final_Recommendations.xlsx');
+                } catch (error) {
+                    console.error('Error creating Excel file:', error);
+                    alert('Failed to create Excel file. Error: ' + error.message);
+                }
+            }
+            window.downloadFinalExcel = downloadFinalExcel;
+
         </script>
         """
     html_content += """
