@@ -1682,9 +1682,9 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
 
     # Check if logo exists in multiple possible locations
     possible_logo_paths = [
-        os.path.join(os.path.dirname(__file__), 'better_home_logo.png'),
-        os.path.join(os.path.dirname(__file__), '/static', 'better_home_logo.png'),
-        'better_home_logo.png'
+        os.path.join(os.path.dirname(__file__), 'static', 'AB-Logo.jpg'),
+        os.path.join(os.path.dirname(__file__), 'AB-Logo.jpg'),
+        'AB-Logo.jpg'
     ]
 
     logo_path = None
@@ -1693,7 +1693,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
             logo_path = path
             break
 
-    logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+    logo_html = '<img src="/static/AB-Logo.jpg" alt="AppliancesBazaar Logo" class="logo">'
 
     if not logo_path:
         print("Logo not found in any of the expected locations")
@@ -1807,7 +1807,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
         story.append(Spacer(1, 20))
 
     # Title and date
-    story.append(Paragraph("BetterHome Recommendations", title_style))
+    story.append(Paragraph("AppliancesBazaar Recommendations", title_style))
     story.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y')}", normal_style))
     story.append(Spacer(1, 15))
 
@@ -1970,7 +1970,7 @@ def create_styled_pdf(filename, user_data, recommendations, required_features: D
     # Add a footer
     story.append(HRFlowable(color=HexColor('#3498db'), width="100%", thickness=1))
     story.append(Spacer(1, 10))
-    footer_text = "Thank you for choosing BetterHome! For any questions, please contact support@betterhome.com"
+    footer_text = "Thank you for choosing AppliancesBazaar! For any questions, please contact support@appliancesbazaar.com"
     story.append(Paragraph(footer_text, normal_style))
 
     # Build the PDF
@@ -3047,7 +3047,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     # Always use a relative URL path that will be handled by Flask
     logo_html = ""
     if logo_exists:
-        logo_html = '<img src="/static/better_home_logo.png" alt="BetterHome Logo" class="logo">'
+        logo_html = '<img src="/static/AB-Logo.jpg" alt="AppliancesBazaar Logo" class="logo">'
 
     # Create HTML header (CSS part)
     html_content = """
@@ -3056,7 +3056,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>BetterHome Product Recommendations</title>
+        <title>AppliancesBazaar Product Recommendations</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -3818,7 +3818,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                             XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
 
                             // Save file
-                            XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
+                            XLSX.writeFile(wb, 'AppliancesBazaar_Recommendations.xlsx');
                             console.log('Excel file created successfully');
                         } catch (error) {
                             console.error('Error creating Excel file:', error);
@@ -3904,7 +3904,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                         XLSX.utils.book_append_sheet(wb, ws, 'Final Recommendations');
 
                         // Save file
-                        XLSX.writeFile(wb, 'BetterHome_Final_Recommendations.xlsx');
+                        XLSX.writeFile(wb, 'AppliancesBazaar_Final_Recommendations.xlsx');
                     });
 
                     // Setup print button
@@ -4368,7 +4368,7 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
 
             <footer>
                 <p>This product recommendation brochure was created for {user_data['name']} on {current_date}</p>
-                <p> © {pd.Timestamp.now().year} BetterHome. All recommendations are personalized based on your specific requirements.</p>
+                <p> © {pd.Timestamp.now().year} AppliancesBazaar. All recommendations are personalized based on your specific requirements.</p>
             </footer>
         </div>
 
@@ -4728,8 +4728,8 @@ def generate_html_file_with_shop_template(user_data: Dict[str, Any], final_list:
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="BetterHome Product Recommendations for {user_data.get('name', 'Customer')}" />
-    <meta name="author" content="BetterHome" />
+    <meta name="description" content="AppliancesBazaar Product Recommendations for {user_data.get('name', 'Customer')}" />
+    <meta name="author" content="AppliancesBazaar" />
     <title>Appliances-Bazaar-Recommendation- Page</title>
     <!-- Favicon-->
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
@@ -4912,7 +4912,7 @@ def generate_html_file_with_shop_template(user_data: Dict[str, Any], final_list:
     <footer class="py-5 bg-dark">
         <div class="container px-5">
             <p class="m-0 text-center text-white">This product recommendation brochure was created on {current_date}<br/>
-                © 2025 BetterHome.
+                © 2025 AppliancesBazaar.
             </p>
         </div>
     </footer>
@@ -5077,9 +5077,9 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="BetterHome Product Recommendations for {user_data.get('name', 'Customer')}" />
-    <meta name="author" content="BetterHome" />
-    <title>BetterHome Product Recommendations - {user_data.get('name', 'Customer')}</title>
+    <meta name="description" content="AppliancesBazaar Product Recommendations for {user_data.get('name', 'Customer')}" />
+    <meta name="author" content="AppliancesBazaar" />
+    <title>AppliancesBazaar Product Recommendations - {user_data.get('name', 'Customer')}</title>
     <!-- Favicon-->
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
     <!-- Bootstrap icons-->
@@ -5158,7 +5158,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
         <div class="container px-5 my-5">
             <div class="text-center mb-5">
                 <h2 class="fw-bolder">Contact Information</h2>
-                <p class="lead mb-0">Your personalized product recommendations from BetterHome</p>
+                <p class="lead mb-0">Your personalized product recommendations from AppliancesBazaar</p>
             </div>
             <section class="contact-section">
                 <div class="container py-3">
@@ -5478,7 +5478,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
     <footer class="py-5 bg-dark">
         <div class="container px-5">
             <p class="m-0 text-center text-white">This product recommendation brochure was created on {current_date}<br/>
-                © 2025 BetterHome.</p>
+                © 2025 AppliancesBazaar.</p>
         </div>
     </footer>
     
@@ -5573,11 +5573,9 @@ if __name__ == "__main__":
     # Generate initial recommendations
     final_list = generate_final_product_list(user_data)
 
-    # Generate output files with the correct suffixes
-    output_base_path = excel_filename.replace('.xlsx', '')
-    # Get the directory of the Excel file
-    output_dir = os.path.dirname(output_base_path)
-    # Get just the filename without path
+    # Generate output files next to the Excel input (same directory + basename)
+    output_base_path = os.path.splitext(excel_filename)[0]
+    output_dir = os.path.dirname(output_base_path) or '.'
     base_filename = os.path.basename(output_base_path)
 
     pdf_filename = f"{output_dir}/{base_filename}.pdf"
@@ -5623,14 +5621,8 @@ if __name__ == "__main__":
     # create_styled_pdf(pdf_filename, user_data, final_list, required_features)
     #generate_text_file(user_data, final_list, txt_filename)
     
-    # Copy shop template assets
-    shop_assets_dir = copy_shop_template_assets(base_filename)
-    
-    # Use the new shop template function
-    generate_html_file_with_shop_template(user_data, final_list, html_filename)
-    
-    # Update HTML file to use relative paths for assets
-    update_html_asset_paths(html_filename, shop_assets_dir)
+    # Selection page with "Generate Final Recommendations" (not the shop-only template)
+    generate_html_file(user_data, final_list, html_filename)
 
     print("\nProduct recommendations have been generated!")
     print(f"Check {pdf_filename}, {txt_filename}, and {html_filename} for details.")

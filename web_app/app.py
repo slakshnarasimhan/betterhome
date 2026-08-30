@@ -60,34 +60,66 @@ if not os.path.exists(logo_dest_path):
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
 TWILIO_VERIFY_SERVICE_SID = os.getenv('TWILIO_VERIFY_SERVICE_SID')
+TWILIO_ENABLED = all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID])
 
-client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ENABLED else None
+
+
+def _returning_user_redirect(mobile):
+    """If this mobile already has a saved final recommendation, return its URL."""
+    mobile_digits = ''.join(ch for ch in str(mobile) if ch.isdigit()) if mobile else ''
+    if not mobile_digits:
+        return None
+    final_html_key = f"users/{mobile_digits}/final/final.html"
+    try:
+        if s3_handler.file_exists(final_html_key):
+            return s3_handler.get_file_url(final_html_key)
+    except Exception as e:
+        print(f"Warning: S3 lookup failed in verify_otp: {e}")
+    return None
+
 
 @betterhome.route('/send_otp', methods=['POST'])
 def send_otp():
-    return jsonify({'success': True})
+    data = request.get_json() or {}
+    mobile = str(data.get('mobile', '')).strip()
+    if not mobile:
+        return jsonify({'success': False, 'error': 'Mobile number is required'}), 400
+    if not TWILIO_ENABLED or client is None:
+        print("Warning: Twilio is not configured; OTP send is skipped (use 024680 locally)")
+        return jsonify({'success': True, 'demo': True})
+    try:
+        client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID).verifications.create(
+            to=f'+91{mobile}', channel='sms'
+        )
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 @betterhome.route('/verify_otp', methods=['POST'])
 def verify_otp():
     data = request.get_json() or {}
     otp = str(data.get('otp', '')).strip()
     mobile = str(data.get('mobile', '')).strip()
-    if otp == '024680':
-        # If there's an existing final recommendation for this mobile in S3, send that URL back
-        mobile_digits = ''.join(ch for ch in mobile if ch.isdigit()) if mobile else ''
-        if mobile_digits:
-            final_html_key = f"users/{mobile_digits}/final/final.html"
-            try:
-                if s3_handler.file_exists(final_html_key):
-                    url = s3_handler.get_file_url(final_html_key)
-                    if url:
-                        return jsonify({'success': True, 'redirect_to': url})
-            except Exception as e:
-                # Log and gracefully fall back to defaults to avoid client-side network errors
-                print(f"Warning: S3 lookup failed in verify_otp: {e}")
-        # Otherwise, go to default recommendations (2BHK by default)
-        return jsonify({'success': True, 'redirect_to': url_for('default_recommendations', bhk='2')})
-    return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+    approved = False
+    if TWILIO_ENABLED and client is not None:
+        try:
+            verification_check = client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID).verification_checks.create(
+                to=f'+91{mobile}', code=otp
+            )
+            approved = verification_check.status == 'approved'
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
+    elif otp == '024680':
+        # Local fallback when Twilio credentials are not set
+        approved = True
+    if not approved:
+        return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+    redirect_to = _returning_user_redirect(mobile)
+    if redirect_to:
+        return jsonify({'success': True, 'redirect_to': redirect_to})
+    # New users continue to the profile form (no redirect_to)
+    return jsonify({'success': True})
     
 @betterhome.route('/')
 def index():
@@ -382,9 +414,12 @@ def submit():
         except Exception as e:
             print(f"Warning: failed to upload excel to S3: {e}")
 
-        # Instead, redirect to the locally generated HTML; S3 uploads for final are handled in combined_script
-        relative_html_path = html_filename.replace('web_app/', '')  # adjust as needed
-        return redirect(url_for('view_html', filename=relative_html_path))
+        # Redirect using a path relative to uploads/, e.g. 9876543210/Test_User_ts/Test_User_ts.html
+        # Do not strip "web_app/" from an absolute path — that points view_html at the wrong directory.
+        relative_html_path = os.path.relpath(html_filename, UPLOAD_FOLDER)
+        if not os.path.exists(html_filename):
+            print(f"Warning: expected HTML missing at {html_filename}; redirecting anyway")
+        return redirect(url_for('view_html', filename=relative_html_path.replace('\\', '/')))
             
     except Exception as e:
         print(f"Error in submit route: {str(e)}")
@@ -394,12 +429,15 @@ def submit():
 def view_html(filename):
     """Serve the HTML file with proper content type"""
     try:
-        # Remove 'uploads/' prefix if present
+        # Filename should be relative to uploads/ (phone/name_timestamp/name_timestamp.html).
+        # Older redirects sometimes passed a corrupted absolute path; normalize those.
+        filename = filename.lstrip('/')
         if filename.startswith('uploads/'):
             filename = filename[len('uploads/'):]
-        # Get the full path to the HTML file
-        # The filename will now include the subfolder name
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file_path = os.path.normpath(os.path.join(UPLOAD_FOLDER, filename))
+        uploads_root = os.path.normpath(UPLOAD_FOLDER)
+        if not file_path.startswith(uploads_root + os.sep) and file_path != uploads_root:
+            return "Error: invalid file path", 400
         print(f"Attempting to serve HTML file: {file_path}")
         
         if not os.path.exists(file_path):

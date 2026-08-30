@@ -3552,9 +3552,9 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="BetterHome Product Recommendations for {user_data.get('name', 'Customer')}" />
-    <meta name="author" content="BetterHome" />
-    <title>BetterHome Product Recommendations - {user_data.get('name', 'Customer')}</title>
+    <meta name="description" content="AppliancesBazaar Product Recommendations for {user_data.get('name', 'Customer')}" />
+    <meta name="author" content="AppliancesBazaar" />
+    <title>AppliancesBazaar Product Recommendations - {user_data.get('name', 'Customer')}</title>
     <!-- Favicon-->
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
     <!-- Bootstrap icons-->
@@ -3633,7 +3633,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
         <div class="container px-5 my-5">
             <div class="text-center mb-5">
                 <h2 class="fw-bolder">Contact Information</h2>
-                <p class="lead mb-0">Your personalized product recommendations from BetterHome</p>
+                <p class="lead mb-0">Your personalized product recommendations from AppliancesBazaar</p>
             </div>
             <section class="contact-section">
                 <div class="container py-3">
@@ -3938,7 +3938,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
     <footer class="py-5 bg-dark">
         <div class="container px-5">
             <p class="m-0 text-center text-white">This product recommendation brochure was created on {current_date}<br/>
-                © 2025 BetterHome.</p>
+                © 2025 AppliancesBazaar.</p>
         </div>
     </footer>
     

@@ -3,15 +3,14 @@
 # Create static directory if it doesn't exist
 mkdir -p static
 
-# Find and copy logo to static directory
-if [ -f "web_app/better_home_logo.png" ]; then
-    cp web_app/better_home_logo.png web_app/static/
-    echo "Copied logo from web_app/better_home_logo.png to web_app/static/"
-elif [ -f "better_home_logo.png" ]; then
-    cp better_home_logo.png web_app/static/
-    echo "Copied logo from better_home_logo.png to web_app/static/"
+# Find and copy AppliancesBazaar logo to static directory
+if [ -f "web_app/static/AB-Logo.jpg" ]; then
+    echo "AppliancesBazaar logo already in web_app/static/AB-Logo.jpg"
+elif [ -f "web_app/AB-Logo.jpg" ]; then
+    cp web_app/AB-Logo.jpg web_app/static/
+    echo "Copied logo from web_app/AB-Logo.jpg to web_app/static/"
 else
-    echo "Logo not found. Please place better_home_logo.png in the web_app directory or project root."
+    echo "Logo not found. Please place AB-Logo.jpg in web_app/static/."
 fi
 
 # Set Flask environment variables
