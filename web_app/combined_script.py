@@ -4989,6 +4989,7 @@ def generate_html_file_with_shop_template(user_data: Dict[str, Any], final_list:
     <!-- Core theme JS-->
     <script src="js/scripts.js"></script>
     <script src="https://cdn.startbootstrap.com/sb-forms-latest.js"></script>
+    <script src="/static/recs-mobile.js"></script>
     <script>
         function changeImage(event, src) {{
             document.getElementById('mainImage').src = src;
@@ -5218,6 +5219,8 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
             font-weight: bold;
         }}
     </style>
+    <link href="/static/recs-mobile.css" rel="stylesheet" />
+    <script src="/static/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -5412,7 +5415,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                         )
                         
                         html_content += f"""
-                                <div class="container mt-5" style="border-bottom: 2px dotted #242424">
+                                <div class="product-block" style="border-bottom: 2px dotted #242424">
                                     <div class="row">
                                         <!-- Product Images -->
                                         <div class="col-md-5 mb-4">
@@ -5437,7 +5440,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                                                 <i class="bi bi-star-half text-warning"></i>
                                                 <span class="ms-2">4.5 (120 reviews)</span>
                                             </div>
-                                            <p class="mb-4">{reason_text}</p>
+                                            <p class="mb-4 product-desc">{reason_text}</p>
                                             <div class="mt-4">
                                                 <h5>Key Features:</h5>
                                                 <ul>
@@ -5490,7 +5493,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                     )
                     
                     html_content += f"""
-                                <div class="container mt-5" style="border-bottom: 2px dotted #242424">
+                                <div class="product-block" style="border-bottom: 2px dotted #242424">
                                     <div class="row">
                                         <!-- Product Images -->
                                         <div class="col-md-5 mb-4">
@@ -5515,7 +5518,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                                                 <i class="bi bi-star-half text-warning"></i>
                                                 <span class="ms-2">4.5 (120 reviews)</span>
                                             </div>
-                                            <p class="mb-4">{reason_text}</p>
+                                            <p class="mb-4 product-desc">{reason_text}</p>
                                             <div class="mt-4">
                                                 <h5>Key Features:</h5>
                                                 <ul>
@@ -5559,6 +5562,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
     <!-- * * Activate your form at https://startbootstrap.com/solution/contact-forms * *-->
     <!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *-->
     <script src="https://cdn.startbootstrap.com/sb-forms-latest.js"></script>
+    <script src="/static/recs-mobile.js"></script>
     <script>
         function changeImage(event, src) {{
             document.getElementById('mainImage').src = src;

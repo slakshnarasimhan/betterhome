@@ -2,129 +2,401 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AppliancesBazaar - Mobile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f3d3e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>AppliancesBazaar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f7f7f9; color:#222; }
-    .wrap { max-width: 520px; margin: 0 auto; padding: 20px 16px 40px; }
-    header { text-align:center; padding: 24px 0 12px; }
-    header img { max-width: 160px; height:auto; }
-    h1 { font-size: 22px; margin: 16px 0 8px; font-weight: 600; }
-    p.sub { margin: 0 0 16px; color:#555; }
-    .card { background:#fff; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.06); padding:16px; }
-    .field { margin:12px 0 16px; }
-    .label { font-size: 13px; color:#666; margin-bottom:6px; }
-    input, select { width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; font-size:16px; outline:none; box-sizing: border-box; max-width: 100%; }
-    input:focus, select:focus { border-color:#3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
-    .row { display:flex; gap:10px; }
-    .row > div { flex:1; }
-    button.primary { width:100%; padding:12px 14px; background:#2ecc71; color:#fff; border:none; border-radius:10px; font-size:16px; font-weight:600; }
-    button.primary:disabled { opacity:0.5; }
-    button.secondary { width:100%; padding:12px 14px; background:#3498db; color:#fff; border:none; border-radius:10px; font-size:16px; font-weight:600; }
-    .hidden { display:none; }
-    .err { color:#c0392b; font-size: 13px; margin-top: 6px; }
+    :root {
+      --ink: #143133;
+      --muted: #5b6b6c;
+      --line: #e4ecec;
+      --card: #ffffff;
+      --bg: #f3f7f6;
+      --brand: #1aa37a;
+      --brand-dark: #0f3d3e;
+      --brand-soft: #e8f7f1;
+      --danger: #c0392b;
+      --radius: 18px;
+      --tap: 52px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    .app {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    }
+    .hero {
+      background: linear-gradient(165deg, #0f3d3e 0%, #165c57 58%, #1aa37a 140%);
+      color: #fff;
+      padding: 22px 22px 28px;
+      border-bottom-left-radius: 28px;
+      border-bottom-right-radius: 28px;
+    }
+    .hero img {
+      display: block;
+      height: 42px;
+      width: auto;
+      background: #fff;
+      border-radius: 10px;
+      padding: 4px 8px;
+      margin-bottom: 18px;
+    }
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+    .hero p {
+      margin: 0;
+      font-size: 0.92rem;
+      opacity: 0.88;
+      line-height: 1.45;
+    }
+    .hero.compact h1 { font-size: 1.15rem; }
+    .hero.compact p { display: none; }
+    .hero.compact { padding-bottom: 18px; }
+    .steps {
+      display: flex;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .steps span {
+      flex: 1;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.28);
+    }
+    .steps span.on { background: #fff; }
+    .panel {
+      flex: 1;
+      padding: 18px 18px 28px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px 18px 18px;
+      box-shadow: 0 10px 28px rgba(15, 61, 62, 0.08);
+    }
+    .kicker {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brand);
+      margin-bottom: 6px;
+    }
+    .card h2 {
+      margin: 0 0 4px;
+      font-size: 1.2rem;
+    }
+    .hint {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .phone {
+      display: flex;
+      align-items: center;
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      background: #fbfcfc;
+      overflow: hidden;
+    }
+    .phone .cc {
+      flex: 0 0 auto;
+      padding: 0 12px;
+      font-weight: 600;
+      color: var(--brand-dark);
+      border-right: 1px solid var(--line);
+      height: var(--tap);
+      display: flex;
+      align-items: center;
+      background: var(--brand-soft);
+    }
+    input, select {
+      width: 100%;
+      height: var(--tap);
+      padding: 0 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      font-size: 16px;
+      font-family: inherit;
+      color: var(--ink);
+      background: #fbfcfc;
+      outline: none;
+      appearance: none;
+    }
+    .phone input {
+      border: 0;
+      background: transparent;
+      border-radius: 0;
+      letter-spacing: 0.08em;
+    }
+    input:focus, select:focus, .phone:focus-within {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 4px rgba(26, 163, 122, 0.14);
+    }
+    .phone:focus-within { border-color: var(--brand); }
+    .otp-input {
+      text-align: center;
+      font-size: 1.45rem;
+      font-weight: 600;
+      letter-spacing: 0.42em;
+      padding-left: 0.42em;
+    }
+    .field { margin-bottom: 16px; }
+    .err {
+      color: var(--danger);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    .hidden { display: none !important; }
+    .chips {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .chip {
+      height: var(--tap);
+      border: 1.5px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      font: inherit;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .chip.on {
+      border-color: var(--brand);
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      box-shadow: inset 0 0 0 1px var(--brand);
+    }
+    .cities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .city {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 10px 14px;
+      min-height: 40px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .city.on {
+      background: var(--brand-soft);
+      border-color: var(--brand);
+      color: var(--brand-dark);
+    }
+    .budget-box {
+      background: var(--brand-soft);
+      border-radius: 14px;
+      padding: 14px 14px 8px;
+    }
+    .budget-box strong {
+      display: block;
+      font-size: 1.35rem;
+      color: var(--brand-dark);
+      margin-bottom: 8px;
+    }
+    input[type=range] {
+      height: 28px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      accent-color: var(--brand);
+    }
+    .range-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .cta {
+      width: 100%;
+      height: var(--tap);
+      border: 0;
+      border-radius: 14px;
+      background: var(--brand);
+      color: #fff;
+      font: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .cta:disabled { opacity: 0.55; }
+    .cta.busy { opacity: 0.75; }
+    .ghost {
+      width: 100%;
+      margin-top: 10px;
+      background: none;
+      border: 0;
+      color: var(--muted);
+      font: inherit;
+      font-size: 14px;
+      padding: 10px;
+    }
+    .trust {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 14px 8px 0;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
+  <div class="app">
+    <header class="hero">
       <img src="/static/AB-Logo.jpg" alt="AppliancesBazaar" />
-      <h1>Welcome to AppliancesBazaar</h1>
-      <p class="sub">Please enter your mobile number to continue.</p>
+      <h1>Home appliances, chosen for your house</h1>
+      <p>A short setup. Then a personalised recommendation you can share.</p>
+      <div class="steps" aria-hidden="true">
+        <span id="bar1" class="on"></span>
+        <span id="bar2"></span>
+        <span id="bar3"></span>
+      </div>
     </header>
 
-    <!-- Step 1: Phone + OTP -->
-    <section id="step1" class="card">
-      <div class="field">
-        <div class="label">Mobile Number</div>
-        <input id="mobile" type="tel" inputmode="numeric" pattern="\\d*" maxlength="10" placeholder="Enter 10-digit number" />
-        <div id="mobileErr" class="err hidden">Enter a valid 10-digit number</div>
-      </div>
-      <div class="row">
-        <div>
-          <button id="sendBtn" class="primary" disabled>Validate</button>
+    <main class="panel">
+      <section id="stepPhone" class="card">
+        <div class="kicker">Step 1 of 3</div>
+        <h2>Your WhatsApp number</h2>
+        <p class="hint">We’ll use this to save your recommendations.</p>
+        <div class="field">
+          <label for="mobile">Mobile number</label>
+          <div class="phone">
+            <span class="cc">+91</span>
+            <input id="mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" autocomplete="tel" />
+          </div>
+          <div id="mobileErr" class="err hidden">Enter a valid 10-digit number</div>
         </div>
-      </div>
+        <button id="sendBtn" class="cta" disabled>Send OTP</button>
+        <p class="trust">Takes about a minute. No spam.</p>
+      </section>
 
-      <div id="otpBlock" class="hidden">
+      <section id="stepOtp" class="card hidden">
+        <div class="kicker">Step 2 of 3</div>
+        <h2>Enter the OTP</h2>
+        <p class="hint">Sent to <strong id="otpTarget"></strong></p>
         <div class="field">
-          <div class="label">Enter OTP</div>
-          <input id="otp" type="password" inputmode="numeric" pattern="\\d*" maxlength="6" placeholder="6-digit OTP" autocomplete="one-time-code" />
+          <label for="otp">6-digit code</label>
+          <input id="otp" class="otp-input" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" />
+          <div id="otpErr" class="err hidden">Invalid OTP. Please try again.</div>
         </div>
-        <div class="row">
-          <div><button id="verifyBtn" class="secondary">Verify OTP</button></div>
-        </div>
-        <div id="otpErr" class="err hidden">Invalid OTP. Please try again.</div>
-      </div>
-    </section>
+        <button id="verifyBtn" class="cta" disabled>Verify &amp; continue</button>
+        <button id="changeNumber" class="ghost" type="button">Use a different number</button>
+      </section>
 
-    <!-- Step 2: Profile Form -->
-    <section id="step2" class="card hidden">
-      <form id="profileForm" method="POST" action="/submit">
-        <div class="field">
-          <div class="label">Name</div>
-          <input name="name" id="name" type="text" placeholder="Your full name" required />
-        </div>
-        <div class="field">
-          <div class="label">Email</div>
-          <input name="email" id="email" type="email" placeholder="you@example.com" required />
-        </div>
-        <div class="field">
-          <div class="label">Address</div>
-          <input name="address" id="address" type="text" placeholder="Street, area, building" required />
-        </div>
-        <div class="field">
-          <div class="label">City</div>
-          <input name="city" id="city" type="text" list="cityList" placeholder="Start typing city..." required />
-          <datalist id="cityList">
-            <option value="Bengaluru"></option>
-            <option value="Chennai"></option>
-            <option value="Hyderabad"></option>
-            <option value="Mumbai"></option>
-            <option value="Pune"></option>
-            <option value="Delhi"></option>
-          </datalist>
-        </div>
-        <div class="field">
-          <div class="label">Configuration</div>
-          <select name="bedrooms" id="bhk" required>
-            <option value="2">2 BHK</option>
-            <option value="3">3 BHK</option>
-          </select>
-        </div>
-        <div class="field">
-          <div class="label">Budget (₹)</div>
-          <input type="range" id="budgetSlider" min="200000" max="1000000" step="10000" value="200000">
-          <div style="margin-top:6px; font-weight:600;">₹ <span id="budgetOut">2,00,000</span></div>
-          <input type="hidden" name="What is your overall budget for home appliances?" id="hiddenBudget" value="200000" />
-        </div>
-        <!-- Hidden fields map for submit route expectations -->
-        <input type="hidden" name="use_default" value="1" />
-        <input type="hidden" name="Mobile Number (Preferably on WhatsApp)" id="hiddenMobile" />
-        <input type="hidden" name="E-mail" id="hiddenEmail" value="" />
-        <input type="hidden" name="Number of bathrooms" value="2" />
-        <input type="hidden" name="Adults (between the age 18 to 50)" value="2" />
-        <input type="hidden" name="Elders (above the age 60)" value="0" />
-        <input type="hidden" name="Kids (below the age 18)" value="0" />
-
-        <div class="row">
-          <div><button class="primary" type="submit">Submit</button></div>
-        </div>
-      </form>
-    </section>
+      <section id="step2" class="card hidden">
+        <div class="kicker">Step 3 of 3</div>
+        <h2>Tell us about your home</h2>
+        <p class="hint">This helps us pick the right set of appliances.</p>
+        <form id="profileForm" method="POST" action="/submit">
+          <div class="field">
+            <label for="name">Your name</label>
+            <input name="name" id="name" type="text" placeholder="Full name" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input name="email" id="email" type="email" placeholder="you@example.com" required autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="address">Home address</label>
+            <input name="address" id="address" type="text" placeholder="Apartment, street, area" required autocomplete="street-address" />
+          </div>
+          <div class="field">
+            <label for="city">City</label>
+            <input name="city" id="city" type="text" list="cityList" placeholder="Your city" required autocomplete="address-level2" />
+            <datalist id="cityList">
+              <option value="Bengaluru"></option>
+              <option value="Chennai"></option>
+              <option value="Hyderabad"></option>
+              <option value="Mumbai"></option>
+              <option value="Pune"></option>
+              <option value="Delhi"></option>
+            </datalist>
+            <div class="cities" id="cityChips">
+              <button type="button" class="city" data-city="Bengaluru">Bengaluru</button>
+              <button type="button" class="city" data-city="Chennai">Chennai</button>
+              <button type="button" class="city" data-city="Hyderabad">Hyderabad</button>
+              <button type="button" class="city" data-city="Mumbai">Mumbai</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Home configuration</label>
+            <div class="chips">
+              <button type="button" class="chip on" data-bhk="2">2 BHK</button>
+              <button type="button" class="chip" data-bhk="3">3 BHK</button>
+            </div>
+            <select name="bedrooms" id="bhk" required hidden>
+              <option value="2" selected>2 BHK</option>
+              <option value="3">3 BHK</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Appliance budget</label>
+            <div class="budget-box">
+              <strong>₹ <span id="budgetOut">2,00,000</span></strong>
+              <input type="range" id="budgetSlider" min="200000" max="1000000" step="10000" value="200000">
+              <div class="range-meta"><span>₹2L</span><span>₹10L</span></div>
+            </div>
+            <input type="hidden" name="What is your overall budget for home appliances?" id="hiddenBudget" value="200000" />
+          </div>
+          <input type="hidden" name="use_default" value="1" />
+          <input type="hidden" name="Mobile Number (Preferably on WhatsApp)" id="hiddenMobile" />
+          <input type="hidden" name="E-mail" id="hiddenEmail" value="" />
+          <input type="hidden" name="Number of bathrooms" value="2" />
+          <input type="hidden" name="Adults (between the age 18 to 50)" value="2" />
+          <input type="hidden" name="Elders (above the age 60)" value="0" />
+          <input type="hidden" name="Kids (below the age 18)" value="0" />
+          <button class="cta" type="submit">Get my recommendations</button>
+        </form>
+      </section>
+    </main>
   </div>
 
   <script>
     const mobile = document.getElementById('mobile');
     const sendBtn = document.getElementById('sendBtn');
     const mobileErr = document.getElementById('mobileErr');
-    const otpBlock = document.getElementById('otpBlock');
     const verifyBtn = document.getElementById('verifyBtn');
     const otpErr = document.getElementById('otpErr');
-    const step1 = document.getElementById('step1');
+    const otpInput = document.getElementById('otp');
+    const stepPhone = document.getElementById('stepPhone');
+    const stepOtp = document.getElementById('stepOtp');
     const step2 = document.getElementById('step2');
     const hiddenMobile = document.getElementById('hiddenMobile');
     const bhk = document.getElementById('bhk');
@@ -133,16 +405,32 @@
     const budgetOut = document.getElementById('budgetOut');
 
     function validatePhone(v){ return /^\d{10}$/.test(v); }
+    function setBusy(btn, on) {
+      btn.disabled = on;
+      btn.classList.toggle('busy', on);
+    }
+    function setBars(n) {
+      [1,2,3].forEach(i => document.getElementById('bar' + i).classList.toggle('on', i <= n));
+      document.querySelector('.hero').classList.toggle('compact', n > 1);
+    }
 
     mobile.addEventListener('input', () => {
       const v = mobile.value.replace(/\D/g, '').slice(0,10);
       if (mobile.value !== v) mobile.value = v;
-      const ok = validatePhone(v);
-      sendBtn.disabled = !ok;
-      mobileErr.classList.toggle('hidden', ok);
+      sendBtn.disabled = !validatePhone(v);
+      if (v.length === 0 || v.length === 10) mobileErr.classList.add('hidden');
+    });
+    mobile.addEventListener('blur', () => {
+      const v = mobile.value;
+      mobileErr.classList.toggle('hidden', v.length === 0 || validatePhone(v));
     });
 
-    // Keep hidden budget in sync with slider changes
+    otpInput.addEventListener('input', () => {
+      otpInput.value = otpInput.value.replace(/\D/g, '').slice(0,6);
+      verifyBtn.disabled = otpInput.value.length !== 6;
+      otpErr.classList.add('hidden');
+    });
+
     if (budgetSlider && hiddenBudget) {
       const updateBudget = () => {
         hiddenBudget.value = budgetSlider.value;
@@ -152,41 +440,89 @@
       budgetSlider.addEventListener('input', updateBudget);
     }
 
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+        chip.classList.add('on');
+        bhk.value = chip.getAttribute('data-bhk');
+      });
+    });
+
+    document.querySelectorAll('.city').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('city').value = btn.getAttribute('data-city');
+        document.querySelectorAll('.city').forEach(c => c.classList.toggle('on', c === btn));
+      });
+    });
+
     sendBtn.addEventListener('click', async () => {
+      setBusy(sendBtn, true);
       try {
         const res = await fetch('/send_otp', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mobile: mobile.value})});
         const data = await res.json();
-        if (data.success) { otpBlock.classList.remove('hidden'); }
-        else { mobileErr.textContent = data.error || 'Failed to send OTP'; mobileErr.classList.remove('hidden'); }
-      } catch(err){ mobileErr.textContent = 'Network error'; mobileErr.classList.remove('hidden'); }
+        if (data.success) {
+          document.getElementById('otpTarget').textContent = '+91 ' + mobile.value;
+          stepPhone.classList.add('hidden');
+          stepOtp.classList.remove('hidden');
+          setBars(2);
+          otpInput.focus();
+        } else {
+          mobileErr.textContent = data.error || 'Failed to send OTP';
+          mobileErr.classList.remove('hidden');
+        }
+      } catch(err){
+        mobileErr.textContent = 'Network error';
+        mobileErr.classList.remove('hidden');
+      } finally {
+        setBusy(sendBtn, false);
+        sendBtn.disabled = !validatePhone(mobile.value);
+      }
+    });
+
+    document.getElementById('changeNumber').addEventListener('click', () => {
+      stepOtp.classList.add('hidden');
+      stepPhone.classList.remove('hidden');
+      setBars(1);
+      otpInput.value = '';
+      verifyBtn.disabled = true;
     });
 
     verifyBtn.addEventListener('click', async () => {
-      const otp = document.getElementById('otp').value.trim();
+      const otp = otpInput.value.trim();
+      setBusy(verifyBtn, true);
       try {
         const res = await fetch('/verify_otp', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mobile: mobile.value, otp})});
         const data = await res.json();
         if (data.success) {
-          // If server provides a redirect target (S3 final or default page), navigate there
           if (data.redirect_to) {
             window.location.href = data.redirect_to;
             return;
           }
-          // Otherwise continue to profile form
           hiddenMobile.value = mobile.value;
           const email = document.getElementById('email');
           const hiddenEmail = document.getElementById('hiddenEmail');
           if (email && hiddenEmail) hiddenEmail.value = email.value || '';
           if (budgetSlider && hiddenBudget) hiddenBudget.value = budgetSlider.value;
-          step1.classList.add('hidden');
+          stepOtp.classList.add('hidden');
           step2.classList.remove('hidden');
+          setBars(3);
+          window.scrollTo(0, 0);
         } else {
-          otpErr.textContent = data.error || 'Invalid OTP'; otpErr.classList.remove('hidden');
+          otpErr.textContent = data.error || 'Invalid OTP';
+          otpErr.classList.remove('hidden');
         }
-      } catch(err){ otpErr.textContent = 'Network error'; otpErr.classList.remove('hidden'); }
+      } catch(err){
+        otpErr.textContent = 'Network error';
+        otpErr.classList.remove('hidden');
+      } finally {
+        setBusy(verifyBtn, false);
+        verifyBtn.disabled = otpInput.value.length !== 6;
+      }
+    });
+
+    document.getElementById('email').addEventListener('input', function() {
+      document.getElementById('hiddenEmail').value = this.value || '';
     });
   </script>
 </body>
 </html>
-
-

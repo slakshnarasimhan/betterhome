@@ -1,0 +1,245 @@
+/* Recommendation pages — phone-first layout */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+img, svg, video {
+  max-width: 100%;
+  height: auto;
+}
+
+.product-block {
+  margin-top: 1.25rem;
+  padding-bottom: 1rem;
+  max-width: 100%;
+}
+
+.product-desc,
+p.mb-4.product-desc {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  margin-bottom: 0 !important;
+  line-height: 1.4;
+}
+
+.product-desc.is-open {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.desc-more {
+  display: inline-block;
+  margin: 2px 0 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #00aa9f;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+  min-height: 0;
+}
+
+.recs-export-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 0 0 18px;
+}
+
+.recs-export-bar button {
+  border: 0;
+  border-radius: 12px;
+  background: #00aa9f;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.recs-export-bar button[data-action="excel"] {
+  background: #0f3d3e;
+}
+
+@media (max-width: 768px) {
+  .container,
+  .container-sm,
+  .container-md,
+  .container-lg,
+  .container-xl,
+  .container-xxl {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .px-5,
+  .container.px-5 {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .my-5 {
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  section.py-5,
+  section.py-4 {
+    padding-top: 0.85rem !important;
+    padding-bottom: 0.85rem !important;
+  }
+
+  .accordion .container,
+  .accordion-body .container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 0.75rem !important;
+  }
+
+  .accordion-body {
+    padding: 10px 12px 12px !important;
+  }
+
+  .accordion-button {
+    font-size: 15px;
+    padding: 14px 16px;
+  }
+
+  h2.fw-bolder {
+    font-size: 1.25rem;
+  }
+
+  .text-center.mb-5 {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .col-md-5,
+  .col-md-7 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .product-image,
+  .img-fluid {
+    width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+  }
+
+  .h2 {
+    font-size: 1.3rem !important;
+  }
+
+  h2.mb-3,
+  h6.mb-3,
+  h4 {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .accordion-body h4 + .container h2.mb-3,
+  .accordion-body h4 + .product-block h2.mb-3 {
+    display: none;
+  }
+
+  h6.mb-3 {
+    font-size: 0.95rem;
+    line-height: 1.35;
+    margin-bottom: 8px !important;
+  }
+
+  p, li {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .btn-lg {
+    width: 100%;
+    padding: 12px 16px !important;
+  }
+
+  .contact-section {
+    border-radius: 12px !important;
+    padding: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .contact-section .card {
+    margin-bottom: 10px !important;
+  }
+
+  .contact-section .col-sm-3,
+  .contact-section .col-sm-9 {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .contact-section .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .contact-section hr {
+    margin: 8px 0;
+  }
+
+  .lead {
+    font-size: 0.95rem;
+  }
+
+  .recs-export-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    background: #fff;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    margin: 8px -12px 0;
+    box-shadow: 0 -6px 18px rgba(15, 61, 62, 0.12);
+  }
+
+  .recs-export-bar button {
+    flex: 1;
+  }
+}
+
+@media print {
+  .desc-more,
+  .recs-export-bar,
+  .btn,
+  a.btn,
+  footer {
+    display: none !important;
+  }
+
+  .product-desc {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+  }
+
+  .accordion-collapse {
+    display: block !important;
+    height: auto !important;
+    visibility: visible !important;
+  }
+
+  .accordion-collapse.collapse:not(.show) {
+    display: block !important;
+  }
+}

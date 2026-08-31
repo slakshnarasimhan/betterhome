@@ -79,40 +79,25 @@ def _returning_user_redirect(mobile):
     return None
 
 
+HARDCODED_OTP = '123456'
+
+
 @betterhome.route('/send_otp', methods=['POST'])
 def send_otp():
     data = request.get_json() or {}
     mobile = str(data.get('mobile', '')).strip()
     if not mobile:
         return jsonify({'success': False, 'error': 'Mobile number is required'}), 400
-    if not TWILIO_ENABLED or client is None:
-        print("Warning: Twilio is not configured; OTP send is skipped (use 024680 locally)")
-        return jsonify({'success': True, 'demo': True})
-    try:
-        client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID).verifications.create(
-            to=f'+91{mobile}', channel='sms'
-        )
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+    # Twilio is skipped for now; use the hardcoded OTP on the next screen.
+    print(f"OTP send skipped; use {HARDCODED_OTP}")
+    return jsonify({'success': True, 'demo': True})
 
 @betterhome.route('/verify_otp', methods=['POST'])
 def verify_otp():
     data = request.get_json() or {}
     otp = str(data.get('otp', '')).strip()
     mobile = str(data.get('mobile', '')).strip()
-    approved = False
-    if TWILIO_ENABLED and client is not None:
-        try:
-            verification_check = client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID).verification_checks.create(
-                to=f'+91{mobile}', code=otp
-            )
-            approved = verification_check.status == 'approved'
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)}), 400
-    elif otp == '024680':
-        # Local fallback when Twilio credentials are not set
-        approved = True
+    approved = otp == HARDCODED_OTP
     if not approved:
         return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
     redirect_to = _returning_user_redirect(mobile)
