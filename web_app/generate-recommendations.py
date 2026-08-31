@@ -3828,7 +3828,6 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
 
                                         <!-- Product Details -->
                                         <div class="col-md-7">
-                                            <h2 class="mb-3">{sub_type_title}</h2>
                                             <h6 class="mb-3">{brand} {model}</h6>
                                             <div class="mb-3">
                                                 <span class="h2 me-2">₹{better_home_price:,.0f}</span>
@@ -3894,7 +3893,6 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
 
                                         <!-- Product Details -->
                                         <div class="col-md-7">
-                                            <h2 class="mb-3">{appliance_title}</h2>
                                             <h6 class="mb-3">{brand} {model}</h6>
                                             <div class="mb-3">
                                                 <span class="h2 me-2">₹{better_home_price:,.0f}</span>

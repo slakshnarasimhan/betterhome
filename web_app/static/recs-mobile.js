@@ -1,10 +1,39 @@
 (function () {
+  function exceedsTwoLines(el) {
+    var width = el.getBoundingClientRect().width;
+    if (!width) return false;
+    var cs = window.getComputedStyle(el);
+    var probe = document.createElement('div');
+    probe.textContent = el.textContent || '';
+    probe.style.cssText = [
+      'position:absolute',
+      'left:-9999px',
+      'top:0',
+      'visibility:hidden',
+      'pointer-events:none',
+      'width:' + width + 'px',
+      'font:' + cs.font,
+      'line-height:' + cs.lineHeight,
+      'letter-spacing:' + cs.letterSpacing,
+      'word-break:break-word',
+      'white-space:normal'
+    ].join(';');
+    document.body.appendChild(probe);
+    var fullHeight = probe.offsetHeight;
+    probe.remove();
+    var lineHeight = parseFloat(cs.lineHeight);
+    if (!lineHeight || isNaN(lineHeight)) {
+      lineHeight = (parseFloat(cs.fontSize) || 16) * 1.4;
+    }
+    return fullHeight > lineHeight * 2 + 3;
+  }
+
   function enhance(el) {
     if (el.dataset.descReady === '1') return;
-    if (el.clientHeight === 0) return;
+    if (el.getBoundingClientRect().width < 8) return;
     el.classList.add('product-desc');
     el.classList.remove('is-open');
-    if (el.scrollHeight <= el.clientHeight + 2) {
+    if (!exceedsTwoLines(el)) {
       el.dataset.descReady = '1';
       return;
     }
@@ -13,10 +42,6 @@
     btn.type = 'button';
     btn.className = 'desc-more';
     btn.textContent = 'More';
-    btn.addEventListener('click', function () {
-      var open = el.classList.toggle('is-open');
-      btn.textContent = open ? 'Less' : 'More';
-    });
     el.insertAdjacentElement('afterend', btn);
   }
 
@@ -115,6 +140,16 @@
     document.querySelectorAll('.accordion-collapse').forEach(function (panel) {
       panel.addEventListener('shown.bs.collapse', enhanceDescriptions);
     });
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.desc-more');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var el = btn.previousElementSibling;
+      if (!el || !el.classList.contains('product-desc')) return;
+      var open = el.classList.toggle('is-open');
+      btn.textContent = open ? 'Less' : 'More';
+    }, true);
   }
 
   if (document.readyState === 'loading') {
