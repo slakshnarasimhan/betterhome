@@ -3242,6 +3242,7 @@ def generate_default_recommendations(
     bathroom_nested_categories = ['Storage Water Heater', 'LED Mirror']
 
     bhk_list = [bhk_choice] if bhk_choice in ('2BHK', '3BHK') else ['2BHK', '3BHK']
+    generated_paths = []
     for bhk in bhk_list:
         # Decide Standard vs Premium using config thresholds
         threshold = None
@@ -3483,6 +3484,7 @@ def generate_default_recommendations(
         update_html_asset_paths(output_filename, template_assets_dir)
         
         print(f"Generated {selected_tier or 'Standard'} default recommendations for {bhk}: {output_filename}")
+        generated_paths.append(os.path.abspath(output_filename))
 
         # Upload generated default page and its assets to S3 under users/{mobile}/defaults/
         try:
@@ -3507,6 +3509,7 @@ def generate_default_recommendations(
                             print(f"Warning: failed to upload default asset {local_path} -> {s3_key}: {_e}")
         except Exception as e:
             print(f"Warning: failed to upload default recommendations to S3: {e}")
+    return generated_paths
 
 # Function to generate an HTML file with recommendations using the new Appliances-Bazaar template
 def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
