@@ -5693,6 +5693,11 @@ if __name__ == "__main__":
     
     # Selection page with "Generate Final Recommendations" (not the shop-only template)
     generate_html_file(user_data, final_list, html_filename)
+    try:
+        from support_notify import export_and_email_recommendations
+        export_and_email_recommendations(user_data, final_list, html_filename)
+    except Exception as e:
+        print(f"Warning: support export/email failed: {e}")
 
     print("\nProduct recommendations have been generated!")
     print(f"Check {pdf_filename}, {txt_filename}, and {html_filename} for details.")

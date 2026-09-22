@@ -3485,6 +3485,11 @@ def generate_default_recommendations(
         
         print(f"Generated {selected_tier or 'Standard'} default recommendations for {bhk}: {output_filename}")
         generated_paths.append(os.path.abspath(output_filename))
+        try:
+            from support_notify import export_and_email_recommendations
+            export_and_email_recommendations(user_data, recommendations, output_filename)
+        except Exception as e:
+            print(f"Warning: support export/email failed: {e}")
 
         # Upload generated default page and its assets to S3 under users/{mobile}/defaults/
         try:

@@ -8,7 +8,6 @@ import shutil
 from werkzeug.utils import secure_filename
 from combined_script import analyze_user_requirements, generate_html_file
 from s3_config import S3Handler
-from github_commit import commit_generated_html
 from flask import Flask, request, jsonify
 from twilio.rest import Client
 import os
@@ -347,9 +346,7 @@ def submit():
                 # Pass email and city through to default recommendations so they appear on the page
                 email = form_data.get('email', '') or form_data.get('E-mail', '')
                 city = form_data.get('city', '') or form_data.get('City', '')
-                generated_paths = generate_default_recommendations(csv_path, catalog_path, bhk_choice, name, address, mobile, email, user_budget, city)
-                for generated_path in generated_paths or []:
-                    commit_generated_html(generated_path, phone=mobile)
+                generate_default_recommendations(csv_path, catalog_path, bhk_choice, name, address, mobile, email, user_budget, city)
                 # Redirect to the appropriate tiered file (premium/standard). The route will resolve the right file.
                 redirect_url = url_for('default_recommendations', bhk=bhk)
                 return render_template('progress.html', redirect_url=redirect_url)
@@ -376,12 +373,6 @@ def submit():
                     with open(html_filename, 'r', encoding='utf-8') as f:
                         recommendation_html = f.read()
                     print("HTML content read successfully")
-                    commit_mobile = (
-                        form_data.get('mobile')
-                        or form_data.get('Mobile Number (Preferably on WhatsApp)')
-                        or ''
-                    )
-                    commit_generated_html(html_filename, phone=commit_mobile)
                 else:
                     print(f"Warning: HTML file not found at {html_filename}")
                     recommendation_html = "Error: Recommendations could not be generated."
