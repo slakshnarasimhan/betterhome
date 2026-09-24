@@ -44,11 +44,11 @@ if not os.path.exists(STATIC_FOLDER):
 
 # Copy the logo to the static directory if it doesn't exist there
 logo_source_paths = [
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'AB-Logo.jpg'),
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'AB-Logo.jpg'),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web_app', 'AB-Logo.jpg'),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'better_home_logo.png'),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'better_home_logo.png'),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'better_home_logo.png'),
 ]
-logo_dest_path = os.path.join(STATIC_FOLDER, 'AB-Logo.jpg')
+logo_dest_path = os.path.join(STATIC_FOLDER, 'better_home_logo.png')
 
 if not os.path.exists(logo_dest_path):
     for source_path in logo_source_paths:
@@ -528,4 +528,4 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 if __name__ == '__main__':
-    betterhome.run(debug=True, host='0.0.0.0', port=5002)
+    betterhome.run(debug=True, host='0.0.0.0', port=5003)

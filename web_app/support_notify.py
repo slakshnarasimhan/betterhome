@@ -168,7 +168,7 @@ def write_recommendations_pdf(path: str, user_data: Dict[str, Any], recommendati
     body = ParagraphStyle("ExportBody", parent=styles["Normal"], fontSize=9, leading=12)
 
     story: List[Any] = [
-        Paragraph("AppliancesBazaar Recommendations", title),
+        Paragraph("BetterHome Recommendations", title),
         Paragraph(escape(datetime.now().strftime("Generated %d %B %Y %H:%M")), body),
         Spacer(1, 10),
         Paragraph("Client Information", heading),
@@ -257,7 +257,7 @@ def _send_via_sendgrid(subject: str, body: str, attachments: Iterable[str]) -> b
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json={
             "personalizations": [{"to": [{"email": support_email_address()}]}],
-            "from": {"email": sender, "name": "AppliancesBazaar"},
+            "from": {"email": sender, "name": "BetterHome"},
             "subject": subject,
             "content": [{"type": "text/plain", "value": body}],
             "attachments": payload_attachments,
@@ -341,7 +341,7 @@ def export_and_email_recommendations(
         fields = dict(client_fields(user_data or {}))
         subject = f"New recommendation: {fields.get('Name', 'Customer')} ({fields.get('Phone', '')})"
         body = (
-            "A new AppliancesBazaar recommendation was generated. "
+            "A new BetterHome recommendation was generated. "
             "PDF and Excel are attached so support can follow up even if the customer did not download them.\n\n"
             + "\n".join(f"{label}: {value}" for label, value in client_fields(user_data or {}))
             + f"\n\nSource HTML: {os.path.basename(html_path)}\n"

@@ -108,7 +108,7 @@
       var ws = XLSX.utils.aoa_to_sheet(data);
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Recommendations');
-      XLSX.writeFile(wb, 'AppliancesBazaar_Recommendations.xlsx');
+      XLSX.writeFile(wb, 'BetterHome_Recommendations.xlsx');
     });
   }
 
