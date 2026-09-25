@@ -1581,8 +1581,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border: none;
                 text-align: left;
                 outline: none;
-                font-size: 18px;
-                transition: background-color 0.2s;
+                font-size: 1.5rem;
+                font-weight: 800;
                 border-radius: 8px 8px 0 0;
                 margin-bottom: 0;
             }
@@ -3516,6 +3516,94 @@ def generate_default_recommendations(
             print(f"Warning: failed to upload default recommendations to S3: {e}")
     return generated_paths
 
+def displayed_prices(product):
+    """Return actual BetterHome price, actual retail price and verified savings."""
+    def positive_price(*values):
+        for value in values:
+            try:
+                amount = float(str(value).replace(",", "").replace("₹", "").strip())
+                if amount > 0:
+                    return amount
+            except (TypeError, ValueError):
+                pass
+        return None
+
+    bh = positive_price(
+        product.get('bh_price'), product.get('better_home_price'), product.get('price')
+    )
+    retail = positive_price(
+        product.get('mrp_price'), product.get('retail_price'), product.get('market_price_1')
+    )
+    if bh is None:
+        return None, None, None
+    if retail is None or retail <= bh:
+        return bh, None, None
+    return bh, retail, retail - bh
+
+
+def product_facts_html(product):
+    """Show only product facts present in the catalogue."""
+    from html import escape
+
+    facts = []
+    benefits = product.get('top_benefits')
+    if isinstance(benefits, str):
+        facts.extend(re.split(r'[\n;|•]+', benefits))
+    elif isinstance(benefits, list):
+        facts.extend(str(item) for item in benefits)
+
+    features = product.get('features')
+    if isinstance(features, list):
+        facts.extend(str(item) for item in features if isinstance(item, (str, int, float)))
+    elif isinstance(features, str):
+        facts.extend(re.split(r'[\n;|•]+', features))
+
+    seen = set()
+    items = []
+    for fact in facts:
+        fact = fact.strip(' \t-')
+        if not fact or fact.lower() in seen:
+            continue
+        seen.add(fact.lower())
+        items.append(f'<li>{escape(fact)}</li>')
+        if len(items) == 3:
+            break
+    return '<div class="product-facts"><h5>Product details</h5><ul>' + ''.join(items) + '</ul></div>' if items else ''
+
+
+def product_link_html(product):
+    from html import escape
+    from urllib.parse import urlsplit
+
+    url = str(product.get('url') or product.get('product_url') or '').strip()
+    parsed = urlsplit(url)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return ''
+    return f'<a class="product-link" href="{escape(url, quote=True)}">View product</a>'
+
+
+def grouped_product_cards(products):
+    """Combine identical products for display, preserving their unit count."""
+    cards = []
+    positions = {}
+    for product in products[:3]:
+        if not isinstance(product, dict):
+            continue
+        sku = str(product.get('sku') or '').strip().lower()
+        url = str(product.get('url') or '').strip().lower()
+        identity = sku or url or (
+            str(product.get('brand') or '').strip().lower(),
+            str(product.get('model') or product.get('title') or '').strip().lower(),
+        )
+        key = (identity, displayed_prices(product)[:2])
+        if key in positions:
+            cards[positions[key]][1] += 1
+        else:
+            positions[key] = len(cards)
+            cards.append([product, 1])
+    return cards
+
+
 # Function to generate an HTML file with recommendations using the new Appliances-Bazaar template
 def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: Dict[str, Any], html_filename: str) -> None:
     """
@@ -3525,33 +3613,29 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
     # Get current date for the footer
     current_date = pd.Timestamp.now().strftime("%Y-%m-%d")
     
-    # Calculate total cost and savings
-    total_cost = calculate_total_cost(final_list)
-    budget_utilization = (total_cost / user_data['total_budget']) * 100 if user_data['total_budget'] > 0 else 0
-    
-    # Calculate total savings
+    # Count each recommended item once per room, including intentional duplicate units.
+    # The total and savings now describe the same basket and use the card prices.
+    total_cost = 0
     total_savings = 0
     for room, products in final_list.items():
         if not isinstance(products, dict):
             continue
-        for product_type, options in products.items():
+        for options in products.values():
             if isinstance(options, dict):
-                for nested_type, nested_options in options.items():
-                    if not isinstance(nested_options, list) or not nested_options:
+                groups = options.values()
+            else:
+                groups = (options,)
+            for group in groups:
+                if not isinstance(group, list):
+                    continue
+                for product in group[:3]:
+                    if not isinstance(product, dict):
                         continue
-                    for product in nested_options:
-                        # Calculate savings as (original_price - bh_price)
-                        bh_price = product.get('bh_price', 0) or product.get('better_home_price', 0)
-                        original_price = product.get('mrp_price', 0) or product.get('market_price_1', 0) or product.get('retail_price', 0)
-                        if original_price > bh_price > 0:
-                            total_savings += (original_price - bh_price)
-            elif isinstance(options, list) and options:
-                for product in options:
-                    # Calculate savings as (original_price - bh_price)
-                    bh_price = product.get('bh_price', 0) or product.get('better_home_price', 0)
-                    original_price = product.get('mrp_price', 0) or product.get('market_price_1', 0) or product.get('retail_price', 0)
-                    if original_price > bh_price > 0:
-                        total_savings += (original_price - bh_price)
+                    bh, _, saving = displayed_prices(product)
+                    total_cost += bh or 0
+                    total_savings += saving or 0
+    budget = float(user_data.get('total_budget') or 0)
+    budget_utilization = (total_cost / budget) * 100 if budget > 0 else 0
     
     # Start building HTML content
     html_content = f"""<!DOCTYPE html>
@@ -3576,6 +3660,12 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
         }}
         .accordion-button:focus {{
             box-shadow: 0 0 0 0.25rem rgba(0, 170, 159, 0.25);
+        }}
+        .accordion-button {{
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            padding: 16px 18px;
         }}
         .product-card {{
             border: 1px solid #e0e0e0;
@@ -3634,6 +3724,97 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
         }}
     </style>
     <link href="/static/recs-mobile.css" rel="stylesheet" />
+    <style>
+        /* Kept in this generated HTML so print styling works even if static CSS
+           is not available when a saved copy is printed. */
+        @media print {{
+            @page {{ size: A4; margin: 14mm 15mm 17mm; }}
+            html, body {{ overflow: visible !important; max-width: none !important; }}
+            body {{ font-size: 10pt; color: #173234; background: white !important; }}
+            .container, .container.px-5 {{
+                width: 100% !important; max-width: none !important;
+                padding: 0 !important; margin: 0 !important;
+            }}
+            section.py-5, section.py-4 {{
+                padding: 0 !important; margin: 0 !important;
+            }}
+            #features .text-center.mb-5 {{ margin-bottom: 4mm !important; }}
+            #features .text-center.mb-5 img {{ max-height: 15mm !important; margin: 0 0 2mm !important; }}
+            #features .text-center.mb-5 h2 {{ margin-bottom: 1mm !important; }}
+            #features .text-center.mb-5 .lead {{ font-size: 9pt !important; }}
+            .contact-section {{
+                background: white !important; padding: 0 !important;
+                margin: 0 0 5mm !important; border-radius: 0 !important;
+            }}
+            .contact-section .container, .contact-section .row {{
+                padding: 0 !important; margin: 0 !important;
+            }}
+            .contact-section .col-lg-4, .contact-section .col-lg-8 {{
+                width: 100% !important; flex: 0 0 100% !important;
+            }}
+            .contact-section .card {{
+                box-shadow: none !important; border: 1px solid #dce6e5 !important;
+                margin: 0 0 3mm !important;
+            }}
+            .contact-section .card-body {{ padding: 2mm 4mm !important; }}
+            .contact-section .card-body p, .contact-section .card-body h5 {{
+                margin: 0 0 1mm !important;
+            }}
+            .contact-section .personal-contact-row {{ display: none !important; }}
+            .contact-section .print-only-row {{ display: flex !important; }}
+            .contact-section .col-lg-4 .card-body h5 {{ display: none !important; }}
+            .contact-section .col-lg-4 .card-body .budget-badge {{
+                padding: 1mm 3mm !important; border-radius: 4px;
+            }}
+            .contact-section .col-lg-4 .card-body .d-flex {{
+                margin: 1mm 0 !important;
+            }}
+            .contact-section hr {{ margin: 1mm 0 !important; }}
+            .print-hide, .desc-more, .recs-export-bar, #recs-export-bar,
+            #download-pdf, .generate-container, .btn, a.btn, footer {{
+                display: none !important;
+            }}
+            .bg-light {{ background: white !important; }}
+            .accordion, .accordion-item, .accordion-body {{
+                break-inside: auto !important; page-break-inside: auto !important;
+                border: 0 !important; box-shadow: none !important;
+            }}
+            .accordion-collapse, .accordion-collapse.collapse:not(.show) {{
+                display: block !important; height: auto !important;
+                visibility: visible !important;
+            }}
+            .accordion-body {{ padding: 0 !important; }}
+            .accordion-header, .accordion-body h4 {{
+                break-after: avoid-page; page-break-after: avoid;
+            }}
+            /* Chrome can discard @page margins when the print dialog is set to
+               "None". Padding belongs to the heading box, so it survives when
+               that heading is moved to the top of a new page. */
+            .accordion-body h4 {{
+                padding-top: 8mm !important;
+                margin-top: 0 !important;
+            }}
+            .accordion-header {{ padding-top: 5mm !important; }}
+            .product-block {{
+                break-inside: avoid-page; page-break-inside: avoid;
+                border: 1px solid #dce6e5 !important; border-radius: 5px;
+                padding: 3mm !important; margin-bottom: 4mm !important;
+            }}
+            .product-block .col-md-5 {{ width: 32% !important; flex: 0 0 32% !important; }}
+            .product-block .col-md-7 {{ width: 68% !important; flex: 0 0 68% !important; }}
+            .product-image {{ max-height: 38mm !important; object-fit: contain; }}
+            .product-desc {{
+                display: block !important; overflow: visible !important;
+                -webkit-line-clamp: unset !important;
+            }}
+            .product-facts h5 {{ font-size: 10pt; margin: 2mm 0 1mm; }}
+            .product-facts ul {{ margin-bottom: 1mm; }}
+            .quantity-note {{ color: #173234; font-weight: 600; margin-left: 2mm; }}
+            .retail-price {{ text-decoration: line-through; color: #697577; }}
+            .saving {{ color: #136e63; margin-left: 2mm; }}
+        }}
+    </style>
+    <style>.print-only-row {{ display: none; }}</style>
     <script src="/static/xlsx.full.min.js"></script>
 </head>
 
@@ -3643,14 +3824,14 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
         <div class="container px-5 my-5">
             <div class="text-center mb-5">
                 <img src="/static/better_home_logo.png" alt="BetterHome" style="max-height:72px;width:auto;margin-bottom:16px;" />
-                <h2 class="fw-bolder">Contact Information</h2>
-                <p class="lead mb-0">Your personalized product recommendations from BetterHome</p>
+                <h2 class="fw-bolder">Your appliance recommendations</h2>
+                <p class="lead mb-0">Prepared for {user_data.get('name', 'Customer')} · {current_date}</p>
             </div>
             <section class="contact-section">
                 <div class="container py-3">
                     <div class="row">
                         <div class="col-lg-4">
-                            <div class="card mb-4">
+                            <div class="card mb-4 print-hide">
                                 <div class="card-body text-center">
                                     <h5 class="my-3">{user_data.get('name', 'Customer')}</h5>
                                     <p class="text-muted mb-1" style="font-weight: bold;">Address:</p>
@@ -3666,7 +3847,17 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                         <div class="col-lg-8">
                             <div class="card mb-4">
                                 <div class="card-body">
-                                    <div class="row">
+                                    <div class="row print-only-row">
+                                        <div class="col-sm-3"><p class="mb-0">Address</p></div>
+                                        <div class="col-sm-9"><p class="text-muted mb-0">{user_data.get('address', 'Not provided')}</p></div>
+                                    </div>
+                                    <hr class="print-only-row">
+                                    <div class="row print-only-row">
+                                        <div class="col-sm-3"><p class="mb-0">Budget</p></div>
+                                        <div class="col-sm-9"><p class="text-muted mb-0">₹{budget:,.0f}</p></div>
+                                    </div>
+                                    <hr class="print-only-row">
+                                    <div class="row personal-contact-row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Full Name</p>
                                         </div>
@@ -3674,8 +3865,8 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                                             <p class="text-muted mb-0">{user_data.get('name', 'Not provided')}</p>
                                         </div>
                                     </div>
-                                    <hr>
-                                    <div class="row">
+                                    <hr class="personal-contact-row">
+                                    <div class="row personal-contact-row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Email</p>
                                         </div>
@@ -3683,8 +3874,8 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                                             <p class="text-muted mb-0">{user_data.get('email', 'Not provided')}</p>
                                         </div>
                                     </div>
-                                    <hr>
-                                    <div class="row">
+                                    <hr class="personal-contact-row">
+                                    <div class="row personal-contact-row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Phone</p>
                                         </div>
@@ -3692,7 +3883,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                                             <p class="text-muted mb-0">{user_data.get('mobile', 'Not provided')}</p>
                                         </div>
                                     </div>
-                                    <hr>
+                                    <hr class="personal-contact-row">
                                     <div class="row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Budget Utilization</p>
@@ -3720,7 +3911,7 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
     </section>
     
     <!-- Customize button section-->
-    <section class="py-4 border-bottom">
+    <section class="py-4 border-bottom print-hide">
         <div class="container px-5">
             <div class="text-center">
                 <p class="lead mb-3">Not satisfied with these recommendations?</p>
@@ -3802,29 +3993,35 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                         continue
                     
                     # Ensure we have products to display
-                    grouped_products = sub_products[:3] if len(sub_products) >= 3 else sub_products
+                    grouped_products = grouped_product_cards(sub_products)
                     
                     # Add sub-type heading
                     sub_type_title = sub_appliance_type.replace('_', ' ').title()
                     html_content += f'<h4 style="margin-top:20px; color: #00aa9f;">{sub_type_title}</h4>'
                     
                     # Display products
-                    for product in grouped_products:
+                    for product, quantity in grouped_products:
                         brand = product.get('brand', 'Unknown Brand')
                         model = product.get('model', product.get('title', 'Unknown Model'))
                         image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                         description = product.get('description', 'Product description not available')
                         
-                        # Handle pricing
-                        better_home_price = float(product.get('bh_price', 0.0))
-                        retail_price = float(product.get('mrp_price', 0.0))
-                        if better_home_price <= 0:
-                            better_home_price = float(product.get('price', retail_price * 0.8))
-                        if retail_price <= 0:
-                            retail_price = better_home_price * 1.25
-                        if retail_price <= better_home_price:
-                            retail_price = better_home_price * 1.25
-                        savings = retail_price - better_home_price
+                        # Show only actual catalogue prices; never manufacture a retail price.
+                        bh, retail, saving = displayed_prices(product)
+                        price_html = f'<strong>BetterHome ₹{bh:,.0f}</strong>' if bh else 'Price on request'
+                        if retail is not None:
+                            price_html += f' <span class="retail-price">Retail ₹{retail:,.0f}</span>'
+                            price_html += f' <span class="saving">Save ₹{saving:,.0f}</span>'
+                        if quantity > 1:
+                            price_html += f' <span class="quantity-note">× {quantity} units</span>'
+                            if bh:
+                                price_html += f' <span class="quantity-total">Total ₹{bh * quantity:,.0f}</span>'
+                        facts_html = product_facts_html(product)
+                        link_html = product_link_html(product)
+                        description_html = (
+                            f'<p class="mb-4 product-desc">{description}</p>'
+                            if not facts_html and description and description != 'Product description not available' else ''
+                        )
                         
                         html_content += f"""
                                 <div class="product-block" style="border-bottom: 2px dotted #242424">
@@ -3839,57 +4036,46 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                                         <div class="col-md-7">
                                             <h6 class="mb-3">{brand} {model}</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹{better_home_price:,.0f}</span>
-                                                <span class="text-muted"><s>₹{retail_price:,.0f}</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹{savings:,.0f}</span>
+                                                {price_html}
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">{description}</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality {sub_type_title.lower()}</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            {description_html}
+                                            {facts_html}
+                                            {link_html}
                                         </div>
                                     </div>
                                 </div>"""
             
             elif isinstance(products, list) and products:
                 # Handle direct appliance lists
-                grouped_products = products[:3] if len(products) >= 3 else products
+                grouped_products = grouped_product_cards(products)
                 
                 # Add appliance type heading
                 appliance_title = appliance_type.replace('_', ' ').title()
                 html_content += f'<h4 style="margin-top:20px; color: #00aa9f;">{appliance_title}</h4>'
                 
                 # Display products
-                for product in grouped_products:
+                for product, quantity in grouped_products:
                     brand = product.get('brand', 'Unknown Brand')
                     model = product.get('model', product.get('title', 'Unknown Model'))
                     image_src = product.get('image_src', 'https://via.placeholder.com/300x300?text=No+Image+Available')
                     description = product.get('description', 'Product description not available')
                     
-                    # Handle pricing
-                    better_home_price = float(product.get('bh_price', 0.0))
-                    retail_price = float(product.get('mrp_price', 0.0))
-                    if better_home_price <= 0:
-                        better_home_price = float(product.get('price', retail_price * 0.8))
-                    if retail_price <= 0:
-                        retail_price = better_home_price * 1.25
-                    if retail_price <= better_home_price:
-                        retail_price = better_home_price * 1.25
-                    savings = retail_price - better_home_price
+                    # Show only actual catalogue prices; never manufacture a retail price.
+                    bh, retail, saving = displayed_prices(product)
+                    price_html = f'<strong>BetterHome ₹{bh:,.0f}</strong>' if bh else 'Price on request'
+                    if retail is not None:
+                        price_html += f' <span class="retail-price">Retail ₹{retail:,.0f}</span>'
+                        price_html += f' <span class="saving">Save ₹{saving:,.0f}</span>'
+                    if quantity > 1:
+                        price_html += f' <span class="quantity-note">× {quantity} units</span>'
+                        if bh:
+                            price_html += f' <span class="quantity-total">Total ₹{bh * quantity:,.0f}</span>'
+                    facts_html = product_facts_html(product)
+                    link_html = product_link_html(product)
+                    description_html = (
+                        f'<p class="mb-4 product-desc">{description}</p>'
+                        if not facts_html and description and description != 'Product description not available' else ''
+                    )
                     
                     html_content += f"""
                                 <div class="product-block" style="border-bottom: 2px dotted #242424">
@@ -3904,28 +4090,11 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
                                         <div class="col-md-7">
                                             <h6 class="mb-3">{brand} {model}</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹{better_home_price:,.0f}</span>
-                                                <span class="text-muted"><s>₹{retail_price:,.0f}</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹{savings:,.0f}</span>
+                                                {price_html}
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">{description}</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality {appliance_title.lower()}</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            {description_html}
+                                            {facts_html}
+                                            {link_html}
                                         </div>
                                     </div>
                                 </div>"""
@@ -4024,4 +4193,3 @@ if __name__ == "__main__":
     else:
         print("Usage: python generate-recommendations.py <user_input.xlsx> <best_sellers_csv> [--generate-defaults] [--catalog <catalog_path>]")
         print("For generating defaults: python generate-recommendations.py <best_sellers_csv> --generate-defaults [--catalog <catalog_path>]")
-

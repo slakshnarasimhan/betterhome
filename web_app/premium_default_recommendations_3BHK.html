@@ -78,6 +78,97 @@
         }
     </style>
     <link href="/static/recs-mobile.css" rel="stylesheet" />
+    <style>
+        /* Kept in this generated HTML so print styling works even if static CSS
+           is not available when a saved copy is printed. */
+        @media print {
+            @page { size: A4; margin: 14mm 15mm 17mm; }
+            html, body { overflow: visible !important; max-width: none !important; }
+            body { font-size: 10pt; color: #173234; background: white !important; }
+            .container, .container.px-5 {
+                width: 100% !important; max-width: none !important;
+                padding: 0 !important; margin: 0 !important;
+            }
+            section.py-5, section.py-4 {
+                padding: 0 !important; margin: 0 !important;
+            }
+            #features .text-center.mb-5 { margin-bottom: 4mm !important; }
+            #features .text-center.mb-5 img { max-height: 15mm !important; margin: 0 0 2mm !important; }
+            #features .text-center.mb-5 h2 { margin-bottom: 1mm !important; }
+            #features .text-center.mb-5 .lead { font-size: 9pt !important; }
+            .contact-section {
+                background: white !important; padding: 0 !important;
+                margin: 0 0 5mm !important; border-radius: 0 !important;
+            }
+            .contact-section .container, .contact-section .row {
+                padding: 0 !important; margin: 0 !important;
+            }
+            .contact-section .col-lg-4, .contact-section .col-lg-8 {
+                width: 100% !important; flex: 0 0 100% !important;
+            }
+            .contact-section .card {
+                box-shadow: none !important; border: 1px solid #dce6e5 !important;
+                margin: 0 0 3mm !important;
+            }
+            .contact-section .card-body { padding: 2mm 4mm !important; }
+            .contact-section .card-body p, .contact-section .card-body h5 {
+                margin: 0 0 1mm !important;
+            }
+            .contact-section .personal-contact-row { display: none !important; }
+            .contact-section .print-only-row { display: flex !important; }
+            .contact-section .col-lg-4 .card-body h5 { display: none !important; }
+            .contact-section .col-lg-4 .card-body .budget-badge {
+                padding: 1mm 3mm !important; border-radius: 4px;
+            }
+            .contact-section .col-lg-4 .card-body .d-flex {
+                margin: 1mm 0 !important;
+            }
+            .contact-section hr { margin: 1mm 0 !important; }
+            .print-hide, .desc-more, .recs-export-bar, #recs-export-bar,
+            #download-pdf, .generate-container, .btn, a.btn, footer {
+                display: none !important;
+            }
+            .bg-light { background: white !important; }
+            .accordion, .accordion-item, .accordion-body {
+                break-inside: auto !important; page-break-inside: auto !important;
+                border: 0 !important; box-shadow: none !important;
+            }
+            .accordion-collapse, .accordion-collapse.collapse:not(.show) {
+                display: block !important; height: auto !important;
+                visibility: visible !important;
+            }
+            .accordion-body { padding: 0 !important; }
+            .accordion-header, .accordion-body h4 {
+                break-after: avoid-page; page-break-after: avoid;
+            }
+            /* Chrome can discard @page margins when the print dialog is set to
+               "None". Padding belongs to the heading box, so it survives when
+               that heading is moved to the top of a new page. */
+            .accordion-body h4 {
+                padding-top: 8mm !important;
+                margin-top: 0 !important;
+            }
+            .accordion-header { padding-top: 5mm !important; }
+            .product-block {
+                break-inside: avoid-page; page-break-inside: avoid;
+                border: 1px solid #dce6e5 !important; border-radius: 5px;
+                padding: 3mm !important; margin-bottom: 4mm !important;
+            }
+            .product-block .col-md-5 { width: 32% !important; flex: 0 0 32% !important; }
+            .product-block .col-md-7 { width: 68% !important; flex: 0 0 68% !important; }
+            .product-image { max-height: 38mm !important; object-fit: contain; }
+            .product-desc {
+                display: block !important; overflow: visible !important;
+                -webkit-line-clamp: unset !important;
+            }
+            .product-facts h5 { font-size: 10pt; margin: 2mm 0 1mm; }
+            .product-facts ul { margin-bottom: 1mm; }
+            .quantity-note { color: #173234; font-weight: 600; margin-left: 2mm; }
+            .retail-price { text-decoration: line-through; color: #697577; }
+            .saving { color: #136e63; margin-left: 2mm; }
+        }
+    </style>
+    <style>.print-only-row { display: none; }</style>
     <script src="/static/xlsx.full.min.js"></script>
 </head>
 
@@ -87,21 +178,21 @@
         <div class="container px-5 my-5">
             <div class="text-center mb-5">
                 <img src="/static/better_home_logo.png" alt="BetterHome" style="max-height:72px;width:auto;margin-bottom:16px;" />
-                <h2 class="fw-bolder">Contact Information</h2>
-                <p class="lead mb-0">Your personalized product recommendations from BetterHome</p>
+                <h2 class="fw-bolder">Your appliance recommendations</h2>
+                <p class="lead mb-0">Prepared for Lakshmi Narasimhan · 2026-09-25</p>
             </div>
             <section class="contact-section">
                 <div class="container py-3">
                     <div class="row">
                         <div class="col-lg-4">
-                            <div class="card mb-4">
+                            <div class="card mb-4 print-hide">
                                 <div class="card-body text-center">
                                     <h5 class="my-3">Lakshmi Narasimhan</h5>
                                     <p class="text-muted mb-1" style="font-weight: bold;">Address:</p>
                                     <p class="text-muted mb-4">112, Prestige Silver Oak, ECC Rd, Whitefield</p>
                                     <div class="d-flex justify-content-center mb-2">
                                         <button type="button" class="budget-badge">
-                                            Total Budget: ₹510,000
+                                            Total Budget: ₹640,000
                                         </button>
                                     </div>
                                 </div>
@@ -110,7 +201,17 @@
                         <div class="col-lg-8">
                             <div class="card mb-4">
                                 <div class="card-body">
-                                    <div class="row">
+                                    <div class="row print-only-row">
+                                        <div class="col-sm-3"><p class="mb-0">Address</p></div>
+                                        <div class="col-sm-9"><p class="text-muted mb-0">112, Prestige Silver Oak, ECC Rd, Whitefield</p></div>
+                                    </div>
+                                    <hr class="print-only-row">
+                                    <div class="row print-only-row">
+                                        <div class="col-sm-3"><p class="mb-0">Budget</p></div>
+                                        <div class="col-sm-9"><p class="text-muted mb-0">₹640,000</p></div>
+                                    </div>
+                                    <hr class="print-only-row">
+                                    <div class="row personal-contact-row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Full Name</p>
                                         </div>
@@ -118,8 +219,8 @@
                                             <p class="text-muted mb-0">Lakshmi Narasimhan</p>
                                         </div>
                                     </div>
-                                    <hr>
-                                    <div class="row">
+                                    <hr class="personal-contact-row">
+                                    <div class="row personal-contact-row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Email</p>
                                         </div>
@@ -127,8 +228,8 @@
                                             <p class="text-muted mb-0">slakshnarasimhan@gmail.com</p>
                                         </div>
                                     </div>
-                                    <hr>
-                                    <div class="row">
+                                    <hr class="personal-contact-row">
+                                    <div class="row personal-contact-row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Phone</p>
                                         </div>
@@ -136,13 +237,13 @@
                                             <p class="text-muted mb-0">9845731544</p>
                                         </div>
                                     </div>
-                                    <hr>
+                                    <hr class="personal-contact-row">
                                     <div class="row">
                                         <div class="col-sm-3">
                                             <p class="mb-0">Budget Utilization</p>
                                         </div>
                                         <div class="col-sm-9">
-                                            <p class="text-muted mb-0">59.0% (₹301,100 used)</p>
+                                            <p class="text-muted mb-0">47.0% (₹301,100 used)</p>
                                         </div>
                                     </div>
                                     <hr>
@@ -164,11 +265,11 @@
     </section>
     
     <!-- Customize button section-->
-    <section class="py-4 border-bottom">
+    <section class="py-4 border-bottom print-hide">
         <div class="container px-5">
             <div class="text-center">
                 <p class="lead mb-3">Not satisfied with these recommendations?</p>
-                <a href="/?name=Lakshmi Narasimhan&mobile=9845731544&email=slakshnarasimhan@gmail.com&address=112, Prestige Silver Oak, ECC Rd, Whitefield&budget=510000.0&bedrooms=3&bathrooms=3" 
+                <a href="/?name=Lakshmi Narasimhan&mobile=9845731544&email=slakshnarasimhan@gmail.com&address=112, Prestige Silver Oak, ECC Rd, Whitefield&budget=640000.0&bedrooms=3&bathrooms=3" 
                    class="btn btn-primary btn-lg px-5 py-3" style="background-color: #00aa9f; border-color: #00aa9f;">
                     <i class="bi bi-gear-fill me-2"></i>Customize Your Recommendations
                 </a>
@@ -207,28 +308,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹39,000</span>
-                                                <span class="text-muted"><s>₹58,200</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹19,200</span>
+                                                <strong>BetterHome ₹39,000</strong> <span class="retail-price">Retail ₹58,200</span> <span class="saving">Save ₹19,200</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable all year round with the efficient Inverter Split Air Conditioner. With a 1.5 Ton capacity and 3 Star BEE rating, this model ensures energy savings without compromising on performance, making it the ideal choice for a refreshing indoor environment.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality air conditioner</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Ceiling Fan</h4>
@@ -244,65 +328,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹3,500</span>
-                                                <span class="text-muted"><s>₹6,100</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,600</span>
+                                                <strong>BetterHome ₹3,500</strong> <span class="retail-price">Retail ₹6,100</span> <span class="saving">Save ₹2,600</span> <span class="quantity-note">× 2 units</span> <span class="quantity-total">Total ₹7,000</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable with our powerful Ceiling Fan, delivering an impressive Air Delivery of 230CMM while operating at a high Maximum Speed of 385RPM. With its energy-efficient design and superior performance, this Ceiling Fan is the perfect choice to create a refreshing breeze in any room, making it a must-have addition to your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality ceiling fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="product-block" style="border-bottom: 2px dotted #242424">
-                                    <div class="row">
-                                        <!-- Product Images -->
-                                        <div class="col-md-5 mb-4">
-                                            <img src="https://betterhomeapp.com/cdn/shop/files/Superfan_SuperX1_Ceiling_Fan_Pot_Brown.png?v=1738994179"
-                                                alt="Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown" class="img-fluid rounded mb-3 product-image">
-                                        </div>
-
-                                        <!-- Product Details -->
-                                        <div class="col-md-7">
-                                            <h6 class="mb-3">Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h6>
-                                            <div class="mb-3">
-                                                <span class="h2 me-2">₹3,500</span>
-                                                <span class="text-muted"><s>₹6,100</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,600</span>
-                                            </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable with our powerful Ceiling Fan, delivering an impressive Air Delivery of 230CMM while operating at a high Maximum Speed of 385RPM. With its energy-efficient design and superior performance, this Ceiling Fan is the perfect choice to create a refreshing breeze in any room, making it a must-have addition to your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality ceiling fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated</li><li>35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan">View product</a>
                                         </div>
                                     </div>
                                 </div>
@@ -331,28 +361,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">AO Smith ProPlanet P4 Pro 5 Litres RO Water Purifier With 8-Stage RO plus SCMT and UV Purification</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹19,800</span>
-                                                <span class="text-muted"><s>₹24,400</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹4,600</span>
+                                                <strong>BetterHome ₹19,800</strong> <span class="retail-price">Retail ₹24,400</span> <span class="saving">Save ₹4,600</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Product description not available</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality water purifier</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. 100% RO water since all the water is passed through the RO membrane unlike other brands.</li><li>2. Delivers &quot;Baby-Safe&quot; water with full-spectrum contaminant removal and UV freshness using 8-Stage RO + SCMT + UV purification.</li><li>3. SCMT (Silver Charged Membrane Technology) removes Virus, Bacteria, Cysts, Particulates, Endotoxins, Colloids, Chemicals and Phosphates.</li></ul></div>
+                                            
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Exhaust Fan</h4>
@@ -368,28 +381,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹1,350</span>
-                                                <span class="text-muted"><s>₹3,350</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,000</span>
+                                                <strong>BetterHome ₹1,350</strong> <span class="retail-price">Retail ₹3,350</span> <span class="saving">Save ₹2,000</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Keep your kitchen fresh and smoke-free with this powerful Exhaust Fan. With durable ABS plastic blades, easy push-button control, and a high-speed motor, this lightweight fan is the perfect choice for efficient ventilation in your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality exhaust fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Dishwasher</h4>
@@ -405,28 +401,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Bosch Free-Standing Dishwasher 14 Place Settings - Series 6 - 60 Cm - SMS6IKI01I- Brushed steel anti-fingerprint</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹53,500</span>
-                                                <span class="text-muted"><s>₹65,190</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹11,690</span>
+                                                <strong>BetterHome ₹53,500</strong> <span class="retail-price">Retail ₹65,190</span> <span class="saving">Save ₹11,690</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Product description not available</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality dishwasher</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. 14-place setting is designed to accommodate a large number of dishes, Typically the dishes used through out the day.</li><li>2. Silent (48 decibel), energy-saving cleaning with the EcoSilence Drive (motor).</li><li>3. Home Connect allows to start washes, check status, and get alerts via voice or app.</li></ul></div>
+                                            
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Cooktop</h4>
@@ -442,28 +421,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Faber 3 Burner Cooktop Spark 3BB BK - 77 CM</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹4,600</span>
-                                                <span class="text-muted"><s>₹8,990</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹4,390</span>
+                                                <strong>BetterHome ₹4,600</strong> <span class="retail-price">Retail ₹8,990</span> <span class="saving">Save ₹4,390</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Product description not available</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality cooktop</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Equipped with three brass burners (1 jumbo, 1 medium, and 1 small) for various cooking needs and uniform heat distribution.</li><li>2. 6 MM toughened black glass top for durability and scratch resistance. It looks sleek too.</li><li>3. Stainless steel drip trays simplify cleanup by catching spills.</li></ul></div>
+                                            
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Chimney</h4>
@@ -479,28 +441,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Faber Hood Sunny IN HC SC FL LG 60 Auto Clean Filterless Chimney</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹15,300</span>
-                                                <span class="text-muted"><s>₹26,990</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹11,690</span>
+                                                <strong>BetterHome ₹15,300</strong> <span class="retail-price">Retail ₹26,990</span> <span class="saving">Save ₹11,690</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Elevate your kitchen with this sleek 60 cm wall-mounted chimney boasting a powerful 1200 m3/hr suction capacity and convenient auto clean function. Say goodbye to filter replacements with its innovative filterless design, making this chimney a hassle-free and efficient choice for your cooking needs.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality chimney</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. 1200 m³/hr suction power</li><li>2. Filterless design.</li><li>3. Auto-Clean function self-cleans oil and grease</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/faber-hood-magnus-3d-in-hc-sc-fl-ebk-60-autoclean-filterless-chimney-copy">View product</a>
                                         </div>
                                     </div>
                                 </div>
@@ -529,28 +474,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹3,500</span>
-                                                <span class="text-muted"><s>₹6,100</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,600</span>
+                                                <strong>BetterHome ₹3,500</strong> <span class="retail-price">Retail ₹6,100</span> <span class="saving">Save ₹2,600</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable with our powerful Ceiling Fan, delivering an impressive Air Delivery of 230CMM while operating at a high Maximum Speed of 385RPM. With its energy-efficient design and superior performance, this Ceiling Fan is the perfect choice to create a refreshing breeze in any room, making it a must-have addition to your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality ceiling fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated</li><li>35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan">View product</a>
                                         </div>
                                     </div>
                                 </div>
@@ -579,28 +507,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">AO Smith Elegance Prime Storage Water Heater 15 Litres</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹8,500</span>
-                                                <span class="text-muted"><s>₹11,400</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,900</span>
+                                                <strong>BetterHome ₹8,500</strong> <span class="retail-price">Retail ₹11,400</span> <span class="saving">Save ₹2,900</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Experience instant hot water with this efficient 15-liter water heater, boasting a powerful 2000W element and a sleek white design. With its high performance and ample capacity, this water heater is the perfect choice for quick and reliable hot water supply in your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality storage water heater</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Air Conditioner</h4>
@@ -616,28 +527,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹39,000</span>
-                                                <span class="text-muted"><s>₹58,200</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹19,200</span>
+                                                <strong>BetterHome ₹39,000</strong> <span class="retail-price">Retail ₹58,200</span> <span class="saving">Save ₹19,200</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable all year round with the efficient Inverter Split Air Conditioner. With a 1.5 Ton capacity and 3 Star BEE rating, this model ensures energy savings without compromising on performance, making it the ideal choice for a refreshing indoor environment.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality air conditioner</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Exhaust Fan</h4>
@@ -653,28 +547,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹1,350</span>
-                                                <span class="text-muted"><s>₹3,350</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,000</span>
+                                                <strong>BetterHome ₹1,350</strong> <span class="retail-price">Retail ₹3,350</span> <span class="saving">Save ₹2,000</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Keep your kitchen fresh and smoke-free with this powerful Exhaust Fan. With durable ABS plastic blades, easy push-button control, and a high-speed motor, this lightweight fan is the perfect choice for efficient ventilation in your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality exhaust fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Ceiling Fan</h4>
@@ -690,28 +567,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹3,500</span>
-                                                <span class="text-muted"><s>₹6,100</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,600</span>
+                                                <strong>BetterHome ₹3,500</strong> <span class="retail-price">Retail ₹6,100</span> <span class="saving">Save ₹2,600</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable with our powerful Ceiling Fan, delivering an impressive Air Delivery of 230CMM while operating at a high Maximum Speed of 385RPM. With its energy-efficient design and superior performance, this Ceiling Fan is the perfect choice to create a refreshing breeze in any room, making it a must-have addition to your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality ceiling fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated</li><li>35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan">View product</a>
                                         </div>
                                     </div>
                                 </div>
@@ -740,28 +600,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">AO Smith Elegance Prime Storage Water Heater 15 Litres</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹8,500</span>
-                                                <span class="text-muted"><s>₹11,400</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,900</span>
+                                                <strong>BetterHome ₹8,500</strong> <span class="retail-price">Retail ₹11,400</span> <span class="saving">Save ₹2,900</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Experience instant hot water with this efficient 15-liter water heater, boasting a powerful 2000W element and a sleek white design. With its high performance and ample capacity, this water heater is the perfect choice for quick and reliable hot water supply in your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality storage water heater</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Air Conditioner</h4>
@@ -777,28 +620,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹39,000</span>
-                                                <span class="text-muted"><s>₹58,200</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹19,200</span>
+                                                <strong>BetterHome ₹39,000</strong> <span class="retail-price">Retail ₹58,200</span> <span class="saving">Save ₹19,200</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable all year round with the efficient Inverter Split Air Conditioner. With a 1.5 Ton capacity and 3 Star BEE rating, this model ensures energy savings without compromising on performance, making it the ideal choice for a refreshing indoor environment.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality air conditioner</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Exhaust Fan</h4>
@@ -814,28 +640,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹1,350</span>
-                                                <span class="text-muted"><s>₹3,350</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,000</span>
+                                                <strong>BetterHome ₹1,350</strong> <span class="retail-price">Retail ₹3,350</span> <span class="saving">Save ₹2,000</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Keep your kitchen fresh and smoke-free with this powerful Exhaust Fan. With durable ABS plastic blades, easy push-button control, and a high-speed motor, this lightweight fan is the perfect choice for efficient ventilation in your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality exhaust fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Ceiling Fan</h4>
@@ -851,28 +660,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹3,500</span>
-                                                <span class="text-muted"><s>₹6,100</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,600</span>
+                                                <strong>BetterHome ₹3,500</strong> <span class="retail-price">Retail ₹6,100</span> <span class="saving">Save ₹2,600</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable with our powerful Ceiling Fan, delivering an impressive Air Delivery of 230CMM while operating at a high Maximum Speed of 385RPM. With its energy-efficient design and superior performance, this Ceiling Fan is the perfect choice to create a refreshing breeze in any room, making it a must-have addition to your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality ceiling fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated</li><li>35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan">View product</a>
                                         </div>
                                     </div>
                                 </div>
@@ -901,28 +693,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">AO Smith Elegance Prime Storage Water Heater 15 Litres</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹8,500</span>
-                                                <span class="text-muted"><s>₹11,400</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,900</span>
+                                                <strong>BetterHome ₹8,500</strong> <span class="retail-price">Retail ₹11,400</span> <span class="saving">Save ₹2,900</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Experience instant hot water with this efficient 15-liter water heater, boasting a powerful 2000W element and a sleek white design. With its high performance and ample capacity, this water heater is the perfect choice for quick and reliable hot water supply in your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality storage water heater</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. 15 Litres is the ideal capacity for taking a bath in a bucket and the minimum capacity for a shower.</li><li>2. The Blue Diamond Glass-Lined tank is corrosion resistant and has a longer life.</li><li>3. Glass-Coated Incoloy heating element ensures efficient, long-lasting, and scale-resistant heating.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/ao-smith-elegance-prime-storage-water-heater-15-ltr">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Air Conditioner</h4>
@@ -938,28 +713,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Daikin AC 1.5 Ton - Inverter - 3 Star - Split AC - FTKC50 - FTKC50UV16V and RKC50UV16V - Copper Condenser</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹39,000</span>
-                                                <span class="text-muted"><s>₹58,200</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹19,200</span>
+                                                <strong>BetterHome ₹39,000</strong> <span class="retail-price">Retail ₹58,200</span> <span class="saving">Save ₹19,200</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable all year round with the efficient Inverter Split Air Conditioner. With a 1.5 Ton capacity and 3 Star BEE rating, this model ensures energy savings without compromising on performance, making it the ideal choice for a refreshing indoor environment.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality air conditioner</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Energy-efficient for medium rooms, typically bedrooms in the range of 130 to 180 square feet consumes 966 units per year.</li><li>2. Coanda airflow gives even cooling across every corner.</li><li>3. Cooling Capacity of 5,000 Watts provides airflow of 16.2 CMM (cubic metre per minute) to keep the room cool.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/daikin-ac-1-5-ton-inverter-3-star-split-ac-ftkc50uv16v-and-rkc50uv16v-copper-condenser">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Exhaust Fan</h4>
@@ -975,28 +733,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Atomberg Efficio 150mm BLDC motor Energy Saving Exhaust Fan</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹1,350</span>
-                                                <span class="text-muted"><s>₹3,350</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,000</span>
+                                                <strong>BetterHome ₹1,350</strong> <span class="retail-price">Retail ₹3,350</span> <span class="saving">Save ₹2,000</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Keep your kitchen fresh and smoke-free with this powerful Exhaust Fan. With durable ABS plastic blades, easy push-button control, and a high-speed motor, this lightweight fan is the perfect choice for efficient ventilation in your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality exhaust fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air suction of 360 CMH with a speed of 2000 RPM.</li><li>2. Back flaps prevent insects from entering the home.</li><li>3. Low noise.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/atomberg-efficio-150mm-bldc-motor-energy-saving-exhaust-fan">View product</a>
                                         </div>
                                     </div>
                                 </div><h4 style="margin-top:20px; color: #00aa9f;">Ceiling Fan</h4>
@@ -1012,28 +753,11 @@
                                         <div class="col-md-7">
                                             <h6 class="mb-3">Superfan Super X1 High Speed BLDC Ceiling Fan with 5 Years Warranty - 120 cm (48 inches)  - Brown</h6>
                                             <div class="mb-3">
-                                                <span class="h2 me-2">₹3,500</span>
-                                                <span class="text-muted"><s>₹6,100</s></span>
-                                                <span class="text-muted me-2" style="color: #15ce04;">Save ₹2,600</span>
+                                                <strong>BetterHome ₹3,500</strong> <span class="retail-price">Retail ₹6,100</span> <span class="saving">Save ₹2,600</span>
                                             </div>
-                                            <div class="mb-3">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-half text-warning"></i>
-                                                <span class="ms-2">4.5 (120 reviews)</span>
-                                            </div>
-                                            <p class="mb-4 product-desc">Stay cool and comfortable with our powerful Ceiling Fan, delivering an impressive Air Delivery of 230CMM while operating at a high Maximum Speed of 385RPM. With its energy-efficient design and superior performance, this Ceiling Fan is the perfect choice to create a refreshing breeze in any room, making it a must-have addition to your home.</p>
-                                            <div class="mt-4">
-                                                <h5>Key Features:</h5>
-                                                <ul>
-                                                    <li>High-quality ceiling fan</li>
-                                                    <li>Energy efficient</li>
-                                                    <li>Warranty included</li>
-                                                    <li>Professional installation support</li>
-                                                </ul>
-                                            </div>
+                                            
+                                            <div class="product-facts"><h5>Product details</h5><ul><li>1. Good air delivery of 230 CMM (cubic metre per minute) to give the right comfort for a good sleep. Highly recommended for those who prefer performance at minimum budget.</li><li>2. 5-Star energy rated</li><li>35 Watts per Hour. 65% Power saving which would be up to ₹1,500 per year.</li></ul></div>
+                                            <a class="product-link" href="https://betterhomeapp.com/products/superfan-super-x1-ceiling-fan">View product</a>
                                         </div>
                                     </div>
                                 </div>
@@ -1048,7 +772,7 @@
     <!-- Footer-->
     <footer class="py-5 bg-dark">
         <div class="container px-5">
-            <p class="m-0 text-center text-white">This product recommendation brochure was created on 2026-09-24<br/>
+            <p class="m-0 text-center text-white">This product recommendation brochure was created on 2026-09-25<br/>
                 © 2025 BetterHome.</p>
         </div>
     </footer>

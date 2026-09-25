@@ -3541,7 +3541,8 @@ def generate_html_file(user_data: Dict[str, Any], final_list: Dict[str, Any], ht
                 border: none;
                 text-align: left;
                 outline: none;
-                font-size: 18px;
+                font-size: 1.5rem;
+                font-weight: 800;
                 transition: background-color 0.2s;
                 border-radius: 8px 8px 0 0;
                 margin-bottom: 0;
@@ -5163,6 +5164,12 @@ def generate_html_file_with_new_template(user_data: Dict[str, Any], final_list: 
         }}
         .accordion-button:focus {{
             box-shadow: 0 0 0 0.25rem rgba(0, 170, 159, 0.25);
+        }}
+        .accordion-button {{
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            padding: 16px 18px;
         }}
         .product-card {{
             border: 1px solid #e0e0e0;
