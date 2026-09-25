@@ -257,7 +257,14 @@
       margin-top: 6px;
     }
     .cta:disabled { opacity: 0.55; }
-    .cta.busy { opacity: 0.75; }
+    .cta.busy,
+    .cta:disabled.busy {
+      background: #8a9696;
+      color: #fff;
+      opacity: 1;
+      cursor: wait;
+      pointer-events: none;
+    }
     .ghost {
       width: 100%;
       margin-top: 10px;
@@ -382,7 +389,7 @@
           <input type="hidden" name="Adults (between the age 18 to 50)" value="2" />
           <input type="hidden" name="Elders (above the age 60)" value="0" />
           <input type="hidden" name="Kids (below the age 18)" value="0" />
-          <button class="cta" type="submit">Get my recommendations</button>
+          <button id="getRecsBtn" class="cta" type="submit">Get my recommendations</button>
         </form>
       </section>
     </main>
@@ -522,6 +529,23 @@
 
     document.getElementById('email').addEventListener('input', function() {
       document.getElementById('hiddenEmail').value = this.value || '';
+    });
+
+    document.getElementById('profileForm').addEventListener('submit', function(event) {
+      const form = this;
+      const btn = document.getElementById('getRecsBtn');
+      if (form.dataset.generating === '1') {
+        event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      form.dataset.generating = '1';
+      btn.disabled = true;
+      btn.classList.add('busy');
+      btn.textContent = 'Generating recommendations…';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => form.submit());
+      });
     });
   </script>
 </body>
